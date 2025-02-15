@@ -320,5 +320,6 @@ export default function HomePage() {
         </motion.section>
       </div>
     </ScrollArea>
+
   );
 }
