@@ -1,19 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { generateText } from 'ai';
 import { z } from 'zod';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  throw new Error('GOOGLE_GENERATIVE_AI_API_KEY environment variable is not set');
+}
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
+});
 
 const RequestSchema = z.object({
   imageData: z.string(),
+  mimeType: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { imageData } = RequestSchema.parse(body);
+    const { imageData, mimeType = 'image/jpeg' } = RequestSchema.parse(body);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Determine if the data is a PDF or image based on the base64 header or mimeType
+    const isPDF = imageData.startsWith('data:application/pdf') || mimeType === 'application/pdf';
+    const fileType = isPDF ? 'application/pdf' : 'image/jpeg';
 
     const prompt = `Analyze this dental claim form and extract the following information in a structured format:
     1. Patient and subscriber information
@@ -98,18 +108,18 @@ export async function POST(req: NextRequest) {
       }
     }`;
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: imageData
-        }
-      }
-    ]);
+    const result = await generateText({
+      model: google('gemini-1.5-pro'),
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'file', data: imageData, mimeType: fileType }
+        ]
+      }]
+    });
 
-    const response = await result.response;
-    const text = response.text();
+    const text = result.text;
     const cleanText = text.replace(/```json|```/g, '').trim();
 
     let parsedData;
@@ -123,9 +133,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Separate content from analysis data
+    const { analysis, ...contentData } = parsedData;
+    
     return NextResponse.json({ 
       success: true,
-      analysis: parsedData 
+      analysis: parsedData,  // Full data for internal use
+      result: contentData    // Only content data for display
     });
 
   } catch (error) {

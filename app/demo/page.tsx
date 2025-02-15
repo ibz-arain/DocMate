@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging } from "lucide-react";
+import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging, Table } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,7 @@ export default function DemoPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState<'json' | 'text' | 'analysis'>('json');
+  const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
   const [extractedText, setExtractedText] = useState<string>("");
   const [selectedType, setSelectedType] = useState<DocumentType>(null);
   const [aiInsights, setAiInsights] = useState<{
@@ -50,28 +50,74 @@ export default function DemoPage() {
     keywords: string[];
     sentiment: string;
     rawJson: any;
+    contentJson: any;
   }>({
     summary: "",
     keywords: [],
     sentiment: "",
-    rawJson: null
+    rawJson: null,
+    contentJson: null
   });
   const [isProcessed, setIsProcessed] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles) => {
+    onDrop: async (acceptedFiles) => {
       const droppedFile = acceptedFiles[0];
-      if (droppedFile && droppedFile.type.startsWith('image/')) {
-        setFile(droppedFile);
-        resetStates();
-        console.log(`File uploaded: ${droppedFile.name}`);
-      } else {
-        console.error("Invalid file type. Please upload an image file (PNG, JPG, JPEG, GIF, or WebP)");
+      if (droppedFile) {
+        try {
+          setIsProcessing(true);
+          setFile(droppedFile);
+          resetStates();
+          
+          const base64Data = await convertFileToBase64(droppedFile);
+          const endpoint = `/api/analyze/${selectedType}`;
+          
+          console.log("Sending request to:", endpoint);
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              imageData: base64Data,
+              mimeType: droppedFile.type
+            }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            console.error('Server error:', result);
+            throw new Error(result.error || 'Analysis failed');
+          }
+          
+          if (result.success) {
+            setExtractedText(result.analysis.content?.text || "No text extracted");
+            setAiInsights({
+              summary: result.analysis.analysis?.summary || "",
+              keywords: result.analysis.analysis?.keywords || [],
+              sentiment: result.analysis.analysis?.sentiment || "",
+              rawJson: result.analysis,
+              contentJson: result.result
+            });
+            setIsProcessed(true);
+            console.log("Document processed successfully!");
+          } else {
+            throw new Error(result.error || 'Analysis failed');
+          }
+        } catch (error) {
+          console.error("Error analyzing document:", error);
+          setFile(null);
+          // Show error to user (you might want to add a toast notification here)
+        } finally {
+          setIsProcessing(false);
+        }
       }
     },
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+      'application/pdf': ['.pdf']
     },
     maxSize: 10 * 1024 * 1024, // 10MB max size
     multiple: false
@@ -83,7 +129,8 @@ export default function DemoPage() {
       summary: "",
       keywords: [],
       sentiment: "",
-      rawJson: null
+      rawJson: null,
+      contentJson: null
     });
     setProgress(0);
     setIsProcessed(false);
@@ -153,7 +200,8 @@ export default function DemoPage() {
           summary: result.analysis.analysis?.summary || "",
           keywords: result.analysis.analysis?.keywords || [],
           sentiment: result.analysis.analysis?.sentiment || "",
-          rawJson: result.analysis
+          rawJson: result.analysis,
+          contentJson: result.result
         });
         setIsProcessed(true);
         console.log("Document processed successfully!");
@@ -178,9 +226,8 @@ export default function DemoPage() {
 
       console.error(errorMessage);
       setProgress(0);
-    } finally {
-      setIsProcessing(false);
     }
+    setIsProcessing(false);
   };
 
   const copyToClipboard = (text: string) => {
@@ -269,7 +316,7 @@ export default function DemoPage() {
                                     or click to browse files
                                   </p>
                                   <p className="text-xs text-muted-foreground mt-2">
-                                    Supported formats: PNG, JPG, JPEG, GIF, WebP (max 10MB)
+                                    Supported formats: PNG, JPG, JPEG, GIF, WebP, PDF (max 10MB)
                                   </p>
                                 </div>
                               </>
@@ -391,13 +438,22 @@ export default function DemoPage() {
                         JSON
                       </Button>
                       <Button
-                        variant={activeTab === 'text' ? 'default' : 'ghost'}
+                        variant={activeTab === 'markdown' ? 'default' : 'ghost'}
                         size="sm"
-                        onClick={() => setActiveTab('text')}
+                        onClick={() => setActiveTab('markdown')}
                         className="flex items-center gap-2"
                       >
-                        <FileSearch className="h-4 w-4" />
-                        Text
+                        <FileText className="h-4 w-4" />
+                        Markdown
+                      </Button>
+                      <Button
+                        variant={activeTab === 'formatted' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setActiveTab('formatted')}
+                        className="flex items-center gap-2"
+                      >
+                        <Table className="h-4 w-4" />
+                        Formatted
                       </Button>
                       <Button
                         variant={activeTab === 'analysis' ? 'default' : 'ghost'}
@@ -426,26 +482,37 @@ export default function DemoPage() {
                             size="sm"
                             variant="ghost"
                             className="absolute right-2 top-2"
-                            onClick={() => copyToClipboard(JSON.stringify(aiInsights.rawJson, null, 2))}
+                            onClick={() => copyToClipboard(JSON.stringify(aiInsights.contentJson, null, 2))}
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
                           <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
                             <code className="text-sm">
-                              {JSON.stringify(aiInsights.rawJson, null, 2)}
+                              {JSON.stringify(aiInsights.contentJson, null, 2)}
                             </code>
                           </pre>
                         </motion.div>
                       )}
-                      {activeTab === 'text' && (
+                      {activeTab === 'markdown' && (
                         <motion.div
-                          key="text"
+                          key="markdown"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
+                          className="prose prose-sm dark:prose-invert max-w-none"
                         >
-                          <h3 className="text-lg font-medium mb-2">Extracted Text</h3>
-                          <p className="text-sm text-muted-foreground">{extractedText}</p>
+                          {generateMarkdown(aiInsights.contentJson)}
+                        </motion.div>
+                      )}
+                      {activeTab === 'formatted' && (
+                        <motion.div
+                          key="formatted"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="space-y-6"
+                        >
+                          {generateFormattedView(aiInsights.contentJson)}
                         </motion.div>
                       )}
                       {activeTab === 'analysis' && (
@@ -474,8 +541,14 @@ export default function DemoPage() {
                             </div>
                           </div>
                           <div>
-                            <h3 className="text-lg font-medium mb-2">Sentiment</h3>
-                            <p className="text-sm text-muted-foreground">{aiInsights.sentiment}</p>
+                            <h3 className="text-lg font-medium mb-2">Insights</h3>
+                            <div className="space-y-2">
+                              {aiInsights.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
+                                <p key={index} className="text-sm text-muted-foreground">
+                                  • {insight}
+                                </p>
+                              ))}
+                            </div>
                           </div>
                         </motion.div>
                       )}
@@ -523,13 +596,13 @@ export default function DemoPage() {
                     <div>
                       <h3 className="text-sm font-medium">Document Type</h3>
                       <p className="text-sm text-muted-foreground">
-                        {aiInsights.rawJson?.documentType || "Unknown"}
+                        {aiInsights.contentJson?.documentType || "Unknown"}
                       </p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium">Page Count</h3>
                       <p className="text-sm text-muted-foreground">
-                        {aiInsights.rawJson?.metadata?.pageCount || "N/A"}
+                        {aiInsights.contentJson?.metadata?.pageCount || "N/A"}
                       </p>
                     </div>
                     <div>
@@ -565,4 +638,150 @@ export default function DemoPage() {
       </div>
     </div>
   );
-} 
+}
+
+const generateMarkdown = (data: any): string => {
+  if (!data) return '';
+
+  let markdown = `# ${data.documentType}\n\n`;
+
+  // Add metadata section
+  if (data.metadata) {
+    markdown += '## Metadata\n\n';
+    Object.entries(data.metadata).forEach(([key, value]: [string, any]) => {
+      if (typeof value === 'object') {
+        markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
+        Object.entries(value).forEach(([subKey, subValue]) => {
+          markdown += `- **${subKey}**: ${subValue}\n`;
+        });
+        markdown += '\n';
+      } else {
+        markdown += `- **${key}**: ${value}\n`;
+      }
+    });
+  }
+
+  // Add content section
+  if (data.content) {
+    markdown += '## Content\n\n';
+    Object.entries(data.content).forEach(([key, value]: [string, any]) => {
+      markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
+      if (Array.isArray(value)) {
+        value.forEach((item: any) => {
+          Object.entries(item).forEach(([itemKey, itemValue]) => {
+            markdown += `- **${itemKey}**: ${itemValue}\n`;
+          });
+          markdown += '\n';
+        });
+      } else if (typeof value === 'object') {
+        Object.entries(value).forEach(([subKey, subValue]: [string, any]) => {
+          if (typeof subValue === 'object') {
+            markdown += `#### ${subKey.charAt(0).toUpperCase() + subKey.slice(1)}\n\n`;
+            Object.entries(subValue).forEach(([subSubKey, subSubValue]) => {
+              markdown += `- **${subSubKey}**: ${subSubValue}\n`;
+            });
+            markdown += '\n';
+          } else {
+            markdown += `- **${subKey}**: ${subValue}\n`;
+          }
+        });
+      }
+    });
+  }
+
+  return markdown;
+};
+
+const generateFormattedView = (data: any) => {
+  if (!data) return null;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">{data.documentType}</h2>
+        
+        {/* Metadata Section */}
+        {data.metadata && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold">Metadata</h3>
+            {Object.entries(data.metadata).map(([key, value]: [string, any]) => (
+              <div key={key} className="rounded-lg border">
+                <div className="px-4 py-3 border-b bg-muted">
+                  <h4 className="font-medium capitalize">{key}</h4>
+                </div>
+                <div className="p-4">
+                  <table className="w-full">
+                    <tbody>
+                      {Object.entries(value).map(([subKey, subValue]) => (
+                        <tr key={subKey} className="border-b last:border-0">
+                          <td className="py-2 font-medium capitalize w-1/3">{subKey}</td>
+                          <td className="py-2">{String(subValue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Content Section */}
+        {data.content && (
+          <div className="space-y-6 mt-8">
+            <h3 className="text-xl font-semibold">Content</h3>
+            {Object.entries(data.content).map(([key, value]: [string, any]) => (
+              <div key={key} className="rounded-lg border">
+                <div className="px-4 py-3 border-b bg-muted">
+                  <h4 className="font-medium capitalize">{key}</h4>
+                </div>
+                <div className="p-4">
+                  {Array.isArray(value) ? (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          {Object.keys(value[0] || {}).map((header) => (
+                            <th key={header} className="py-2 text-left font-medium capitalize">
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {value.map((item, index) => (
+                          <tr key={index} className="border-b last:border-0">
+                            {Object.values(item).map((cellValue, cellIndex) => (
+                              <td key={cellIndex} className="py-2">
+                                {String(cellValue)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="w-full">
+                      <tbody>
+                        {Object.entries(value).map(([subKey, subValue]: [string, any]) => (
+                          <tr key={subKey} className="border-b last:border-0">
+                            <td className="py-2 font-medium capitalize w-1/3">{subKey}</td>
+                            <td className="py-2">
+                              {typeof subValue === 'object' 
+                                ? JSON.stringify(subValue, null, 2)
+                                : String(subValue)
+                              }
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}; 
