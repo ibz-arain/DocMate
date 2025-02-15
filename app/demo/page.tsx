@@ -499,9 +499,12 @@ export default function DemoPage() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="prose prose-sm dark:prose-invert max-w-none"
                         >
-                          {generateMarkdown(aiInsights.contentJson)}
+                          <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
+                            <code className="text-sm whitespace-pre">
+                              {generateMarkdown(aiInsights.contentJson)}
+                            </code>
+                          </pre>
                         </motion.div>
                       )}
                       {activeTab === 'formatted' && (
@@ -649,14 +652,17 @@ const generateMarkdown = (data: any): string => {
   if (data.metadata) {
     markdown += '## Metadata\n\n';
     Object.entries(data.metadata).forEach(([key, value]: [string, any]) => {
+      markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
       if (typeof value === 'object') {
-        markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
+        // Create table header
+        markdown += '| Property | Value |\n';
+        markdown += '|----------|--------|\n';
         Object.entries(value).forEach(([subKey, subValue]) => {
-          markdown += `- **${subKey}**: ${subValue}\n`;
+          markdown += `| ${subKey} | ${subValue} |\n`;
         });
         markdown += '\n';
       } else {
-        markdown += `- **${key}**: ${value}\n`;
+        markdown += `| ${key} | ${value} |\n\n`;
       }
     });
   }
@@ -667,24 +673,30 @@ const generateMarkdown = (data: any): string => {
     Object.entries(data.content).forEach(([key, value]: [string, any]) => {
       markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
       if (Array.isArray(value)) {
+        // Get all possible headers from the array items
+        const headers = Array.from(new Set(value.flatMap(item => Object.keys(item))));
+        
+        // Create table header
+        markdown += `| ${headers.join(' | ')} |\n`;
+        markdown += `| ${headers.map(() => '---').join(' | ')} |\n`;
+        
+        // Add table rows
         value.forEach((item: any) => {
-          Object.entries(item).forEach(([itemKey, itemValue]) => {
-            markdown += `- **${itemKey}**: ${itemValue}\n`;
-          });
-          markdown += '\n';
+          markdown += `| ${headers.map(header => item[header] || '').join(' | ')} |\n`;
         });
+        markdown += '\n';
       } else if (typeof value === 'object') {
+        // Create table header
+        markdown += '| Property | Value |\n';
+        markdown += '|----------|--------|\n';
         Object.entries(value).forEach(([subKey, subValue]: [string, any]) => {
           if (typeof subValue === 'object') {
-            markdown += `#### ${subKey.charAt(0).toUpperCase() + subKey.slice(1)}\n\n`;
-            Object.entries(subValue).forEach(([subSubKey, subSubValue]) => {
-              markdown += `- **${subSubKey}**: ${subSubValue}\n`;
-            });
-            markdown += '\n';
+            markdown += `| ${subKey} | ${JSON.stringify(subValue, null, 2).replace(/\n/g, '<br>')} |\n`;
           } else {
-            markdown += `- **${subKey}**: ${subValue}\n`;
+            markdown += `| ${subKey} | ${subValue} |\n`;
           }
         });
+        markdown += '\n';
       }
     });
   }
