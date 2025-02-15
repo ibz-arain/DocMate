@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { ArrowRight, FileText, Brain, Zap, ChevronRight } from "lucide-react";
+import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileSpreadsheet, FileCheck, LightbulbIcon } from "lucide-react";
 import Link from "next/link";
 import { TypeAnimation } from 'react-type-animation';
 
@@ -193,21 +193,21 @@ export default function HomePage() {
               <p className="text-muted-foreground">Specialized analysis for different types of documents</p>
             </div>
             <motion.div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center"
               variants={staggerContainer}
               initial="initial"
               whileInView="animate"
               viewport={{ once: true }}
             >
-              <motion.div
-                variants={fadeInUp}
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                }}
-              >
+              <motion.div variants={fadeInUp} whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+              }}>
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
                   <CardContent className="p-6">
+                    <div className="text-primary mb-4 flex justify-center">
+                      <Receipt className="h-10 w-10" />
+                    </div>
                     <h3 className="text-xl font-semibold mb-3">Receipts</h3>
                     <p className="text-muted-foreground">
                       Extract date, items, totals, and tax information from retail and service receipts
@@ -215,15 +215,16 @@ export default function HomePage() {
                   </CardContent>
                 </Card>
               </motion.div>
-              <motion.div
-                variants={fadeInUp}
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                }}
-              >
+
+              <motion.div variants={fadeInUp} whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+              }}>
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
                   <CardContent className="p-6">
+                    <div className="text-primary mb-4 flex justify-center">
+                      <FileText className="h-10 w-10" />
+                    </div>
                     <h3 className="text-xl font-semibold mb-3">T4 Tax Forms</h3>
                     <p className="text-muted-foreground">
                       Automatically process employment income, tax deductions, and CPP/EI contributions
@@ -231,15 +232,16 @@ export default function HomePage() {
                   </CardContent>
                 </Card>
               </motion.div>
-              <motion.div
-                variants={fadeInUp}
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                }}
-              >
+
+              <motion.div variants={fadeInUp} whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+              }}>
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
                   <CardContent className="p-6">
+                    <div className="text-primary mb-4 flex justify-center">
+                      <FileSpreadsheet className="h-10 w-10" />
+                    </div>
                     <h3 className="text-xl font-semibold mb-3">Bank Statements</h3>
                     <p className="text-muted-foreground">
                       Analyze transactions, calculate totals, and categorize spending patterns
@@ -247,15 +249,16 @@ export default function HomePage() {
                   </CardContent>
                 </Card>
               </motion.div>
-              <motion.div
-                variants={fadeInUp}
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                }}
-              >
+
+              <motion.div variants={fadeInUp} whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+              }}>
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
                   <CardContent className="p-6">
+                    <div className="text-primary mb-4 flex justify-center">
+                      <FileCheck className="h-10 w-10" />
+                    </div>
                     <h3 className="text-xl font-semibold mb-3">Dental Claims</h3>
                     <p className="text-muted-foreground">
                       Process procedure codes, dates of service, and insurance claim details
@@ -263,15 +266,16 @@ export default function HomePage() {
                   </CardContent>
                 </Card>
               </motion.div>
-              <motion.div
-                variants={fadeInUp}
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                }}
-              >
+
+              <motion.div variants={fadeInUp} whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+              }}>
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
                   <CardContent className="p-6">
+                    <div className="text-primary mb-4 flex justify-center">
+                      <LightbulbIcon className="h-10 w-10" />
+                    </div>
                     <h3 className="text-xl font-semibold mb-3">Utility Bills</h3>
                     <p className="text-muted-foreground">
                       Extract usage data, billing periods, and payment information
