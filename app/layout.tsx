@@ -18,13 +18,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-title" content="DocMate" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.className} antialiased dark:bg-gray-950`}
-      >
+      <body className={inter.className}>
         <Providers attribute="class" defaultTheme="system" enableSystem>
           {children}
         </Providers>

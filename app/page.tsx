@@ -306,6 +306,7 @@ export default function HomePage() {
                     <p className="text-primary-foreground/80 max-w-2xl mx-auto">
                       Experience the power of AI-driven document analysis. Try our demo today and see how we can help you extract valuable insights from your documents.
                     </p>
+                    <br />
                     <Link href="/demo">
                       <Button size="lg" variant="secondary" className="gap-2">
                         Try Demo Now <ChevronRight className="h-4 w-4" />
