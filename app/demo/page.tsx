@@ -62,11 +62,19 @@ export default function DemoPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
       const droppedFile = acceptedFiles[0];
-      if (droppedFile?.type === "application/pdf") {
+      if (droppedFile && droppedFile.type.startsWith('image/')) {
         setFile(droppedFile);
         resetStates();
+        console.log(`File uploaded: ${droppedFile.name}`);
+      } else {
+        console.error("Invalid file type. Please upload an image file (PNG, JPG, JPEG, GIF, or WebP)");
       }
-    }
+    },
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB max size
+    multiple: false
   });
 
   const resetStates = () => {
@@ -81,62 +89,103 @@ export default function DemoPage() {
     setIsProcessed(false);
   };
 
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+        resolve(base64String.split(',')[1]);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const processDocument = async () => {
-    if (!file) return;
+    if (!file || !selectedType) {
+      console.error("Please select a document type and upload a file first");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      console.error("Maximum file size is 10MB");
+      return;
+    }
 
     setIsProcessing(true);
     setProgress(0);
 
     try {
-      // Simulate processing steps
-      for (let i = 0; i <= 100; i += 20) {
-        setProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 500));
+      const base64Data = await convertFileToBase64(file);
+      setProgress(20);
+      
+      console.log("Processing started: Converting and analyzing document...");
+
+      const endpoint = `/api/analyze/${selectedType}`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: base64Data
+        }),
+      });
+
+      setProgress(60);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API request failed: ${response.statusText}`);
       }
 
-      // Mock data with raw JSON
-      const mockRawJson = {
-        documentType: selectedType ? documentTypeLabels[selectedType].title : "Unknown Document",
-        metadata: {
-          pageCount: 5,
-          author: "John Doe",
-          createdDate: "2024-02-15"
-        },
-        content: {
-          title: "Strategic Business Initiative 2024",
-          sections: [
-            { heading: "Executive Summary", confidence: 0.95 },
-            { heading: "Market Analysis", confidence: 0.88 },
-            { heading: "Financial Projections", confidence: 0.92 }
-          ]
-        },
-        analysis: {
-          summary: "This document appears to be a business proposal outlining key strategies and objectives.",
-          keywords: ["business", "strategy", "proposal", "objectives", "planning"],
-          sentiment: "Positive",
-          confidenceScore: 0.89
-        }
-      };
+      const result = await response.json();
+      setProgress(80);
 
-      setExtractedText("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.");
-      setAiInsights({
-        summary: mockRawJson.analysis.summary,
-        keywords: mockRawJson.analysis.keywords,
-        sentiment: mockRawJson.analysis.sentiment,
-        rawJson: mockRawJson
-      });
-      setIsProcessed(true);
+      if (result.success) {
+        if (!result.analysis) {
+          throw new Error("No analysis data received");
+        }
+
+        setExtractedText(result.analysis.content?.text || "No text extracted");
+        setAiInsights({
+          summary: result.analysis.analysis?.summary || "",
+          keywords: result.analysis.analysis?.keywords || [],
+          sentiment: result.analysis.analysis?.sentiment || "",
+          rawJson: result.analysis
+        });
+        setIsProcessed(true);
+        console.log("Document processed successfully!");
+      } else {
+        throw new Error(result.error || 'Processing failed');
+      }
+
+      setProgress(100);
     } catch (error) {
       console.error("Error processing document:", error);
+      let errorMessage = "An unexpected error occurred";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("API request failed")) {
+          errorMessage = "Failed to connect to the analysis service";
+        } else if (error.message.includes("JSON")) {
+          errorMessage = "Failed to process the document results";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      console.error(errorMessage);
+      setProgress(0);
     } finally {
       setIsProcessing(false);
-      setProgress(100);
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    // You could add a toast notification here
+    console.log("JSON data copied to clipboard");
   };
 
   const handleDemoSelect = (demoType: string) => {
@@ -153,6 +202,7 @@ export default function DemoPage() {
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
           onSelectDemo={handleDemoSelect}
+          selectedType={selectedType}
         />
         
         <div className="flex-1 p-6 overflow-hidden flex items-center justify-center">
@@ -189,15 +239,41 @@ export default function DemoPage() {
                               isDragActive && "bg-primary/5"
                             )}
                           >
-                            <Upload className="h-8 w-8 text-muted-foreground" />
-                            <div>
-                              <p className="text-lg font-medium">
-                                Drop your {documentTypeLabels[selectedType].title.toLowerCase()} here
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                or click to browse files
-                              </p>
-                            </div>
+                            {file ? (
+                              <div className="relative w-full max-w-md aspect-video">
+                                <img
+                                  src={URL.createObjectURL(file)}
+                                  alt="Document preview"
+                                  className="w-full h-full object-contain rounded-lg border"
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="absolute top-2 right-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFile(null);
+                                  }}
+                                >
+                                  Change File
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <Upload className="h-8 w-8 text-muted-foreground" />
+                                <div>
+                                  <p className="text-lg font-medium">
+                                    Drop your {documentTypeLabels[selectedType].title.toLowerCase()} here
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    or click to browse files
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    Supported formats: PNG, JPG, JPEG, GIF, WebP (max 10MB)
+                                  </p>
+                                </div>
+                              </>
+                            )}
                             <input {...getInputProps()} />
                           </div>
                         </CardContent>
@@ -266,6 +342,7 @@ export default function DemoPage() {
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
         onSelectDemo={handleDemoSelect}
+        selectedType={selectedType}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -293,9 +370,12 @@ export default function DemoPage() {
         </motion.header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="grid gap-8 pb-6 grid-cols-1 lg:grid-cols-[1fr_350px]">
+          <div className="grid gap-8 pb-6" style={{ 
+            gridTemplateColumns: `minmax(0, ${isSidebarCollapsed ? '1fr' : '2fr'}) 350px`,
+            transition: 'grid-template-columns 0.2s ease-in-out'
+          }}>
             {/* Main Content Area */}
-            <div className="space-y-4">
+            <div className="space-y-4 min-w-0">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
@@ -428,8 +508,8 @@ export default function DemoPage() {
               </Card>
             </div>
 
-            {/* Info Sidebar */}
-            <div className="space-y-4">
+            {/* Info Sidebar - Fixed width */}
+            <div className="space-y-4 w-[350px]">
               <Card>
                 <CardHeader>
                   <CardTitle>Document Info</CardTitle>
