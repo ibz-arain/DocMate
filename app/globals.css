@@ -6,7 +6,7 @@
   * {
     @apply border-border;
   }
-
+  
   html,
   body {
     @apply h-full overflow-hidden;
@@ -97,3 +97,4 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
+
