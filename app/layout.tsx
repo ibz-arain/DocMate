@@ -21,6 +21,14 @@ export default function RootLayout({
         <Providers attribute="class" defaultTheme="system" enableSystem>
           {children}
         </Providers>
+    <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-title" content="DocMate" />
+      </head>    
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
       </body>
     </html>
   );
