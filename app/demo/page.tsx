@@ -7,39 +7,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText } from "lucide-react";
+import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import { cn } from "@/lib/utils";
 import { useDropzone } from "react-dropzone";
 
-interface DocumentTypeOption {
-  title: string;
-  icon: React.ReactNode;
-  description: string;
-  demoType: string;
-}
+type DocumentType = 't4' | 'bank' | 'receipt' | 'dental' | 'electricity' | null;
 
-const documentTypeOptions: DocumentTypeOption[] = [
-  {
-    title: "T4 Tax Form",
-    icon: <FileStack className="h-5 w-5" />,
-    description: "Process T4 tax slips",
-    demoType: "t4"
+const documentTypeLabels: Record<string, { title: string, description: string }> = {
+  't4': {
+    title: 'T4 Tax Form',
+    description: 'Upload a picture or scan of your T4 tax slip'
   },
-  {
-    title: "Bank Statement",
-    icon: <Building2 className="h-5 w-5" />,
-    description: "Analyze bank statements",
-    demoType: "bank"
+  'bank': {
+    title: 'Bank Statement',
+    description: 'Upload your bank statement document'
   },
-  {
-    title: "Store Receipt",
-    icon: <ReceiptText className="h-5 w-5" />,
-    description: "Process store receipts",
-    demoType: "receipt"
+  'receipt': {
+    title: 'Store Receipt',
+    description: 'Upload a picture of your store receipt'
+  },
+  'dental': {
+    title: 'Dental Claim Form',
+    description: 'Upload your dental insurance claim form'
+  },
+  'electricity': {
+    title: 'Electricity Bill',
+    description: 'Upload your electricity bill for analysis'
   }
-];
+};
 
 export default function DemoPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -47,6 +44,7 @@ export default function DemoPage() {
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'text' | 'analysis'>('json');
   const [extractedText, setExtractedText] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<DocumentType>(null);
   const [aiInsights, setAiInsights] = useState<{
     summary: string;
     keywords: string[];
@@ -60,27 +58,16 @@ export default function DemoPage() {
   });
   const [isProcessed, setIsProcessed] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [selectedDemo, setSelectedDemo] = useState<string | null>(null);
-  const [uploadDocType, setUploadDocType] = useState<string | null>(null);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone();
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile?.type === "application/pdf") {
-      setFile(selectedFile);
-      resetStates();
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      const droppedFile = acceptedFiles[0];
+      if (droppedFile?.type === "application/pdf") {
+        setFile(droppedFile);
+        resetStates();
+      }
     }
-  };
-
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    const droppedFile = event.dataTransfer.files[0];
-    if (droppedFile?.type === "application/pdf") {
-      setFile(droppedFile);
-      resetStates();
-    }
-  };
+  });
 
   const resetStates = () => {
     setExtractedText("");
@@ -92,10 +79,6 @@ export default function DemoPage() {
     });
     setProgress(0);
     setIsProcessed(false);
-  };
-
-  const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
   };
 
   const processDocument = async () => {
@@ -113,7 +96,7 @@ export default function DemoPage() {
 
       // Mock data with raw JSON
       const mockRawJson = {
-        documentType: "Business Proposal",
+        documentType: selectedType ? documentTypeLabels[selectedType].title : "Unknown Document",
         metadata: {
           pageCount: 5,
           author: "John Doe",
@@ -157,96 +140,10 @@ export default function DemoPage() {
   };
 
   const handleDemoSelect = (demoType: string) => {
-    setSelectedDemo(demoType);
-    // Here you would typically load demo data based on the selected type
-    const demoData = getDemoData(demoType);
-    setAiInsights(demoData.insights);
-    setExtractedText(demoData.text);
-    setIsProcessed(true);
-  };
-
-  const getDemoData = (demoType: string) => {
-    // Mock demo data for different document types
-    const demos: Record<string, any> = {
-      t4: {
-        insights: {
-          summary: "This is a T4 tax slip for the year 2023, showing employment income and deductions.",
-          keywords: ["employment income", "tax deductions", "CPP contributions", "EI premiums"],
-          sentiment: "Neutral",
-          rawJson: {
-            documentType: "T4 Tax Slip",
-            metadata: {
-              year: "2023",
-              employer: "Demo Corp",
-              employeeNumber: "12345"
-            },
-            content: {
-              employmentIncome: "$75,000",
-              taxDeducted: "$15,000",
-              cppContributions: "$3,754.45",
-              eiPremiums: "$952.74"
-            }
-          }
-        },
-        text: "T4 Statement of Remuneration Paid\nTax Year: 2023\nEmployer: Demo Corp\nEmployee: John Smith\nBox 14 - Employment Income: $75,000\nBox 22 - Income Tax Deducted: $15,000\n..."
-      },
-      bank: {
-        insights: {
-          summary: "Monthly bank statement showing transactions, deposits, and withdrawals for January 2024.",
-          keywords: ["deposits", "withdrawals", "balance", "transactions"],
-          sentiment: "Positive",
-          rawJson: {
-            documentType: "Bank Statement",
-            metadata: {
-              bank: "Demo Bank",
-              accountType: "Checking",
-              period: "Jan 2024"
-            },
-            content: {
-              openingBalance: "$5,432.10",
-              closingBalance: "$6,789.45",
-              transactions: [
-                { type: "Deposit", amount: "$2,500.00", date: "2024-01-05" },
-                { type: "Withdrawal", amount: "$-750.00", date: "2024-01-15" }
-              ]
-            }
-          }
-        },
-        text: "Demo Bank Statement\nAccount: ****1234\nPeriod: January 1-31, 2024\nOpening Balance: $5,432.10\nClosing Balance: $6,789.45\n..."
-      },
-      receipt: {
-        insights: {
-          summary: "Retail purchase receipt from Demo Store showing itemized purchases and payment details.",
-          keywords: ["retail", "purchase", "items", "payment"],
-          sentiment: "Neutral",
-          rawJson: {
-            documentType: "Store Receipt",
-            metadata: {
-              store: "Demo Store",
-              date: "2024-02-15",
-              transactionId: "RCP-123456"
-            },
-            content: {
-              items: [
-                { name: "Item 1", price: "$29.99", quantity: 2 },
-                { name: "Item 2", price: "$15.99", quantity: 1 }
-              ],
-              subtotal: "$75.97",
-              tax: "$9.88",
-              total: "$85.85"
-            }
-          }
-        },
-        text: "Demo Store\nDate: Feb 15, 2024\nItem 1 x2 - $29.99\nItem 2 x1 - $15.99\nSubtotal: $75.97\nTax: $9.88\nTotal: $85.85\n..."
-      }
-    };
-
-    return demos[demoType] || demos.receipt; // Default to receipt if demo type not found
-  };
-
-  const handleDemoUpload = (demoType: string) => {
-    // Implement the logic to handle demo upload
-    console.log("Demo upload not implemented yet");
+    // Set the selected type and reset states
+    setSelectedType(demoType as DocumentType);
+    resetStates();
+    setFile(null);
   };
 
   if (!isProcessed) {
@@ -267,67 +164,22 @@ export default function DemoPage() {
             <Card className="border-2">
               <CardHeader>
                 <CardTitle className="text-center text-2xl">
-                  {!uploadDocType ? "Select Document Type" : "Upload Document"}
+                  {selectedType ? documentTypeLabels[selectedType].title : "Select Document Type"}
                 </CardTitle>
-                {uploadDocType && (
-                  <motion.div 
+                {selectedType && (
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-center text-muted-foreground"
+                    className="text-center text-muted-foreground mt-2"
                   >
-                    Selected: {uploadDocType}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setUploadDocType(null)}
-                      className="ml-2 h-8 hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      Change
-                    </Button>
+                    {documentTypeLabels[selectedType].description}
                   </motion.div>
                 )}
               </CardHeader>
               <CardContent>
-                <AnimatePresence mode="wait">
-                  {!uploadDocType ? (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Select Document Type</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {documentTypeOptions.map((type) => (
-                          <Button
-                            key={type.title}
-                            variant="outline"
-                            className="h-32 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5"
-                            onClick={() => setUploadDocType(type.title)}
-                          >
-                            <div className="h-12 w-12 flex items-center justify-center text-primary">
-                              {type.icon}
-                            </div>
-                            <div className="text-center">
-                              <div className="font-medium">{type.title}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {type.description}
-                              </div>
-                            </div>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-medium">Upload {uploadDocType}</h3>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setUploadDocType("")}
-                            className="h-8"
-                          >
-                            Change
-                          </Button>
-                        </div>
-                      </div>
+                <div className="space-y-4">
+                  {selectedType ? (
+                    <>
                       <Card className="relative border-2 border-dashed">
                         <CardContent className="pt-6 pb-8">
                           <div
@@ -340,7 +192,7 @@ export default function DemoPage() {
                             <Upload className="h-8 w-8 text-muted-foreground" />
                             <div>
                               <p className="text-lg font-medium">
-                                Drop your {uploadDocType.toLowerCase()} here
+                                Drop your {documentTypeLabels[selectedType].title.toLowerCase()} here
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 or click to browse files
@@ -393,17 +245,13 @@ export default function DemoPage() {
                           </motion.div>
                         )}
                       </AnimatePresence>
-
-                      <div className="flex items-center justify-center gap-4">
-                        <Button variant="outline" onClick={() => handleDemoUpload(
-                          documentTypeOptions.find(t => t.title === uploadDocType)?.demoType || "default"
-                        )}>
-                          Try Demo
-                        </Button>
-                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Please select a document type from the sidebar to begin</p>
                     </div>
                   )}
-                </AnimatePresence>
+                </div>
               </CardContent>
             </Card>
           </motion.div>

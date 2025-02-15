@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack } from "lucide-react";
+import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,18 @@ const documentTypes = [
     icon: <ReceiptText className="h-5 w-5" />,
     description: "Process store receipts",
     demoType: "receipt"
+  },
+  {
+    title: "Dental Claim Form",
+    icon: <Stethoscope className="h-5 w-5" />,
+    description: "Process dental insurance claims",
+    demoType: "dental"
+  },
+  {
+    title: "Electricity Bill",
+    icon: <BatteryCharging className="h-5 w-5" />,
+    description: "Analyze electricity bills",
+    demoType: "electricity"
   }
 ];
 
