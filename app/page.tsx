@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileSpreadsheet, FileCheck, LightbulbIcon, Cable } from "lucide-react";
+import { motion, useScroll, useSpring } from "framer-motion";
+import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileCheck, LightbulbIcon, Cable } from "lucide-react";
 import Link from "next/link";
 import { TypeAnimation } from 'react-type-animation';
 
@@ -240,7 +240,7 @@ export default function HomePage() {
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
                   <CardContent className="p-6 h-full flex flex-col justify-between">
                     <div className="text-primary mb-4 flex justify-center">
-                      <FileSpreadsheet className="h-10 w-10" />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-wallet-cards"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2" /><path d="M3 11h3c.8 0 1.6.3 2.1.9l1.1.9c1.6 1.6 4.1 1.6 5.7 0l1.1-.9c.5-.5 1.3-.9 2.1-.9H21" /></svg>
                     </div>
                     <h3 className="text-xl font-semibold mb-3">Bank Statements</h3>
                     <p className="text-muted-foreground">
@@ -337,6 +337,5 @@ export default function HomePage() {
         </motion.section>
       </div>
     </ScrollArea>
-
   );
 }
