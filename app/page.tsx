@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileSpreadsheet, FileCheck, LightbulbIcon } from "lucide-react";
+import { motion, useScroll, useSpring } from "framer-motion";
+import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileCheck, LightbulbIcon, Cable, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { TypeAnimation } from 'react-type-animation';
 
@@ -204,7 +204,7 @@ export default function HomePage() {
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 h-full flex flex-col justify-between">
                     <div className="text-primary mb-4 flex justify-center">
                       <Receipt className="h-10 w-10" />
                     </div>
@@ -221,9 +221,9 @@ export default function HomePage() {
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 h-full flex flex-col justify-between">
                     <div className="text-primary mb-4 flex justify-center">
-                      <FileText className="h-10 w-10" />
+                      <Receipt className="h-10 w-10" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3">T4 Tax Forms</h3>
                     <p className="text-muted-foreground">
@@ -237,13 +237,13 @@ export default function HomePage() {
                 scale: 1.05,
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
-                <Card className="dark:bg-gray-800 transition-transform duration-300">
-                  <CardContent className="p-6">
+                <Card className="dark:bg-gray-800 transition-transform duration-300 h-full">
+                  <CardContent className="p-6 h-full flex flex-col justify-between">
                     <div className="text-primary mb-4 flex justify-center">
                       <FileSpreadsheet className="h-10 w-10" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3">Bank Statements</h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground flex-1">
                       Analyze transactions, calculate totals, and categorize spending patterns
                     </p>
                   </CardContent>
@@ -274,11 +274,28 @@ export default function HomePage() {
                 <Card className="dark:bg-gray-800 transition-transform duration-300">
                   <CardContent className="p-6">
                     <div className="text-primary mb-4 flex justify-center">
-                      <LightbulbIcon className="h-10 w-10" />
+                      <Cable className="h-10 w-10" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3">Utility Bills</h3>
                     <p className="text-muted-foreground">
                       Extract usage data, billing periods, and payment information
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div variants={fadeInUp} whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+              }}>
+                <Card className="dark:bg-gray-800 transition-transform duration-300">
+                  <CardContent className="p-6">
+                    <div className="text-primary mb-4 flex justify-center">
+                      <LightbulbIcon className="h-10 w-10" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3">More Coming Soon</h3>
+                    <p className="text-muted-foreground">
+                      Stay tuned for more document types and features!
                     </p>
                   </CardContent>
                 </Card>
@@ -320,6 +337,5 @@ export default function HomePage() {
         </motion.section>
       </div>
     </ScrollArea>
-
   );
 }
