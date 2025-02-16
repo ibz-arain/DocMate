@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { verify } from 'jsonwebtoken';
+
+export const dynamic = 'force-dynamic';
 
 interface DecodedToken {
   userId: number;
@@ -24,8 +26,8 @@ async function getUserFromToken(token: string) {
 }
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { documentId: string } }
+  request: NextRequest,
+  context: { params: { documentId: string } }
 ) {
   try {
     const cookieStore = await cookies();
@@ -40,7 +42,7 @@ export async function DELETE(
       return new NextResponse("Unauthorized - Invalid token", { status: 401 });
     }
 
-    const { documentId } = params;
+    const { documentId } = context.params;
     if (!documentId) {
       return new NextResponse("Document ID required", { status: 400 });
     }
