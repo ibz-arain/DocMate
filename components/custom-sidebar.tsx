@@ -17,31 +17,26 @@ const documentTypes = [
   {
     title: "T4 Tax Form",
     icon: <FileStack className="h-5 w-5" />,
-    description: "Process T4 tax slips",
     demoType: "t4"
   },
   {
     title: "Bank Statement",
     icon: <Building2 className="h-5 w-5" />,
-    description: "Analyze bank statements",
     demoType: "bank"
   },
   {
     title: "Store Receipt",
     icon: <ReceiptText className="h-5 w-5" />,
-    description: "Process store receipts",
     demoType: "receipt"
   },
   {
     title: "Dental Claim Form",
     icon: <Stethoscope className="h-5 w-5" />,
-    description: "Process dental insurance claims",
     demoType: "dental"
   },
   {
     title: "Electricity Bill",
     icon: <BatteryCharging className="h-5 w-5" />,
-    description: "Analyze electricity bills",
     demoType: "electricity"
   }
 ];
@@ -62,32 +57,72 @@ export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selec
           animate={{
             width: isCollapsed ? "64px" : "240px",
           }}
+          transition={{
+            duration: 0.2,
+            ease: "easeInOut"
+          }}
           className="h-[calc(100vh-3rem)] sticky top-6 bg-card/80 dark:bg-card/50 backdrop-blur-lg rounded-xl border shadow-lg overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="h-16 flex items-center justify-between px-3 border-b border-border/50">
-            {!isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="font-semibold text-lg text-primary"
-              >
-                DocMate
-              </motion.div>
-            )}
+            <AnimatePresence mode="wait">
+              {!isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.15 }}
+                  className="font-semibold text-lg text-primary"
+                >
+                  DocMate
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div className={cn(
               "flex items-center gap-2",
               isCollapsed ? "w-full justify-center" : "justify-end"
             )}>
-              {!isCollapsed && <ThemeToggle />}
+              <AnimatePresence mode="wait">
+                {!isCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <ThemeToggle />
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 className="h-8 w-8 text-muted-foreground hover:text-primary"
               >
-                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                <AnimatePresence mode="wait">
+                  {isCollapsed ? (
+                    <motion.div
+                      key="right"
+                      initial={{ opacity: 0, rotate: -90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: 90 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="left"
+                      initial={{ opacity: 0, rotate: 90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: -90 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </Button>
             </div>
           </div>
@@ -103,25 +138,29 @@ export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selec
                     variant="ghost"
                     onClick={() => onSelectDemo(item.demoType)}
                     className={cn(
-                      "w-full transition-all rounded-lg",
+                      "w-full h-10 transition-all rounded-lg relative",
                       isCollapsed ? "justify-center px-2" : "justify-start",
                       "hover:bg-primary/10 hover:text-primary",
                       "active:bg-primary/20",
                       isSelected && "bg-primary/10 text-primary"
                     )}
                   >
-                    <div className={cn(
-                      "flex items-center gap-3",
-                      isCollapsed && "justify-center"
-                    )}>
+                    <div className="absolute left-3">
                       {item.icon}
-                      {!isCollapsed && (
-                        <div className="text-left">
-                          <div className="font-medium">{item.title}</div>
-                          <div className="text-xs text-muted-foreground">{item.description}</div>
-                        </div>
-                      )}
                     </div>
+                    <AnimatePresence mode="wait">
+                      {!isCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{ duration: 0.15 }}
+                          className="font-medium pl-9"
+                        >
+                          {item.title}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </Button>
                 );
 
@@ -132,10 +171,9 @@ export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selec
                     </TooltipTrigger>
                     <TooltipContent 
                       side="right" 
-                      className="flex flex-col gap-1 bg-card border shadow-md"
+                      className="bg-card border shadow-md"
                     >
                       <p className="font-medium text-primary">{item.title}</p>
-                      <p className="text-xs text-primary/70">{item.description}</p>
                     </TooltipContent>
                   </Tooltip>
                 ) : button;
@@ -144,11 +182,19 @@ export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selec
           </div>
 
           {/* Collapsed Theme Toggle */}
-          {isCollapsed && (
-            <div className="p-3 border-t border-border/50">
-              <ThemeToggle />
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {isCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.15 }}
+                className="p-3 border-t border-border/50"
+              >
+                <ThemeToggle />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     </TooltipProvider>

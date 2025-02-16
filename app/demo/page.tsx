@@ -45,6 +45,7 @@ export default function DemoPage() {
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
   const [extractedText, setExtractedText] = useState<string>("");
   const [selectedType, setSelectedType] = useState<DocumentType>(null);
+  const [error, setError] = useState<string | null>(null);
   const [aiInsights, setAiInsights] = useState<{
     summary: string;
     keywords: string[];
@@ -61,10 +62,57 @@ export default function DemoPage() {
   const [isProcessed, setIsProcessed] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  const validateFileType = (file: File): boolean => {
+    const supportedTypes = {
+      'image/jpeg': true,
+      'image/png': true,
+      'image/gif': true,
+      'image/webp': true,
+      'application/pdf': true
+    } as const;
+    
+    if (!(file.type in supportedTypes)) {
+      setError(`Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).`);
+      return false;
+    }
+    return true;
+  };
+
+  const validateDocumentContent = (result: any): boolean => {
+    if (!result.analysis?.documentType) {
+      setError('Unable to determine document type. Please ensure you uploaded the correct document.');
+      return false;
+    }
+
+    const expectedTypes = {
+      't4': ['T4', 'Tax', 'T4 Tax Slip', 'Tax Form'],
+      'bank': ['Bank Statement', 'Bank Document', 'Account Statement'],
+      'receipt': ['Store Receipt', 'Receipt', 'Sales Receipt', 'Purchase Receipt'],
+      'dental': ['Dental Claim', 'Dental Form', 'Dental Insurance Claim'],
+      'electricity': ['Electricity Bill', 'Utility Bill', 'Electric Bill']
+    };
+
+    const detectedType = result.analysis.documentType;
+    const expectedTypeArray = expectedTypes[selectedType as keyof typeof expectedTypes] || [];
+    
+    if (!expectedTypeArray.some(type => detectedType.toLowerCase().includes(type.toLowerCase()))) {
+      setError(`This document appears to be a "${detectedType}" which doesn't match the selected document type "${documentTypeLabels[selectedType as keyof typeof documentTypeLabels].title}". Please verify and try again.`);
+      return false;
+    }
+
+    return true;
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (acceptedFiles) => {
       const droppedFile = acceptedFiles[0];
+      setError(null); // Clear any previous errors
+      
       if (droppedFile) {
+        if (!validateFileType(droppedFile)) {
+          return;
+        }
+
         try {
           setIsProcessing(true);
           setFile(droppedFile);
@@ -93,6 +141,13 @@ export default function DemoPage() {
           }
           
           if (result.success) {
+            // Validate document content before proceeding
+            if (!validateDocumentContent(result)) {
+              setFile(null);
+              setIsProcessing(false);
+              return;
+            }
+
             setExtractedText(result.analysis.content?.text || "No text extracted");
             setAiInsights({
               summary: result.analysis.analysis?.summary || "",
@@ -108,8 +163,8 @@ export default function DemoPage() {
           }
         } catch (error) {
           console.error("Error analyzing document:", error);
+          setError(error instanceof Error ? error.message : 'An unexpected error occurred');
           setFile(null);
-          // Show error to user (you might want to add a toast notification here)
         } finally {
           setIsProcessing(false);
         }
@@ -134,6 +189,7 @@ export default function DemoPage() {
     });
     setProgress(0);
     setIsProcessed(false);
+    setError(null);
   };
 
   const convertFileToBase64 = (file: File): Promise<string> => {
@@ -275,6 +331,11 @@ export default function DemoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {error && (
+                    <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
+                      {error}
+                    </div>
+                  )}
                   {selectedType ? (
                     <>
                       <Card className="relative border-2 border-dashed transition-all duration-200 hover:border-primary/50">
@@ -290,25 +351,71 @@ export default function DemoPage() {
                           >
                             {file ? (
                               <div className="relative w-full h-full flex items-center justify-center">
-                                <div className="relative w-full max-w-md aspect-video">
-                                  <img
-                                    src={URL.createObjectURL(file)}
-                                    alt="Document preview"
-                                    className="w-full h-full object-contain rounded-lg border shadow-sm"
-                                  />
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="absolute top-2 right-2 bg-background/90 hover:bg-background"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setFile(null);
-                                      }}
-                                    >
-                                      Change File
-                                    </Button>
+                                <div className="w-full max-w-xl bg-muted/50 rounded-lg border-2 border-border p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        {selectedType === 't4' && <FileStack className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'bank' && <Building2 className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'receipt' && <ReceiptText className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'dental' && <Stethoscope className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'electricity' && <BatteryCharging className="h-5 w-5 text-primary" />}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{file.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type.split('/')[1].toUpperCase()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setFile(null);
+                                        }}
+                                      >
+                                        Change File
+                                      </Button>
+                                      <Button
+                                        onClick={processDocument}
+                                        disabled={isProcessing}
+                                        size="sm"
+                                        className={cn(
+                                          "transition-all duration-500",
+                                          isProcessing ? "bg-primary/10 text-primary" : "bg-primary"
+                                        )}
+                                      >
+                                        {isProcessing ? (
+                                          <>
+                                            <div className="animate-spin mr-2">
+                                              <RefreshCcw className="h-4 w-4" />
+                                            </div>
+                                            Processing...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Zap className="mr-2 h-4 w-4" />
+                                            Process Document
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
                                   </div>
+                                  {isProcessing && (
+                                    <motion.div
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className="mt-4"
+                                    >
+                                      <Progress value={progress} className="h-1" />
+                                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                                        Analyzing document... {progress}%
+                                      </p>
+                                    </motion.div>
+                                  )}
                                 </div>
                               </div>
                             ) : (
@@ -351,68 +458,6 @@ export default function DemoPage() {
                           </div>
                         </CardContent>
                       </Card>
-                      
-                      <AnimatePresence>
-                        {file && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                          >
-                            <Card className="bg-muted/50 border-primary/20">
-                              <CardContent className="pt-6">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                      <FileText className="h-4 w-4 text-primary" />
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">{file.name}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <Button
-                                    onClick={processDocument}
-                                    disabled={isProcessing}
-                                    size="sm"
-                                    className={cn(
-                                      "transition-all duration-500",
-                                      isProcessing ? "bg-primary/10 text-primary" : "bg-primary"
-                                    )}
-                                  >
-                                    {isProcessing ? (
-                                      <>
-                                        <div className="animate-spin mr-2">
-                                          <RefreshCcw className="h-4 w-4" />
-                                        </div>
-                                        Processing...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Zap className="mr-2 h-4 w-4" />
-                                        Process Document
-                                      </>
-                                    )}
-                                  </Button>
-                                </div>
-                                {isProcessing && (
-                                  <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                  >
-                                    <Progress value={progress} className="mt-4 h-1" />
-                                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                                      Analyzing document... {progress}%
-                                    </p>
-                                  </motion.div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                     </>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
