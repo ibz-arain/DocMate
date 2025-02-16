@@ -182,7 +182,7 @@ export default function HomePage() {
 
         {/* Demo Types Section with scroll animations */}
         <motion.section
-          className="py-20 px-6 dark:bg-gray-900"
+          className="py-20 px-6 dark:bg-black"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-100px" }}
