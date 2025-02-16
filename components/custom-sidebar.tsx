@@ -15,7 +15,7 @@ import {
 import { useAuthContext } from "./auth-provider";
 import { useRouter } from "next/navigation";
 import { SettingsDialog } from "@/components/settings-dialog";
-
+import Image from "next/image";
 const documentTypes = [
   {
     title: "T4 Tax Form",
@@ -99,7 +99,7 @@ export function CustomSidebar({
                   transition={{ duration: 0.15 }}
                   className="font-semibold text-lg text-primary"
                 >
-                  DocMate
+                  <Image src="/logo-text.png" alt="Logo" width={120} height={100} />
                 </motion.div>
               )}
             </AnimatePresence>

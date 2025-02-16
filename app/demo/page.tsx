@@ -279,9 +279,7 @@ function HistorySection() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      {/* Fixed Header */}
-      <div className="flex-none p-6 border-b">
-        <h1 className="text-3xl font-bold text-primary mb-4">Document History</h1>
+      <div className="flex-none p-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -1226,7 +1224,7 @@ export default function DemoPage() {
                                         {isProcessing ? (
                                           <>
                                             <div className="animate-spin mr-2">
-                                              <RefreshCcw className="h-4 w-4" />
+                                              <RefreshCcw className="h-4" />
                                             </div>
                                             Processing...
                                           </>
@@ -1318,29 +1316,6 @@ export default function DemoPage() {
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <motion.header 
-          className="flex-shrink-0 border-b sticky top-0 z-10 bg-background/80 backdrop-blur-sm"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="px-6 py-3 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary">DocMate</h1>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  setFile(null);
-                  resetStates();
-                }}
-              >
-                <RefreshCcw className="h-4 w-4 mr-2" />
-                Process New Document
-              </Button>
-            </div>
-          </div>
-        </motion.header>
-
         <main className="flex-1 overflow-y-auto p-6">
           <div className="grid gap-8 pb-6" style={{ 
             gridTemplateColumns: `minmax(0, ${isSidebarCollapsed ? '1fr' : '2fr'}) 350px`,
@@ -1348,11 +1323,9 @@ export default function DemoPage() {
           }}>
             {/* Main Content Area */}
             <div className="space-y-4 min-w-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Analysis Results</span>
-                    <div className="flex gap-2">
+              <Card className="h-[calc(100vh-7rem)]">
+                <CardContent className="p-6 h-full flex flex-col">
+                  <div className="flex items-center justify-end gap-2 mb-6 flex-none">
                       <Button
                         variant={activeTab === 'json' ? 'default' : 'ghost'}
                         size="sm"
@@ -1377,7 +1350,7 @@ export default function DemoPage() {
                         onClick={() => setActiveTab('formatted')}
                         className="flex items-center gap-2"
                       >
-                        <TableIcon className="h-4 w-4" />
+                      <TableIcon className="h-4 w-4" />
                         Formatted
                       </Button>
                       <Button
@@ -1390,10 +1363,7 @@ export default function DemoPage() {
                         Analysis
                       </Button>
                     </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[calc(100vh-24rem)] min-h-[400px] rounded-md border p-4">
+                  <ScrollArea className="flex-1 min-h-0 rounded-md border p-4">
                     <AnimatePresence mode="wait">
                       {activeTab === 'json' && (
                         <motion.div
@@ -1486,41 +1456,6 @@ export default function DemoPage() {
                   </ScrollArea>
                 </CardContent>
               </Card>
-
-              {/* Document Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={downloadJson}
-                    >
-                      <Code className="mr-2 h-4 w-4" />
-                      Download JSON
-                    </Button>
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={downloadMarkdown}
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Download Markdown
-                    </Button>
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={downloadCsv}
-                    >
-                      <TableIcon className="mr-2 h-4 w-4" />
-                      Download CSV
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Info Sidebar - Fixed width */}
@@ -1559,18 +1494,34 @@ export default function DemoPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Processing Status</CardTitle>
+                  <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Analysis Complete</span>
-                      <span className="text-sm text-muted-foreground">100%</span>
-                    </div>
-                    <Progress value={100} className="h-2" />
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Document processed successfully
-                    </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={downloadJson}
+                    >
+                      <Code className="mr-2 h-4 w-4" />
+                      Download JSON
+                    </Button>
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={downloadMarkdown}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Download Markdown
+                    </Button>
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={downloadCsv}
+                    >
+                      <TableIcon className="mr-2 h-4 w-4" />
+                      Download CSV
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1581,13 +1532,13 @@ export default function DemoPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground text-center">
                       {isSaved 
                         ? "Document has been saved to your history" 
                         : "Save this document to your history for future reference"}
                     </p>
                     <Button 
-                      className="w-full" 
+                      className="w-full flex items-center justify-center" 
                       onClick={handleSaveDocument}
                       disabled={!user || isSaved || isProcessing}
                     >
@@ -1598,7 +1549,7 @@ export default function DemoPage() {
                         </>
                       ) : isSaved ? (
                         <>
-                          <Save className="mr-2 h-4 w-4 text-green-500" />
+                          <Save className="mr-2h-4 w-4 text-green-500 " />
                           Saved
                         </>
                       ) : (
@@ -1611,6 +1562,18 @@ export default function DemoPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setFile(null);
+                  resetStates();
+                }}
+                className="w-full flex items-center justify-center"
+              >
+                <RefreshCcw className="h-4 w-4 mr-2" />
+                Process New Document
+              </Button>
             </div>
           </div>
         </main>
