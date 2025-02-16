@@ -1,17 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging } from "lucide-react";
+import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging, LogOut, User, Settings, Sun, Moon, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { useTheme } from "next-themes";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAuthContext } from "./auth-provider";
+import { useRouter } from "next/navigation";
+import { SettingsDialog } from "@/components/settings-dialog";
 
 const documentTypes = [
   {
@@ -48,7 +51,29 @@ interface CustomSidebarProps {
   selectedType?: string | null;
 }
 
-export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selectedType }: CustomSidebarProps) {
+export function CustomSidebar({
+  isCollapsed,
+  setIsCollapsed,
+  onSelectDemo,
+  selectedType,
+}: CustomSidebarProps) {
+  const { user, logout } = useAuthContext();
+  const router = useRouter();
+  const [showSettings, setShowSettings] = React.useState(false);
+  const { theme, setTheme } = useTheme();
+
+  const handleAccountClick = () => {
+    router.push('/account');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
       <div className="p-6 h-screen flex-shrink-0">
@@ -82,41 +107,29 @@ export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selec
               "flex items-center gap-2",
               isCollapsed ? "w-full justify-center" : "justify-end"
             )}>
-              <AnimatePresence mode="wait">
-                {!isCollapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <ThemeToggle />
-                  </motion.div>
-                )}
-              </AnimatePresence>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                className="h-9 w-9"
               >
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="wait" initial={false}>
                   {isCollapsed ? (
                     <motion.div
-                      key="right"
-                      initial={{ opacity: 0, rotate: -90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: 90 }}
+                      key="expand"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
                       transition={{ duration: 0.15 }}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </motion.div>
                   ) : (
                     <motion.div
-                      key="left"
-                      initial={{ opacity: 0, rotate: 90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: -90 }}
+                      key="collapse"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
                       transition={{ duration: 0.15 }}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -169,34 +182,283 @@ export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selec
                     <TooltipTrigger asChild>
                       {button}
                     </TooltipTrigger>
-                    <TooltipContent 
-                      side="right" 
-                      className="bg-card border shadow-md"
-                    >
-                      <p className="font-medium text-primary">{item.title}</p>
+                    <TooltipContent side="right">
+                      {item.title}
                     </TooltipContent>
                   </Tooltip>
-                ) : button;
+                ) : (
+                  button
+                );
               })}
+              
+              {/* History Section - Only visible for signed-in users */}
+              {user && (
+                <>
+                  <div className="h-px bg-border/50 my-4" />
+                  {isCollapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          onClick={() => onSelectDemo('history')}
+                          className={cn(
+                            "w-full h-10 transition-all rounded-lg relative justify-center px-2",
+                            selectedType === 'history' && "bg-primary/10 text-primary"
+                          )}
+                        >
+                          <div className="absolute left-3">
+                            <History className="h-5 w-5" />
+                          </div>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">History</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      onClick={() => onSelectDemo('history')}
+                      className={cn(
+                        "w-full h-10 transition-all rounded-lg relative justify-start",
+                        selectedType === 'history' && "bg-primary/10 text-primary"
+                      )}
+                    >
+                      <div className="absolute left-3">
+                        <History className="h-5 w-5" />
+                      </div>
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{ duration: 0.15 }}
+                          className="font-medium pl-9"
+                        >
+                          History
+                        </motion.span>
+                      </AnimatePresence>
+                    </Button>
+                  )}
+                </>
+              )}
             </nav>
           </div>
 
-          {/* Collapsed Theme Toggle */}
-          <AnimatePresence mode="wait">
-            {isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.15 }}
-                className="p-3 border-t border-border/50"
-              >
-                <ThemeToggle />
-              </motion.div>
+          {/* Footer */}
+          <div className="p-3 border-t border-border/50 space-y-2">
+            {user ? (
+              <>
+                {!isCollapsed && (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Signed in as {user.username}
+                  </div>
+                )}
+                {/* Theme Toggle */}
+                {isCollapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-10 transition-all rounded-lg relative justify-center"
+                        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                      >
+                        <div className="relative h-5 w-5">
+                          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                          <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                        </div>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Toggle theme</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 transition-all rounded-lg relative justify-start"
+                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                  >
+                    <div className="absolute left-3">
+                      <div className="relative h-5 w-5">
+                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                        <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      </div>
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="font-medium pl-9"
+                      >
+                        Toggle theme
+                      </motion.span>
+                    </AnimatePresence>
+                  </Button>
+                )}
+                {/* Settings Button */}
+                {isCollapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
+                        onClick={() => setShowSettings(true)}
+                      >
+                        <div className="absolute left-3">
+                          <Settings className="h-5 w-5" />
+                        </div>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Settings</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 transition-all rounded-lg relative justify-start"
+                    onClick={() => setShowSettings(true)}
+                  >
+                    <div className="absolute left-3">
+                      <Settings className="h-5 w-5" />
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="font-medium pl-9"
+                      >
+                        Settings
+                      </motion.span>
+                    </AnimatePresence>
+                  </Button>
+                )}
+                {/* Sign Out Button */}
+                {isCollapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
+                        onClick={handleLogout}
+                      >
+                        <div className="absolute left-3">
+                          <LogOut className="h-5 w-5" />
+                        </div>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Sign Out</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 transition-all rounded-lg relative justify-start"
+                    onClick={handleLogout}
+                  >
+                    <div className="absolute left-3">
+                      <LogOut className="h-5 w-5" />
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="font-medium pl-9"
+                      >
+                        Sign Out
+                      </motion.span>
+                    </AnimatePresence>
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Theme Toggle (Not Signed In) */}
+                {isCollapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-10 transition-all rounded-lg relative justify-center"
+                        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                      >
+                        <div className="relative h-5 w-5">
+                          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                          <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                        </div>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Toggle theme</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 transition-all rounded-lg relative justify-start"
+                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                  >
+                    <div className="absolute left-3">
+                      <div className="relative h-5 w-5">
+                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                        <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      </div>
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="font-medium pl-9"
+                      >
+                        Toggle theme
+                      </motion.span>
+                    </AnimatePresence>
+                  </Button>
+                )}
+                {/* Account Button */}
+                {isCollapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
+                        onClick={handleAccountClick}
+                      >
+                        <div className="absolute left-3">
+                          <User className="h-5 w-5" />
+                        </div>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Account</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 transition-all rounded-lg relative justify-start"
+                    onClick={handleAccountClick}
+                  >
+                    <div className="absolute left-3">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="font-medium pl-9"
+                      >
+                        Account
+                      </motion.span>
+                    </AnimatePresence>
+                  </Button>
+                )}
+              </>
             )}
-          </AnimatePresence>
+          </div>
         </motion.div>
       </div>
+      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </TooltipProvider>
   );
 } 
