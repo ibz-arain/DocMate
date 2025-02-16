@@ -3,6 +3,9 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { z } from 'zod';
 
+// Set a timeout for the AI operation
+const AI_TIMEOUT = 240000; // 4 minutes
+
 if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
   throw new Error('GOOGLE_GENERATIVE_AI_API_KEY environment variable is not set');
 }
@@ -57,14 +60,23 @@ interface BankAnalysis {
   };
 }
 
+export const runtime = 'edge'; // Use Edge Runtime for better performance
+export const maxDuration = 300; // 5 minutes maximum duration
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { imageData, mimeType = 'image/jpeg' } = RequestSchema.parse(body);
 
-    // Determine if the data is a PDF or image based on the base64 header or mimeType
     const isPDF = imageData.startsWith('data:application/pdf') || mimeType === 'application/pdf';
     const fileType = isPDF ? 'application/pdf' : 'image/jpeg';
+
+    // Create a promise that rejects after the timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Analysis timeout - operation took too long'));
+      }, AI_TIMEOUT);
+    });
 
     const prompt = `Analyze this bank statement and extract the following information in a structured format:
     1. Bank and account information
@@ -119,7 +131,8 @@ export async function POST(req: NextRequest) {
       }
     }`;
 
-    const result = await generateText({
+    // Create the AI analysis promise
+    const analysisPromise = generateText({
       model: google('gemini-1.5-pro'),
       messages: [{
         role: 'user',
@@ -130,6 +143,9 @@ export async function POST(req: NextRequest) {
       }]
     });
 
+    // Race between the timeout and the analysis
+    const result = await Promise.race([analysisPromise, timeoutPromise]) as any;
+
     const text = result.text;
     const cleanText = text.replace(/```json|```/g, '').trim();
 
@@ -139,8 +155,13 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error('JSON parsing failed:', error);
       return NextResponse.json(
-        { success: false, error: 'Failed to parse AI response as JSON', rawText: text },
-        { status: 500 }
+        { 
+          success: false, 
+          error: 'Failed to parse AI response', 
+          details: error instanceof Error ? error.message : 'Unknown parsing error',
+          rawText: text 
+        },
+        { status: 422 }
       );
     }
 
@@ -155,10 +176,37 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('API Error:', error);
+    
+    // Handle different types of errors
+    if (error instanceof Error) {
+      if (error.message.includes('timeout')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Analysis timeout - please try again',
+            details: error.message
+          },
+          { status: 504 }
+        );
+      }
+      
+      if (error.message.includes('parse')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Invalid request format',
+            details: error.message
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: 'An error occurred during analysis',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
