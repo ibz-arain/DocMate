@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { nanoid } from 'nanoid';
@@ -11,15 +11,12 @@ interface DecodedToken {
   exp: number;
 }
 
-async function getUserFromToken(token: string) {
+async function getUserFromToken(token: string): Promise<DecodedToken | null> {
   try {
     console.log('Verifying token with secret:', process.env.JWT_SECRET?.slice(0, 5) + '...');
     const decoded = verify(token, process.env.JWT_SECRET!) as DecodedToken;
     console.log('Decoded token:', decoded);
-    return {
-      id: decoded.userId,
-      username: decoded.username
-    };
+    return decoded;
   } catch (error) {
     console.error('Token verification failed:', error);
     return null;
@@ -40,11 +37,11 @@ export async function GET(req: Request) {
     const user = await getUserFromToken(token);
     console.log('User from token:', user);
 
-    if (!user?.id) {
+    if (!user?.userId) {
       return new NextResponse("Unauthorized - Invalid token", { status: 401 });
     }
 
-    console.log('Fetching documents for user:', user.id);
+    console.log('Fetching documents for user:', user.userId);
 
     const documents = await db.execute({
       sql: `
@@ -52,7 +49,7 @@ export async function GET(req: Request) {
         WHERE user_id = ? 
         ORDER BY date DESC
       `,
-      args: [user.id],
+      args: [user.userId],
     });
 
     return NextResponse.json(documents.rows);
@@ -72,7 +69,7 @@ export async function POST(req: Request) {
     }
 
     const user = await getUserFromToken(token);
-    if (!user?.id) {
+    if (!user?.userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -107,7 +104,7 @@ export async function POST(req: Request) {
       `,
       args: [
         nanoid(),
-        user.id,
+        user.userId,
         title,
         type,
         date,
@@ -120,5 +117,45 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('[DOCUMENTS_POST]', error);
     return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const documentId = searchParams.get('id');
+
+    if (!documentId) {
+      return NextResponse.json({ error: 'Document ID required' }, { status: 400 });
+    }
+
+    const token = request.cookies.get('auth_token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
+    }
+
+    const document = await db.execute({
+      sql: 'SELECT * FROM documents WHERE id = ? AND user_id = ?',
+      args: [documentId, user.userId],
+    });
+
+    if (!document.rows.length) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+
+    await db.execute({
+      sql: 'DELETE FROM documents WHERE id = ? AND user_id = ?',
+      args: [documentId, user.userId],
+    });
+
+    return NextResponse.json({ message: 'Document deleted successfully' });
+  } catch (error) {
+    console.error('[DOCUMENT_DELETE]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 } 
