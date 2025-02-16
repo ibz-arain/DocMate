@@ -76,7 +76,10 @@ export function CustomSidebar({ isCollapsed, setIsCollapsed, onSelectDemo, selec
                 DocMate
               </motion.div>
             )}
-            <div className="flex items-center gap-2">
+            <div className={cn(
+              "flex items-center gap-2",
+              isCollapsed ? "w-full justify-center" : "justify-end"
+            )}>
               {!isCollapsed && <ThemeToggle />}
               <Button
                 variant="ghost"
