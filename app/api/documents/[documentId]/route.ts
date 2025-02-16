@@ -23,9 +23,15 @@ async function getUserFromToken(token: string) {
   }
 }
 
+type Props = {
+  params: {
+    documentId: string;
+  };
+};
+
 export async function DELETE(
   request: Request,
-  context: { params: { documentId: string } }
+  { params }: Props
 ) {
   try {
     const cookieStore = await cookies();
@@ -40,7 +46,7 @@ export async function DELETE(
       return new NextResponse("Unauthorized - Invalid token", { status: 401 });
     }
 
-    const { documentId } = context.params;
+    const { documentId } = params;
     if (!documentId) {
       return new NextResponse("Document ID required", { status: 400 });
     }
