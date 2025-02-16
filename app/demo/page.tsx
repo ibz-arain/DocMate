@@ -82,11 +82,106 @@ interface SavedDocument {
   updatedAt: string;
 }
 
+function LoadingSkeleton() {
+  return (
+    <div className="flex gap-6 h-full">
+      {/* Main Table Loading Skeleton */}
+      <div className="flex-1 min-w-0">
+        <Card className="h-full">
+          <CardContent className="p-0">
+            <div className="rounded-md border h-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Document</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(5)].map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-4 rounded bg-muted animate-pulse" />
+                          <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                          <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right Side Stats Loading Skeleton */}
+      <div className="w-80 flex-none space-y-6">
+        {/* Document Types Card */}
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[...Array(4)].map((_, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                  </div>
+                  <div className="h-4 w-8 bg-muted rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity Card */}
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                  </div>
+                  <div className="flex justify-between">
+                    <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                    <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 // History Component
 function HistorySection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [sortBy, setSortBy] = useState("date");
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('formatted');
@@ -166,16 +261,21 @@ function HistorySection() {
     setIsPreviewOpen(true);
   };
 
-  // Filter and sort the documents
+  // Filter documents for the table display
   const filteredDocuments = documents
     .filter((doc) => {
       if (filterType !== "all" && doc.type !== filterType) return false;
       return doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     })
-    .sort((a, b) => {
-      if (sortBy === "date") return new Date(b.date).getTime() - new Date(a.date).getTime();
-      return 0;
-    });
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Use all documents for stats (unfiltered)
+  const documentStats = documents.reduce((acc: Record<string, number>, doc) => {
+    if (doc.type) {  // Only count non-null types
+      acc[doc.type] = (acc[doc.type] || 0) + 1;
+    }
+    return acc;
+  }, {});
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
@@ -208,171 +308,153 @@ function HistorySection() {
                 <SelectItem value="electricity">Utility Bills</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date">Date</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </div>
 
       {/* Split View Content */}
       <div className="flex-1 overflow-hidden p-6">
-        <div className="flex gap-6 h-full">
-          {/* Documents Table */}
-          <div className="flex-1 min-w-0">
-            <Card className="h-full">
-              <CardContent className="p-0">
-                <div className="rounded-md border h-full">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Document</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredDocuments.length > 0 ? (
-                        filteredDocuments.map((doc) => (
-                          <TableRow key={doc.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
-                                {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
-                                {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
-                                {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
-                                {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                                <span>{doc.title}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="capitalize">{doc.type}</TableCell>
-                            <TableCell>{new Date(doc.date).toLocaleDateString()}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleViewDocument(doc)}
-                                >
-                                  <FileSearch className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setDeleteDoc(doc)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : (
+          <div className="flex gap-6 h-full">
+            {/* Documents Table */}
+            <div className="flex-1 min-w-0">
+              <Card className="h-full">
+                <CardContent className="p-0">
+                  <div className="rounded-md border h-full">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Document</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredDocuments.length > 0 ? (
+                          filteredDocuments.map((doc) => (
+                            <TableRow key={doc.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
+                                  {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
+                                  {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
+                                  {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
+                                  {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                                  <span>{doc.title}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="capitalize">{doc.type}</TableCell>
+                              <TableCell>{new Date(doc.date).toLocaleDateString()}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleViewDocument(doc)}
+                                  >
+                                    <FileSearch className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setDeleteDoc(doc)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center">
+                              <div className="flex flex-col items-center justify-center text-muted-foreground">
+                                <FileText className="h-8 w-8 mb-2" />
+                                <p>No documents found</p>
+                                {searchQuery && <p className="text-sm">Try adjusting your search or filters</p>}
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="h-24 text-center">
-                            <div className="flex flex-col items-center justify-center text-muted-foreground">
-                              <FileText className="h-8 w-8 mb-2" />
-                              <p>No documents found</p>
-                              {searchQuery && <p className="text-sm">Try adjusting your search or filters</p>}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Right Side Stats */}
-          <div className="w-80 flex-none space-y-6">
-            {/* Document Types */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Document Types</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {Object.entries(
-                    filteredDocuments.reduce((acc: Record<string, number>, doc) => {
-                      if (doc.type) {  // Only count non-null types
-                        acc[doc.type] = (acc[doc.type] || 0) + 1;
-                      }
-                      return acc;
-                    }, {})
-                  ).length > 0 ? (
-                    Object.entries(
-                      filteredDocuments.reduce((acc: Record<string, number>, doc) => {
-                        if (doc.type) {  // Only count non-null types
-                          acc[doc.type] = (acc[doc.type] || 0) + 1;
-                        }
-                        return acc;
-                      }, {})
-                    ).map(([type, count]) => (
-                      <div key={type} className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          {type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
-                          {type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
-                          {type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
-                          {type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
-                          {type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                          <span className="text-muted-foreground capitalize">{type}</span>
+            {/* Right Side Stats */}
+            <div className="w-80 flex-none space-y-6">
+              {/* Document Types */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Document Types</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(documentStats).length > 0 ? (
+                      Object.entries(documentStats).map(([type, count]) => (
+                        <div key={type} className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            {type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
+                            {type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
+                            {type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
+                            {type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
+                            {type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                            <span className="text-muted-foreground capitalize">{type}</span>
+                          </div>
+                          <span className="font-medium">{count}</span>
                         </div>
-                        <span className="font-medium">{count}</span>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <TableIcon className="h-8 w-8 mx-auto mb-2" />
+                        <p>No document types to display</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="py-8 text-center text-muted-foreground">
-                      <TableIcon className="h-8 w-8 mx-auto mb-2" />
-                      <p>No document types to display</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredDocuments.length > 0 ? (
-                    filteredDocuments.slice(0, 5).map((doc) => (
-                      <div key={doc.id} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
-                          {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
-                          {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
-                          {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
-                          {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                          <span className="font-medium truncate">{doc.title}</span>
+              {/* Recent Activity */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {documents.length > 0 ? (
+                      documents.slice(0, 5).map((doc) => (
+                        <div key={doc.id} className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
+                            {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
+                            {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
+                            {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
+                            {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                            <span className="font-medium truncate">{doc.title}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span className="capitalize">{doc.type}</span>
+                            <span>{new Date(doc.date).toLocaleDateString()}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span className="capitalize">{doc.type}</span>
-                          <span>{new Date(doc.date).toLocaleDateString()}</span>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <History className="h-8 w-8 mx-auto mb-2" />
+                        <p>No recent activity to display</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="py-8 text-center text-muted-foreground">
-                      <History className="h-8 w-8 mx-auto mb-2" />
-                      <p>No recent activity to display</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
@@ -917,6 +999,83 @@ export default function DemoPage() {
     }
   };
 
+  const downloadJson = () => {
+    const jsonString = JSON.stringify(aiInsights.contentJson, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${file?.name || 'document'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadMarkdown = () => {
+    const markdownContent = generateMarkdown(aiInsights.contentJson);
+    const blob = new Blob([markdownContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${file?.name || 'document'}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCsv = () => {
+    const content = aiInsights.contentJson;
+    let csvContent = '';
+    
+    // Add metadata
+    if (content.metadata) {
+      csvContent += 'Metadata\n';
+      Object.entries(content.metadata).forEach(([key, value]) => {
+        if (typeof value === 'object') {
+          Object.entries(value as any).forEach(([subKey, subValue]) => {
+            csvContent += `${key},${subKey},${subValue}\n`;
+          });
+        } else {
+          csvContent += `${key},,${value}\n`;
+        }
+      });
+      csvContent += '\n';
+    }
+
+    // Add content
+    if (content.content) {
+      csvContent += 'Content\n';
+      Object.entries(content.content).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          // Handle array of objects
+          const headers = Object.keys(value[0] || {});
+          csvContent += `${key}\n${headers.join(',')}\n`;
+          value.forEach(item => {
+            csvContent += `${Object.values(item).join(',')}\n`;
+          });
+        } else if (typeof value === 'object') {
+          // Handle object
+          Object.entries(value as any).forEach(([subKey, subValue]) => {
+            csvContent += `${key},${subKey},${subValue}\n`;
+          });
+        }
+        csvContent += '\n';
+      });
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${file?.name || 'document'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (showHistory) {
     if (!user) {
       return (
@@ -1335,17 +1494,29 @@ export default function DemoPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <Button className="w-full" variant="outline">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Results
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={downloadJson}
+                    >
+                      <Code className="mr-2 h-4 w-4" />
+                      Download JSON
                     </Button>
-                    <Button className="w-full" variant="outline">
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={downloadMarkdown}
+                    >
                       <FileText className="mr-2 h-4 w-4" />
-                      Generate Report
+                      Download Markdown
                     </Button>
-                    <Button className="w-full" variant="outline">
-                      <Brain className="mr-2 h-4 w-4" />
-                      Advanced Analysis
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={downloadCsv}
+                    >
+                      <TableIcon className="mr-2 h-4 w-4" />
+                      Download CSV
                     </Button>
                   </div>
                 </CardContent>
@@ -1422,7 +1593,7 @@ export default function DemoPage() {
                     >
                       {isProcessing ? (
                         <>
-                          <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                          <RefreshCcw className="mr-2 h-4 animate-spin" />
                           Saving...
                         </>
                       ) : isSaved ? (
