@@ -99,7 +99,14 @@ export function CustomSidebar({
                   transition={{ duration: 0.15 }}
                   className="font-semibold text-lg text-primary"
                 >
-                  <Image src="/logo-text.png" alt="Logo" width={120} height={100} />
+                  <Image 
+                    src="/logo-text.png" 
+                    alt="Logo" 
+                    width={120} 
+                    height={100} 
+                    priority
+                    className="select-none"
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

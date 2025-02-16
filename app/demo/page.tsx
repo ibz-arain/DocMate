@@ -554,7 +554,7 @@ function HistorySection() {
                         </Button>
                         <div className="max-h-[calc(90vh-10rem)] overflow-auto">
                           <pre className="bg-muted p-4 rounded-lg">
-                            <code className="text-sm">
+                            <code className="text-sm break-all whitespace-pre-wrap">
                               {JSON.stringify(selectedDoc?.contentJson, null, 2)}
                             </code>
                           </pre>
@@ -592,9 +592,13 @@ function HistorySection() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="max-h-[calc(90vh-10rem)] overflow-auto pr-4"
+                        className="relative"
                       >
-                        {generateFormattedView(selectedDoc?.contentJson)}
+                        <div className="max-h-[calc(90vh-10rem)] overflow-auto">
+                          <div className="bg-background rounded-lg">
+                            {generateFormattedView(selectedDoc?.contentJson)}
+                          </div>
+                        </div>
                       </motion.div>
                     )}
                     {activeTab === 'analysis' && (
@@ -603,7 +607,7 @@ function HistorySection() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="space-y-6 max-h-[calc(90vh-10rem)] overflow-auto pr-4"
+                        className="space-y-6"
                       >
                         <div>
                           <h3 className="text-lg font-medium mb-2">Summary</h3>
@@ -1245,7 +1249,7 @@ export default function DemoPage() {
                                     >
                                       <Progress value={progress} className="h-1" />
                                       <p className="text-xs text-muted-foreground mt-2 text-center">
-                                        Analyzing document... {progress}%
+                                        Analyzing document...
                                       </p>
                                     </motion.div>
                                   )}
@@ -1363,97 +1367,118 @@ export default function DemoPage() {
                         Analysis
                       </Button>
                     </div>
-                  <ScrollArea className="flex-1 min-h-0 rounded-md border p-4">
-                    <AnimatePresence mode="wait">
-                      {activeTab === 'json' && (
-                        <motion.div
-                          key="json"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="relative"
-                        >
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="absolute right-2 top-2"
-                            onClick={() => copyToClipboard(JSON.stringify(aiInsights.contentJson, null, 2))}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-                            <code className="text-sm">
-                              {JSON.stringify(aiInsights.contentJson, null, 2)}
-                            </code>
-                          </pre>
-                        </motion.div>
-                      )}
-                      {activeTab === 'markdown' && (
-                        <motion.div
-                          key="markdown"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                        >
-                          <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-                            <code className="text-sm whitespace-pre">
-                              {generateMarkdown(aiInsights.contentJson)}
-                            </code>
-                          </pre>
-                        </motion.div>
-                      )}
-                      {activeTab === 'formatted' && (
-                        <motion.div
-                          key="formatted"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="space-y-6"
-                        >
-                          {generateFormattedView(aiInsights.contentJson)}
-                        </motion.div>
-                      )}
-                      {activeTab === 'analysis' && (
-                        <motion.div
-                          key="analysis"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="space-y-6"
-                        >
-                          <div>
-                            <h3 className="text-lg font-medium mb-2">Summary</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {aiInsights.summary}
-                            </p>
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-medium mb-2">Keywords</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {aiInsights.keywords.map((keyword, index) => (
-                                <span
-                                  key={index}
-                                  className="px-2 py-1 bg-primary/10 rounded-full text-sm"
-                                >
-                                  {keyword}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-medium mb-2">Insights</h3>
-                            <div className="space-y-2">
-                              {aiInsights.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
-                                <p key={index} className="text-sm text-muted-foreground">
-                                  • {insight}
+                  <div className="flex-1 min-h-0 relative rounded-md border">
+                    <ScrollArea className="h-full absolute inset-0">
+                      <div className="p-4">
+                        <AnimatePresence mode="wait">
+                          {activeTab === 'json' && (
+                            <motion.div
+                              key="json"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="relative"
+                            >
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="absolute right-2 top-2 z-10"
+                                onClick={() => navigator.clipboard.writeText(JSON.stringify(aiInsights.contentJson, null, 2))}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <div className="max-h-[calc(90vh-10rem)] overflow-auto">
+                                <pre className="bg-muted p-4 rounded-lg">
+                                  <code className="text-sm break-all whitespace-pre-wrap">
+                                    {JSON.stringify(aiInsights.contentJson, null, 2)}
+                                  </code>
+                                </pre>
+                              </div>
+                            </motion.div>
+                          )}
+                          {activeTab === 'markdown' && (
+                            <motion.div
+                              key="markdown"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="relative"
+                            >
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="absolute right-2 top-2 z-10"
+                                onClick={() => navigator.clipboard.writeText(generateMarkdown(aiInsights.contentJson))}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <div className="max-h-[calc(90vh-10rem)] overflow-auto">
+                                <pre className="bg-muted p-4 rounded-lg">
+                                  <code className="text-sm whitespace-pre">
+                                    {generateMarkdown(aiInsights.contentJson)}
+                                  </code>
+                                </pre>
+                              </div>
+                            </motion.div>
+                          )}
+                          {activeTab === 'formatted' && (
+                            <motion.div
+                              key="formatted"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="relative"
+                            >
+                              <div className="max-h-[calc(90vh-10rem)] overflow-auto">
+                                <div className="bg-background rounded-lg">
+                                  {generateFormattedView(aiInsights.contentJson)}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                          {activeTab === 'analysis' && (
+                            <motion.div
+                              key="analysis"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="space-y-6"
+                            >
+                              <div>
+                                <h3 className="text-lg font-medium mb-2">Summary</h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {aiInsights.summary}
                                 </p>
-                              ))}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </ScrollArea>
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-medium mb-2">Keywords</h3>
+                                <div className="flex flex-wrap gap-2">
+                                  {aiInsights.keywords.map((keyword, index) => (
+                                    <span
+                                      key={index}
+                                      className="px-2 py-1 bg-primary/10 rounded-full text-sm"
+                                    >
+                                      {keyword}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-medium mb-2">Insights</h3>
+                                <div className="space-y-2">
+                                  {aiInsights.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
+                                    <p key={index} className="text-sm text-muted-foreground">
+                                      • {insight}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </CardContent>
               </Card>
             </div>
