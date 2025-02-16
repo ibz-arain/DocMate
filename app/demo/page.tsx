@@ -277,46 +277,72 @@ export default function DemoPage() {
                 <div className="space-y-4">
                   {selectedType ? (
                     <>
-                      <Card className="relative border-2 border-dashed">
-                        <CardContent className="pt-6 pb-8">
+                      <Card className="relative border-2 border-dashed transition-all duration-200 hover:border-primary/50">
+                        <CardContent className="p-0">
                           <div
                             {...getRootProps()}
                             className={cn(
-                              "flex flex-col items-center justify-center gap-2 py-8 text-center",
-                              isDragActive && "bg-primary/5"
+                              "relative min-h-[300px] flex flex-col items-center justify-center gap-4 p-8 transition-all duration-200",
+                              "cursor-pointer rounded-lg",
+                              isDragActive ? "bg-primary/10 border-primary" : "hover:bg-primary/5",
+                              "group"
                             )}
                           >
                             {file ? (
-                              <div className="relative w-full max-w-md aspect-video">
-                                <img
-                                  src={URL.createObjectURL(file)}
-                                  alt="Document preview"
-                                  className="w-full h-full object-contain rounded-lg border"
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="absolute top-2 right-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setFile(null);
-                                  }}
-                                >
-                                  Change File
-                                </Button>
+                              <div className="relative w-full h-full flex items-center justify-center">
+                                <div className="relative w-full max-w-md aspect-video">
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt="Document preview"
+                                    className="w-full h-full object-contain rounded-lg border shadow-sm"
+                                  />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="absolute top-2 right-2 bg-background/90 hover:bg-background"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFile(null);
+                                      }}
+                                    >
+                                      Change File
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
                             ) : (
                               <>
-                                <Upload className="h-8 w-8 text-muted-foreground" />
-                                <div>
-                                  <p className="text-lg font-medium">
+                                <div className="relative">
+                                  <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                  <Upload className={cn(
+                                    "h-12 w-12 transition-all duration-200",
+                                    isDragActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-primary group-hover:scale-110"
+                                  )} />
+                                </div>
+                                <div className="space-y-2 text-center relative">
+                                  <p className={cn(
+                                    "text-lg font-medium transition-colors duration-200",
+                                    isDragActive ? "text-primary" : "text-foreground"
+                                  )}>
                                     Drop your {documentTypeLabels[selectedType].title.toLowerCase()} here
                                   </p>
                                   <p className="text-sm text-muted-foreground">
                                     or click to browse files
                                   </p>
+                                  <div className={cn(
+                                    "flex flex-wrap gap-2 justify-center text-xs text-muted-foreground mt-4",
+                                    isDragActive && "text-primary/70"
+                                  )}>
+                                    <span className="px-2 py-1 rounded-full bg-muted">PNG</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">JPG</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">JPEG</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">GIF</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">WebP</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">PDF</span>
+                                  </div>
                                   <p className="text-xs text-muted-foreground mt-2">
-                                    Supported formats: PNG, JPG, JPEG, GIF, WebP, PDF (max 10MB)
+                                    Maximum file size: 10MB
                                   </p>
                                 </div>
                               </>
@@ -333,20 +359,36 @@ export default function DemoPage() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
                           >
-                            <Card className="bg-muted/50">
+                            <Card className="bg-muted/50 border-primary/20">
                               <CardContent className="pt-6">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-primary" />
-                                    <p className="text-sm font-medium">{file.name}</p>
+                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                      <FileText className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium">{file.name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                                      </p>
+                                    </div>
                                   </div>
                                   <Button
                                     onClick={processDocument}
                                     disabled={isProcessing}
                                     size="sm"
+                                    className={cn(
+                                      "transition-all duration-500",
+                                      isProcessing ? "bg-primary/10 text-primary" : "bg-primary"
+                                    )}
                                   >
                                     {isProcessing ? (
-                                      <>Processing...</>
+                                      <>
+                                        <div className="animate-spin mr-2">
+                                          <RefreshCcw className="h-4 w-4" />
+                                        </div>
+                                        Processing...
+                                      </>
                                     ) : (
                                       <>
                                         <Zap className="mr-2 h-4 w-4" />
@@ -360,7 +402,10 @@ export default function DemoPage() {
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                   >
-                                    <Progress value={progress} className="mt-4" />
+                                    <Progress value={progress} className="mt-4 h-1" />
+                                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                                      Analyzing document... {progress}%
+                                    </p>
                                   </motion.div>
                                 )}
                               </CardContent>
@@ -646,24 +691,89 @@ export default function DemoPage() {
 const generateMarkdown = (data: any): string => {
   if (!data) return '';
 
+  const padValue = (str: string, length: number) => {
+    return str.padEnd(length, ' ');
+  };
+
+  const formatTableValue = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    // Handle multi-line addresses by replacing newlines with spaces
+    return String(value)
+      .replace(/\n\s*/g, ' ')  // Replace newlines and following whitespace with a single space
+      .replace(/\s+/g, ' ')    // Normalize multiple spaces into single space
+      .replace(/\|/g, '\\|')   // Escape pipe characters
+      .trim();                 // Remove leading/trailing whitespace
+  };
+
+  const createTable = (data: Record<string, any>, headers: string[] = ['Property', 'Value']) => {
+    // Calculate maximum widths for each column
+    const columnWidths = headers.map(header => header.length);
+    const rows = Object.entries(data).map(([key, value]) => {
+      const formattedValue = formatTableValue(value);
+      columnWidths[0] = Math.max(columnWidths[0], key.length);
+      columnWidths[1] = Math.max(columnWidths[1], formattedValue.length);
+      return [key, formattedValue];
+    });
+
+    // Add padding to ensure minimum column width
+    columnWidths[0] = Math.max(columnWidths[0], 8);  // "Property"
+    columnWidths[1] = Math.max(columnWidths[1], 5);  // "Value"
+
+    // Create header
+    let table = `| ${padValue(headers[0], columnWidths[0])} | ${padValue(headers[1], columnWidths[1])} |\n`;
+    table += `|${'-'.repeat(columnWidths[0] + 2)}|${'-'.repeat(columnWidths[1] + 2)}|\n`;
+
+    // Add rows
+    rows.forEach(([key, value]) => {
+      table += `| ${padValue(key, columnWidths[0])} | ${padValue(value, columnWidths[1])} |\n`;
+    });
+
+    return table;
+  };
+
+  const createArrayTable = (array: any[]) => {
+    if (array.length === 0) return '';
+    
+    const headers = Object.keys(array[0]);
+    const columnWidths = headers.map(header => header.length);
+
+    // Calculate maximum width for each column
+    array.forEach(item => {
+      headers.forEach((header, index) => {
+        const value = formatTableValue(item[header]);
+        columnWidths[index] = Math.max(columnWidths[index], value.length);
+      });
+    });
+
+    // Create header
+    let table = '| ' + headers.map((header, i) => padValue(header, columnWidths[i])).join(' | ') + ' |\n';
+    table += '|' + columnWidths.map(width => '-'.repeat(width + 2)).join('|') + '|\n';
+
+    // Add rows
+    array.forEach(item => {
+      table += '| ' + headers.map((header, i) => {
+        const value = formatTableValue(item[header]);
+        return padValue(value, columnWidths[i]);
+      }).join(' | ') + ' |\n';
+    });
+
+    return table;
+  };
+
   let markdown = `# ${data.documentType}\n\n`;
 
   // Add metadata section
   if (data.metadata) {
     markdown += '## Metadata\n\n';
     Object.entries(data.metadata).forEach(([key, value]: [string, any]) => {
-      markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
-      if (typeof value === 'object') {
-        // Create table header
-        markdown += '| Property | Value |\n';
-        markdown += '|----------|--------|\n';
-        Object.entries(value).forEach(([subKey, subValue]) => {
-          markdown += `| ${subKey} | ${subValue} |\n`;
-        });
-        markdown += '\n';
+      markdown += `### ${key}\n\n`;
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        markdown += createTable(value);
       } else {
-        markdown += `| ${key} | ${value} |\n\n`;
+        markdown += createTable({ [key]: value });
       }
+      markdown += '\n';
     });
   }
 
@@ -671,33 +781,13 @@ const generateMarkdown = (data: any): string => {
   if (data.content) {
     markdown += '## Content\n\n';
     Object.entries(data.content).forEach(([key, value]: [string, any]) => {
-      markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
-      if (Array.isArray(value)) {
-        // Get all possible headers from the array items
-        const headers = Array.from(new Set(value.flatMap(item => Object.keys(item))));
-        
-        // Create table header
-        markdown += `| ${headers.join(' | ')} |\n`;
-        markdown += `| ${headers.map(() => '---').join(' | ')} |\n`;
-        
-        // Add table rows
-        value.forEach((item: any) => {
-          markdown += `| ${headers.map(header => item[header] || '').join(' | ')} |\n`;
-        });
-        markdown += '\n';
+      markdown += `### ${key}\n\n`;
+      if (Array.isArray(value) && value.length > 0) {
+        markdown += createArrayTable(value);
       } else if (typeof value === 'object') {
-        // Create table header
-        markdown += '| Property | Value |\n';
-        markdown += '|----------|--------|\n';
-        Object.entries(value).forEach(([subKey, subValue]: [string, any]) => {
-          if (typeof subValue === 'object') {
-            markdown += `| ${subKey} | ${JSON.stringify(subValue, null, 2).replace(/\n/g, '<br>')} |\n`;
-          } else {
-            markdown += `| ${subKey} | ${subValue} |\n`;
-          }
-        });
-        markdown += '\n';
+        markdown += createTable(value);
       }
+      markdown += '\n';
     });
   }
 
