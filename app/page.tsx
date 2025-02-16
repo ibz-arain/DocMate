@@ -182,7 +182,7 @@ export default function HomePage() {
 
         {/* Demo Types Section with scroll animations */}
         <motion.section
-        
+
           className="py-20 px-6 dark:bg-black"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -204,8 +204,8 @@ export default function HomePage() {
                 scale: 1.05,
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
-              <Card className="px-6 bg-muted/50">
-          <CardContent className="p-6 h-full flex flex-col justify-between">
+                <Card className="px-6 bg-muted/50">
+                  <CardContent className="p-6 h-full flex flex-col justify-between">
                     <div className="text-primary mb-4 flex justify-center">
                       <Receipt className="h-10 w-10" />
                     </div>
@@ -221,10 +221,10 @@ export default function HomePage() {
                 scale: 1.05,
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
-              <Card className="px-6 bg-muted/50">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+                <Card className="px-6 bg-muted/50">
+                  <CardContent className="p-6 h-full flex flex-col justify-between">
                     <div className="text-primary mb-4 flex justify-center">
-                      <Receipt className="h-10 w-10" />
+                      <FileText className="h-10 w-10" />
                     </div>
                     <h3 className="text-xl font-semibold mb-3">T4 Tax Forms</h3>
                     <p className="text-muted-foreground">
@@ -238,8 +238,8 @@ export default function HomePage() {
                 scale: 1.05,
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
-              <Card className="px-6 bg-muted/50">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+                <Card className="px-6 bg-muted/50">
+                  <CardContent className="p-6 h-full flex flex-col justify-between">
                     <div className="text-primary mb-4 flex justify-center">
                       <FileSpreadsheet className="h-10 w-10" />
                     </div>
@@ -255,8 +255,8 @@ export default function HomePage() {
                 scale: 1.05,
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
-              <Card className="px-6 bg-muted/50">
-              <CardContent className="p-6">
+                <Card className="px-6 bg-muted/50">
+                  <CardContent className="p-6">
                     <div className="text-primary mb-4 flex justify-center">
                       <FileCheck className="h-10 w-10" />
                     </div>
@@ -272,8 +272,8 @@ export default function HomePage() {
                 scale: 1.05,
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
-              <Card className="px-6 bg-muted/50">
-              <CardContent className="p-6">
+                <Card className="px-6 bg-muted/50">
+                  <CardContent className="p-6">
                     <div className="text-primary mb-4 flex justify-center">
                       <Cable className="h-10 w-10" />
                     </div>
@@ -289,8 +289,8 @@ export default function HomePage() {
                 scale: 1.05,
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
               }}>
-              <Card className="px-6 bg-muted/50">
-              <CardContent className="p-6">
+                <Card className="px-6 bg-muted/50">
+                  <CardContent className="p-6">
                     <div className="text-primary mb-4 flex justify-center">
                       <LightbulbIcon className="h-10 w-10" />
                     </div>
@@ -317,18 +317,18 @@ export default function HomePage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-            <Card className="bg-black text-white">
-            <CardContent className="p-12">
+              <Card className="bg-black text-white">
+                <CardContent className="p-12">
                   <div className="text-center space-y-6">
-                  <h2 className="text-3xl font-bold text-primary">Ready to Get Started?</h2>
-                  <p className="text-primary-foreground/80 max-w-2xl mx-auto">
+                    <h2 className="text-3xl font-bold text-primary">Ready to Get Started?</h2>
+                    <p className="text-primary-foreground/80 max-w-2xl mx-auto">
                       Experience the power of AI-driven document analysis. Try our demo today and see how we can help you extract valuable insights from your documents.
                     </p>
                     <br />
                     <Link href="/demo">
-                    <Button size="lg" className="gap-2">
-                    Try Demo Now <ChevronRight className="h-4 w-4" />
-                    </Button>
+                      <Button size="lg" className="gap-2">
+                        Try Demo Now <ChevronRight className="h-4 w-4" />
+                      </Button>
 
                     </Link>
                   </div>
