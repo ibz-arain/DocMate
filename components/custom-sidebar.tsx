@@ -247,23 +247,33 @@ export function CustomSidebar({
           <div className="p-3 border-t border-border/50 space-y-2">
             {user ? (
               <>
-                {!isCollapsed && (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    Signed in as {user.username}
-                  </div>
-                )}
+                <AnimatePresence mode="wait">
+                  {!isCollapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.15 }}
+                      className="px-3 py-2 text-sm text-muted-foreground"
+                    >
+                      Signed in as {user.username}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {/* Theme Toggle */}
                 {isCollapsed ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full h-10 transition-all rounded-lg relative justify-center"
+                        className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
                         onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                       >
-                        <div className="relative h-5 w-5">
-                          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                          <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                        <div className="absolute left-3">
+                          <div className="relative h-5 w-5">
+                            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                            <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                          </div>
                         </div>
                       </Button>
                     </TooltipTrigger>
@@ -379,12 +389,14 @@ export function CustomSidebar({
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full h-10 transition-all rounded-lg relative justify-center"
+                        className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
                         onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                       >
-                        <div className="relative h-5 w-5">
-                          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                          <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                        <div className="absolute left-3">
+                          <div className="relative h-5 w-5">
+                            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                            <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                          </div>
                         </div>
                       </Button>
                     </TooltipTrigger>
