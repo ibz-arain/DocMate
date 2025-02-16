@@ -45,6 +45,7 @@ export default function DemoPage() {
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
   const [extractedText, setExtractedText] = useState<string>("");
   const [selectedType, setSelectedType] = useState<DocumentType>(null);
+  const [error, setError] = useState<string | null>(null);
   const [aiInsights, setAiInsights] = useState<{
     summary: string;
     keywords: string[];
@@ -61,10 +62,57 @@ export default function DemoPage() {
   const [isProcessed, setIsProcessed] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  const validateFileType = (file: File): boolean => {
+    const supportedTypes = {
+      'image/jpeg': true,
+      'image/png': true,
+      'image/gif': true,
+      'image/webp': true,
+      'application/pdf': true
+    } as const;
+    
+    if (!(file.type in supportedTypes)) {
+      setError(`Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).`);
+      return false;
+    }
+    return true;
+  };
+
+  const validateDocumentContent = (result: any): boolean => {
+    if (!result.analysis?.documentType) {
+      setError('Unable to determine document type. Please ensure you uploaded the correct document.');
+      return false;
+    }
+
+    const expectedTypes = {
+      't4': ['T4', 'Tax', 'T4 Tax Slip', 'Tax Form'],
+      'bank': ['Bank Statement', 'Bank Document', 'Account Statement'],
+      'receipt': ['Store Receipt', 'Receipt', 'Sales Receipt', 'Purchase Receipt'],
+      'dental': ['Dental Claim', 'Dental Form', 'Dental Insurance Claim'],
+      'electricity': ['Electricity Bill', 'Utility Bill', 'Electric Bill']
+    };
+
+    const detectedType = result.analysis.documentType;
+    const expectedTypeArray = expectedTypes[selectedType as keyof typeof expectedTypes] || [];
+    
+    if (!expectedTypeArray.some(type => detectedType.toLowerCase().includes(type.toLowerCase()))) {
+      setError(`This document appears to be a "${detectedType}" which doesn't match the selected document type "${documentTypeLabels[selectedType as keyof typeof documentTypeLabels].title}". Please verify and try again.`);
+      return false;
+    }
+
+    return true;
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (acceptedFiles) => {
       const droppedFile = acceptedFiles[0];
+      setError(null); // Clear any previous errors
+      
       if (droppedFile) {
+        if (!validateFileType(droppedFile)) {
+          return;
+        }
+
         try {
           setIsProcessing(true);
           setFile(droppedFile);
@@ -93,6 +141,13 @@ export default function DemoPage() {
           }
           
           if (result.success) {
+            // Validate document content before proceeding
+            if (!validateDocumentContent(result)) {
+              setFile(null);
+              setIsProcessing(false);
+              return;
+            }
+
             setExtractedText(result.analysis.content?.text || "No text extracted");
             setAiInsights({
               summary: result.analysis.analysis?.summary || "",
@@ -108,8 +163,8 @@ export default function DemoPage() {
           }
         } catch (error) {
           console.error("Error analyzing document:", error);
+          setError(error instanceof Error ? error.message : 'An unexpected error occurred');
           setFile(null);
-          // Show error to user (you might want to add a toast notification here)
         } finally {
           setIsProcessing(false);
         }
@@ -134,6 +189,7 @@ export default function DemoPage() {
     });
     setProgress(0);
     setIsProcessed(false);
+    setError(null);
   };
 
   const convertFileToBase64 = (file: File): Promise<string> => {
@@ -275,48 +331,125 @@ export default function DemoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {error && (
+                    <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
+                      {error}
+                    </div>
+                  )}
                   {selectedType ? (
                     <>
-                      <Card className="relative border-2 border-dashed">
-                        <CardContent className="pt-6 pb-8">
+                      <Card className="relative border-2 border-dashed transition-all duration-200 hover:border-primary/50">
+                        <CardContent className="p-0">
                           <div
                             {...getRootProps()}
                             className={cn(
-                              "flex flex-col items-center justify-center gap-2 py-8 text-center",
-                              isDragActive && "bg-primary/5"
+                              "relative min-h-[300px] flex flex-col items-center justify-center gap-4 p-8 transition-all duration-200",
+                              "cursor-pointer rounded-lg",
+                              isDragActive ? "bg-primary/10 border-primary" : "hover:bg-primary/5",
+                              "group"
                             )}
                           >
                             {file ? (
-                              <div className="relative w-full max-w-md aspect-video">
-                                <img
-                                  src={URL.createObjectURL(file)}
-                                  alt="Document preview"
-                                  className="w-full h-full object-contain rounded-lg border"
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="absolute top-2 right-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setFile(null);
-                                  }}
-                                >
-                                  Change File
-                                </Button>
+                              <div className="relative w-full h-full flex items-center justify-center">
+                                <div className="w-full max-w-xl bg-muted/50 rounded-lg border-2 border-border p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        {selectedType === 't4' && <FileStack className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'bank' && <Building2 className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'receipt' && <ReceiptText className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'dental' && <Stethoscope className="h-5 w-5 text-primary" />}
+                                        {selectedType === 'electricity' && <BatteryCharging className="h-5 w-5 text-primary" />}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{file.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type.split('/')[1].toUpperCase()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setFile(null);
+                                        }}
+                                      >
+                                        Change File
+                                      </Button>
+                                      <Button
+                                        onClick={processDocument}
+                                        disabled={isProcessing}
+                                        size="sm"
+                                        className={cn(
+                                          "transition-all duration-500",
+                                          isProcessing ? "bg-primary/10 text-primary" : "bg-primary"
+                                        )}
+                                      >
+                                        {isProcessing ? (
+                                          <>
+                                            <div className="animate-spin mr-2">
+                                              <RefreshCcw className="h-4 w-4" />
+                                            </div>
+                                            Processing...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Zap className="mr-2 h-4 w-4" />
+                                            Process Document
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  {isProcessing && (
+                                    <motion.div
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className="mt-4"
+                                    >
+                                      <Progress value={progress} className="h-1" />
+                                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                                        Analyzing document... {progress}%
+                                      </p>
+                                    </motion.div>
+                                  )}
+                                </div>
                               </div>
                             ) : (
                               <>
-                                <Upload className="h-8 w-8 text-muted-foreground" />
-                                <div>
-                                  <p className="text-lg font-medium">
+                                <div className="relative">
+                                  <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                  <Upload className={cn(
+                                    "h-12 w-12 transition-all duration-200",
+                                    isDragActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-primary group-hover:scale-110"
+                                  )} />
+                                </div>
+                                <div className="space-y-2 text-center relative">
+                                  <p className={cn(
+                                    "text-lg font-medium transition-colors duration-200",
+                                    isDragActive ? "text-primary" : "text-foreground"
+                                  )}>
                                     Drop your {documentTypeLabels[selectedType].title.toLowerCase()} here
                                   </p>
                                   <p className="text-sm text-muted-foreground">
                                     or click to browse files
                                   </p>
+                                  <div className={cn(
+                                    "flex flex-wrap gap-2 justify-center text-xs text-muted-foreground mt-4",
+                                    isDragActive && "text-primary/70"
+                                  )}>
+                                    <span className="px-2 py-1 rounded-full bg-muted">PNG</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">JPG</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">JPEG</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">GIF</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">WebP</span>
+                                    <span className="px-2 py-1 rounded-full bg-muted">PDF</span>
+                                  </div>
                                   <p className="text-xs text-muted-foreground mt-2">
-                                    Supported formats: PNG, JPG, JPEG, GIF, WebP, PDF (max 10MB)
+                                    Maximum file size: 10MB
                                   </p>
                                 </div>
                               </>
@@ -325,49 +458,6 @@ export default function DemoPage() {
                           </div>
                         </CardContent>
                       </Card>
-                      
-                      <AnimatePresence>
-                        {file && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                          >
-                            <Card className="bg-muted/50">
-                              <CardContent className="pt-6">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-primary" />
-                                    <p className="text-sm font-medium">{file.name}</p>
-                                  </div>
-                                  <Button
-                                    onClick={processDocument}
-                                    disabled={isProcessing}
-                                    size="sm"
-                                  >
-                                    {isProcessing ? (
-                                      <>Processing...</>
-                                    ) : (
-                                      <>
-                                        <Zap className="mr-2 h-4 w-4" />
-                                        Process Document
-                                      </>
-                                    )}
-                                  </Button>
-                                </div>
-                                {isProcessing && (
-                                  <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                  >
-                                    <Progress value={progress} className="mt-4" />
-                                  </motion.div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                     </>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
@@ -646,24 +736,89 @@ export default function DemoPage() {
 const generateMarkdown = (data: any): string => {
   if (!data) return '';
 
+  const padValue = (str: string, length: number) => {
+    return str.padEnd(length, ' ');
+  };
+
+  const formatTableValue = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    // Handle multi-line addresses by replacing newlines with spaces
+    return String(value)
+      .replace(/\n\s*/g, ' ')  // Replace newlines and following whitespace with a single space
+      .replace(/\s+/g, ' ')    // Normalize multiple spaces into single space
+      .replace(/\|/g, '\\|')   // Escape pipe characters
+      .trim();                 // Remove leading/trailing whitespace
+  };
+
+  const createTable = (data: Record<string, any>, headers: string[] = ['Property', 'Value']) => {
+    // Calculate maximum widths for each column
+    const columnWidths = headers.map(header => header.length);
+    const rows = Object.entries(data).map(([key, value]) => {
+      const formattedValue = formatTableValue(value);
+      columnWidths[0] = Math.max(columnWidths[0], key.length);
+      columnWidths[1] = Math.max(columnWidths[1], formattedValue.length);
+      return [key, formattedValue];
+    });
+
+    // Add padding to ensure minimum column width
+    columnWidths[0] = Math.max(columnWidths[0], 8);  // "Property"
+    columnWidths[1] = Math.max(columnWidths[1], 5);  // "Value"
+
+    // Create header
+    let table = `| ${padValue(headers[0], columnWidths[0])} | ${padValue(headers[1], columnWidths[1])} |\n`;
+    table += `|${'-'.repeat(columnWidths[0] + 2)}|${'-'.repeat(columnWidths[1] + 2)}|\n`;
+
+    // Add rows
+    rows.forEach(([key, value]) => {
+      table += `| ${padValue(key, columnWidths[0])} | ${padValue(value, columnWidths[1])} |\n`;
+    });
+
+    return table;
+  };
+
+  const createArrayTable = (array: any[]) => {
+    if (array.length === 0) return '';
+    
+    const headers = Object.keys(array[0]);
+    const columnWidths = headers.map(header => header.length);
+
+    // Calculate maximum width for each column
+    array.forEach(item => {
+      headers.forEach((header, index) => {
+        const value = formatTableValue(item[header]);
+        columnWidths[index] = Math.max(columnWidths[index], value.length);
+      });
+    });
+
+    // Create header
+    let table = '| ' + headers.map((header, i) => padValue(header, columnWidths[i])).join(' | ') + ' |\n';
+    table += '|' + columnWidths.map(width => '-'.repeat(width + 2)).join('|') + '|\n';
+
+    // Add rows
+    array.forEach(item => {
+      table += '| ' + headers.map((header, i) => {
+        const value = formatTableValue(item[header]);
+        return padValue(value, columnWidths[i]);
+      }).join(' | ') + ' |\n';
+    });
+
+    return table;
+  };
+
   let markdown = `# ${data.documentType}\n\n`;
 
   // Add metadata section
   if (data.metadata) {
     markdown += '## Metadata\n\n';
     Object.entries(data.metadata).forEach(([key, value]: [string, any]) => {
-      markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
-      if (typeof value === 'object') {
-        // Create table header
-        markdown += '| Property | Value |\n';
-        markdown += '|----------|--------|\n';
-        Object.entries(value).forEach(([subKey, subValue]) => {
-          markdown += `| ${subKey} | ${subValue} |\n`;
-        });
-        markdown += '\n';
+      markdown += `### ${key}\n\n`;
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        markdown += createTable(value);
       } else {
-        markdown += `| ${key} | ${value} |\n\n`;
+        markdown += createTable({ [key]: value });
       }
+      markdown += '\n';
     });
   }
 
@@ -671,33 +826,13 @@ const generateMarkdown = (data: any): string => {
   if (data.content) {
     markdown += '## Content\n\n';
     Object.entries(data.content).forEach(([key, value]: [string, any]) => {
-      markdown += `### ${key.charAt(0).toUpperCase() + key.slice(1)}\n\n`;
-      if (Array.isArray(value)) {
-        // Get all possible headers from the array items
-        const headers = Array.from(new Set(value.flatMap(item => Object.keys(item))));
-        
-        // Create table header
-        markdown += `| ${headers.join(' | ')} |\n`;
-        markdown += `| ${headers.map(() => '---').join(' | ')} |\n`;
-        
-        // Add table rows
-        value.forEach((item: any) => {
-          markdown += `| ${headers.map(header => item[header] || '').join(' | ')} |\n`;
-        });
-        markdown += '\n';
+      markdown += `### ${key}\n\n`;
+      if (Array.isArray(value) && value.length > 0) {
+        markdown += createArrayTable(value);
       } else if (typeof value === 'object') {
-        // Create table header
-        markdown += '| Property | Value |\n';
-        markdown += '|----------|--------|\n';
-        Object.entries(value).forEach(([subKey, subValue]: [string, any]) => {
-          if (typeof subValue === 'object') {
-            markdown += `| ${subKey} | ${JSON.stringify(subValue, null, 2).replace(/\n/g, '<br>')} |\n`;
-          } else {
-            markdown += `| ${subKey} | ${subValue} |\n`;
-          }
-        });
-        markdown += '\n';
+        markdown += createTable(value);
       }
+      markdown += '\n';
     });
   }
 
