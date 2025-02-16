@@ -23,15 +23,9 @@ async function getUserFromToken(token: string) {
   }
 }
 
-type Props = {
-  params: {
-    documentId: string;
-  };
-};
-
 export async function DELETE(
-  request: Request,
-  { params }: Props
+  req: Request,
+  { params }: { params: { documentId: string } }
 ) {
   try {
     const cookieStore = await cookies();
