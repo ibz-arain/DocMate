@@ -3,6 +3,13 @@ import { createClient } from '@libsql/client';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 
+interface User {
+  id: number;
+  username: string;
+  password: string;
+  created_at: string;
+}
+
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL!,
   authToken: process.env.TURSO_AUTH_TOKEN!,
@@ -28,9 +35,22 @@ export async function POST(request: NextRequest) {
       args: [username]
     });
 
-    const user = result.rows[0];
+    const userRow = result.rows[0];
+    if (!userRow) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
 
-    if (!user) {
+    const user = {
+      id: userRow.id as number,
+      username: userRow.username as string,
+      password: userRow.password as string,
+      created_at: userRow.created_at as string
+    };
+
+    if (!user.password) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
