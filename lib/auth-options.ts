@@ -4,6 +4,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import { compare } from "bcrypt";
 
+interface DbUser {
+  id: number;
+  username: string;
+  password_hash: string;
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
@@ -26,9 +32,20 @@ export const authOptions: AuthOptions = {
           throw new Error("Invalid credentials");
         }
 
+        const row = user.rows[0];
+        const userRow = {
+          id: row.id as number,
+          username: row.username as string,
+          password_hash: row.password_hash as string
+        };
+
+        if (!userRow.password_hash) {
+          throw new Error("Invalid credentials");
+        }
+
         const isPasswordValid = await compare(
           credentials.password,
-          user.rows[0].password_hash
+          userRow.password_hash
         );
 
         if (!isPasswordValid) {
@@ -36,8 +53,8 @@ export const authOptions: AuthOptions = {
         }
 
         return {
-          id: String(user.rows[0].id),
-          name: user.rows[0].username,
+          id: String(userRow.id),
+          name: userRow.username,
           email: null,
         } as User;
       },
