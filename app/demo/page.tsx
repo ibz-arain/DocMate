@@ -247,8 +247,20 @@ export default function DemoPage() {
       'application/pdf': true
     } as const;
     
+    if (!file) {
+      updateCurrentDocumentState({ error: 'No file selected.' });
+      return false;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      updateCurrentDocumentState({ error: 'File size exceeds 10MB limit.' });
+      return false;
+    }
+    
     if (!(file.type in supportedTypes)) {
-      updateCurrentDocumentState({ error: `Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).` });
+      updateCurrentDocumentState({ 
+        error: `Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).` 
+      });
       return false;
     }
     return true;
@@ -442,12 +454,11 @@ export default function DemoPage() {
 
   const processDocument = async () => {
     if (!currentState.file || !selectedType) {
-      console.error("Please select a document type and upload a file first");
+      updateCurrentDocumentState({ error: "Please select a document type and upload a file first" });
       return;
     }
 
-    if (currentState.file.size > 10 * 1024 * 1024) {
-      console.error("Maximum file size is 10MB");
+    if (!validateFileType(currentState.file)) {
       return;
     }
 
@@ -465,9 +476,14 @@ export default function DemoPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        credentials: 'include', // Important for auth
         body: JSON.stringify({
-          imageData: base64Data
+          imageData: base64Data,
+          fileName: currentState.file.name,
+          fileType: currentState.file.type,
+          fileSize: currentState.file.size
         }),
       });
 

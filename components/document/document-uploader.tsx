@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Upload, RefreshCcw, Zap } from "lucide-react";
+import { Upload, RefreshCcw, Zap, FileText } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -25,11 +25,10 @@ export function DocumentUploader({
   onProcessDocument,
   onFileChange,
 }: DocumentUploaderProps) {
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: async (acceptedFiles) => {
-      const file = acceptedFiles[0];
-      if (file) {
-        onFileChange(file);
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        onFileChange(acceptedFiles[0]);
       }
     },
     accept: {
@@ -37,156 +36,120 @@ export function DocumentUploader({
       'application/pdf': ['.pdf']
     },
     maxSize: 10 * 1024 * 1024, // 10MB max size
-    multiple: false
+    multiple: false,
+    noClick: currentState.file !== null // Disable click when file is selected
   });
+
+  const handleChangeFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Open file selector dialog
+    open();
+  };
+
+  const handleProcessDocument = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onProcessDocument();
+  };
 
   if (!selectedType) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p>Please select a document type from the sidebar to begin</p>
-      </div>
+      <Card className="w-full max-w-2xl p-8 text-center">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <FileText className="h-12 w-12 text-muted-foreground" />
+          <h2 className="text-2xl font-bold">Select a Document Type</h2>
+          <p className="text-muted-foreground">
+            Please select a document type from the sidebar to begin.
+          </p>
+        </div>
+      </Card>
     );
   }
 
+  const documentLabel = documentTypeLabels[selectedType];
+
   return (
-    <Card className="border-2">
-      <CardHeader>
-        <CardTitle className="text-center text-2xl">
-          {documentTypeLabels[selectedType].title}
-        </CardTitle>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center text-muted-foreground mt-2"
-        >
-          {documentTypeLabels[selectedType].description}
-        </motion.div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {currentState.error && (
-            <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
-              {currentState.error}
-            </div>
-          )}
-          <Card className="relative border-2 border-dashed transition-all duration-200 hover:border-primary/50">
-            <CardContent className="p-0">
-              <div
-                {...getRootProps()}
-                className={cn(
-                  "relative min-h-[300px] flex flex-col items-center justify-center gap-4 p-8 transition-all duration-200",
-                  "cursor-pointer rounded-lg",
-                  isDragActive ? "bg-primary/10 border-primary" : "hover:bg-primary/5",
-                  "group"
-                )}
-              >
-                {currentState.file ? (
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <div className="w-full max-w-xl bg-muted/50 rounded-lg border-2 border-border p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Upload className="h-5 w-5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{currentState.file.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {(currentState.file.size / 1024 / 1024).toFixed(2)} MB · {currentState.file.type.split('/')[1].toUpperCase()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onFileChange(null);
-                            }}
-                          >
-                            Change File
-                          </Button>
-                          <Button
-                            onClick={onProcessDocument}
-                            disabled={isProcessing}
-                            size="sm"
-                            className={cn(
-                              "transition-all duration-500",
-                              isProcessing ? "bg-primary/10 text-primary" : "bg-primary"
-                            )}
-                          >
-                            {isProcessing ? (
-                              <>
-                                <div className="animate-spin mr-2">
-                                  <RefreshCcw className="h-4" />
-                                </div>
-                                Processing...
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="mr-2 h-4 w-4" />
-                                Process Document
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                      {isProcessing && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="mt-4"
-                        >
-                          <Progress value={progress} className="h-1" />
-                          <p className="text-xs text-muted-foreground mt-2 text-center">
-                            Analyzing document...
-                          </p>
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="relative">
-                      <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      <Upload className={cn(
-                        "h-12 w-12 transition-all duration-200",
-                        isDragActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-primary group-hover:scale-110"
-                      )} />
-                    </div>
-                    <div className="space-y-2 text-center relative">
-                      <p className={cn(
-                        "text-lg font-medium transition-colors duration-200",
-                        isDragActive ? "text-primary" : "text-foreground"
-                      )}>
-                        Drop your {documentTypeLabels[selectedType].title.toLowerCase()} here
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        or click to browse files
-                      </p>
-                      <div className={cn(
-                        "flex flex-wrap gap-2 justify-center text-xs text-muted-foreground mt-4",
-                        isDragActive && "text-primary/70"
-                      )}>
-                        <span className="px-2 py-1 rounded-full bg-muted">PNG</span>
-                        <span className="px-2 py-1 rounded-full bg-muted">JPG</span>
-                        <span className="px-2 py-1 rounded-full bg-muted">JPEG</span>
-                        <span className="px-2 py-1 rounded-full bg-muted">GIF</span>
-                        <span className="px-2 py-1 rounded-full bg-muted">WebP</span>
-                        <span className="px-2 py-1 rounded-full bg-muted">PDF</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Maximum file size: 10MB
-                      </p>
-                    </div>
-                  </>
-                )}
-                <input {...getInputProps()} />
-              </div>
-            </CardContent>
-          </Card>
+    <Card className="w-full max-w-2xl p-8">
+      <div className="space-y-6">
+        <div className="flex flex-col items-center justify-center text-center space-y-2">
+          <h2 className="text-2xl font-bold">{documentLabel.title}</h2>
+          <p className="text-muted-foreground">{documentLabel.description}</p>
         </div>
-      </CardContent>
+
+        {/* Dropzone area */}
+        <div
+          {...getRootProps()}
+          className={`
+            border-2 border-dashed rounded-lg p-8 text-center
+            ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}
+            ${currentState.file ? 'bg-muted/50' : ''}
+            transition-colors duration-200 cursor-pointer
+            hover:border-primary hover:bg-primary/5
+          `}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <Upload className={`h-12 w-12 ${currentState.file ? 'text-primary' : 'text-muted-foreground'}`} />
+            {currentState.file ? (
+              <div>
+                <p className="font-medium text-primary">{currentState.file.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {(currentState.file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="font-medium">
+                  {isDragActive ? "Drop the file here" : "Drag & drop your file here"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  or click to select a file
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground mt-4">
+                  <span className="px-2 py-1 rounded-full bg-muted">PNG</span>
+                  <span className="px-2 py-1 rounded-full bg-muted">JPG</span>
+                  <span className="px-2 py-1 rounded-full bg-muted">PDF</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Error message */}
+        {currentState.error && (
+          <div className="text-destructive text-center text-sm">
+            {currentState.error}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {currentState.file && (
+          <div className="flex justify-center space-x-4">
+            <Button
+              variant="outline"
+              onClick={handleChangeFile}
+              disabled={isProcessing}
+            >
+              Change File
+            </Button>
+            <Button
+              onClick={handleProcessDocument}
+              disabled={isProcessing}
+            >
+              {isProcessing ? "Processing..." : "Process Document"}
+            </Button>
+          </div>
+        )}
+
+        {/* Progress bar */}
+        {isProcessing && (
+          <div className="space-y-2">
+            <Progress value={progress} className="h-2" />
+            <p className="text-center text-sm text-muted-foreground">
+              Processing document... {progress}%
+            </p>
+          </div>
+        )}
+      </div>
     </Card>
   );
 } 
