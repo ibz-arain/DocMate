@@ -532,113 +532,117 @@ function HistorySection() {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0">
-              <ScrollArea className="h-full">
-                <div className="p-6">
-                  <AnimatePresence mode="wait">
-                    {activeTab === 'json' && (
-                      <motion.div
-                        key="json"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="relative"
-                      >
-                        <div className="sticky top-0 z-10 float-right pt-2 pr-2">
+            <div className="flex-1 min-h-0 relative">
+              <div className="h-[calc(100vh-12rem)]">
+                <AnimatePresence mode="wait">
+                  {activeTab === 'json' && (
+                    <motion.div
+                      key="json"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="relative h-full"
+                    >
+                      <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
+                        <div className="relative bg-muted">
                           <Button
                             size="sm"
                             variant="ghost"
+                            className="absolute right-2 top-2 z-10 opacity-70 hover:opacity-100"
                             onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedDoc?.contentJson, null, 2))}
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
+                          <pre className="p-6 text-sm break-all whitespace-pre-wrap select-text">
+                            {JSON.stringify(selectedDoc?.contentJson, null, 2)}
+                          </pre>
                         </div>
-                        <pre className="p-2 text-sm break-all whitespace-pre-wrap bg-muted min-h-full rounded-md select-text [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                          {JSON.stringify(selectedDoc?.contentJson, null, 2)}
-                        </pre>
-                      </motion.div>
-                    )}
-                    {activeTab === 'markdown' && (
-                      <motion.div
-                        key="markdown"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="relative"
-                      >
-                        <div className="sticky top-0 z-10 float-right pt-2 pr-2">
+                      </div>
+                    </motion.div>
+                  )}
+                  {activeTab === 'markdown' && (
+                    <motion.div
+                      key="markdown"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="relative h-full"
+                    >
+                      <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
+                        <div className="relative bg-muted">
                           <Button
                             size="sm"
                             variant="ghost"
+                            className="absolute right-2 top-2 z-10 opacity-70 hover:opacity-100"
                             onClick={() => navigator.clipboard.writeText(generateMarkdown(selectedDoc?.contentJson))}
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
+                          <pre className="p-6 text-sm whitespace-pre select-text">
+                            {generateMarkdown(selectedDoc?.contentJson)}
+                          </pre>
                         </div>
-                        <pre className="p-2 text-sm whitespace-pre bg-muted min-h-full rounded-md select-text [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                          {generateMarkdown(selectedDoc?.contentJson)}
-                        </pre>
-                      </motion.div>
-                    )}
-                    {activeTab === 'formatted' && (
-                      <motion.div
-                        key="formatted"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="relative"
-                      >
-                        <div className="max-h-[calc(90vh-10rem)] overflow-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                          <div className="bg-background rounded-lg p-2">
-                            {generateFormattedView(selectedDoc?.contentJson)}
-                          </div>
+                      </div>
+                    </motion.div>
+                  )}
+                  {activeTab === 'formatted' && (
+                    <motion.div
+                      key="formatted"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="relative h-full"
+                    >
+                      <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
+                        <div className="bg-background rounded-lg p-2">
+                          {generateFormattedView(selectedDoc?.contentJson)}
                         </div>
-                      </motion.div>
-                    )}
-                    {activeTab === 'analysis' && (
-                      <motion.div
-                        key="analysis"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="space-y-6"
-                      >
-                        <div className="bg-background rounded-lg p-6">
-                          <div>
-                            <h3 className="text-lg font-medium mb-2">Summary</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {selectedDoc?.summary}
-                            </p>
-                          </div>
-                          <div className="mt-6">
-                            <h3 className="text-lg font-medium mb-2">Keywords</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {selectedDoc?.keywords?.map((keyword: string, index: number) => (
-                                <span
-                                  key={index}
-                                  className="px-2 py-1 bg-primary/10 rounded-full text-sm"
-                                >
-                                  {keyword}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="mt-6">
-                            <h3 className="text-lg font-medium mb-2">Insights</h3>
-                            <div className="space-y-2">
-                              {selectedDoc?.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
-                                <p key={index} className="text-sm text-muted-foreground">
-                                  • {insight}
-                                </p>
-                              ))}
-                            </div>
+                      </div>
+                    </motion.div>
+                  )}
+                  {activeTab === 'analysis' && (
+                    <motion.div
+                      key="analysis"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-6"
+                    >
+                      <div className="bg-background rounded-lg p-6">
+                        <div>
+                          <h3 className="text-lg font-medium mb-2">Summary</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedDoc?.summary}
+                          </p>
+                        </div>
+                        <div className="mt-6">
+                          <h3 className="text-lg font-medium mb-2">Keywords</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedDoc?.keywords?.map((keyword: string, index: number) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 bg-primary/10 rounded-full text-sm"
+                              >
+                                {keyword}
+                              </span>
+                            ))}
                           </div>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </ScrollArea>
+                        <div className="mt-6">
+                          <h3 className="text-lg font-medium mb-2">Insights</h3>
+                          <div className="space-y-2">
+                            {selectedDoc?.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
+                              <p key={index} className="text-sm text-muted-foreground">
+                                • {insight}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -1325,14 +1329,14 @@ export default function DemoPage() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto pt-6 pr-6">
-          <div className="grid gap-6 pb-6 h-[calc(100vh-3rem)]" style={{ 
-            gridTemplateColumns: `minmax(0, ${isSidebarCollapsed ? '1fr' : '2fr'}) 350px`,
+          <div className="grid gap-6 pb-6 h-full" style={{ 
+            gridTemplateColumns: `minmax(0, ${isSidebarCollapsed ? '1fr' : '2fr'}) minmax(250px, 300px)`,
             transition: 'grid-template-columns 0.2s ease-in-out'
           }}>
             {/* Main Content Area */}
             <div className="space-y-4 min-w-0">
-              <Card className="">
-                <CardContent className="p-6 flex flex-col">
+              <Card className="h-full">
+                <CardContent className="pt-6 pl-6 pr-6 flex flex-col h-full">
                   <div className="flex items-center justify-end gap-2 mb-6 flex-none">
                       <Button
                         variant={activeTab === 'json' ? 'default' : 'ghost'}
@@ -1372,7 +1376,7 @@ export default function DemoPage() {
                       </Button>
                     </div>
                   <div className="flex-1 min-h-0 relative">
-                    <ScrollArea className="h-[calc(100vh-10rem)] overflow-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
+                    <div className="h-[calc(100vh-10rem)]">
                       <AnimatePresence mode="wait">
                         {activeTab === 'json' && (
                           <motion.div
@@ -1380,20 +1384,23 @@ export default function DemoPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="relative"
+                            className="relative h-full"
                           >
-                            <div className="sticky top-0 z-10 float-right pt-2 pr-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => navigator.clipboard.writeText(JSON.stringify(currentState.selectedDoc?.contentJson, null, 2))}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
+                            <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
+                              <div className="relative bg-muted">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="absolute right-2 top-2 z-10 opacity-70 hover:opacity-100"
+                                  onClick={() => navigator.clipboard.writeText(JSON.stringify(currentState.selectedDoc?.contentJson, null, 2))}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <pre className="p-6 text-sm break-all whitespace-pre-wrap select-text">
+                                  {JSON.stringify(currentState.selectedDoc?.contentJson, null, 2)}
+                                </pre>
+                              </div>
                             </div>
-                            <pre className="p-2 text-sm break-all whitespace-pre-wrap bg-muted min-h-full rounded-md select-text [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                              {JSON.stringify(currentState.selectedDoc?.contentJson, null, 2)}
-                            </pre>
                           </motion.div>
                         )}
                         {activeTab === 'markdown' && (
@@ -1402,20 +1409,23 @@ export default function DemoPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="relative"
+                            className="relative h-full"
                           >
-                            <div className="sticky top-0 z-10 float-right pt-2 pr-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => navigator.clipboard.writeText(generateMarkdown(currentState.selectedDoc?.contentJson))}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
+                            <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
+                              <div className="relative bg-muted">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="absolute right-2 top-2 z-10 opacity-70 hover:opacity-100"
+                                  onClick={() => navigator.clipboard.writeText(generateMarkdown(currentState.selectedDoc?.contentJson))}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <pre className="p-6 text-sm whitespace-pre select-text">
+                                  {generateMarkdown(currentState.selectedDoc?.contentJson)}
+                                </pre>
+                              </div>
                             </div>
-                            <pre className="p-2 text-sm whitespace-pre bg-muted min-h-full rounded-md select-text [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                              {generateMarkdown(currentState.selectedDoc?.contentJson)}
-                            </pre>
                           </motion.div>
                         )}
                         {activeTab === 'formatted' && (
@@ -1424,9 +1434,9 @@ export default function DemoPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="relative"
+                            className="relative h-full"
                           >
-                            <div className="max-h-full overflow-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:ml-1">
+                            <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
                               <div className="bg-background rounded-lg p-2">
                                 {generateFormattedView(currentState.selectedDoc?.contentJson)}
                               </div>
@@ -1475,27 +1485,27 @@ export default function DemoPage() {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                    </ScrollArea>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Info Sidebar - Fixed width */}
-            <div className="space-y-4 w-[350px]">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Document Info</CardTitle>
+            {/* Info Sidebar - Dynamic width */}
+            <div className="space-y-4 min-w-[250px] w-full overflow-auto">
+              <Card className="transition-all">
+                <CardHeader className="p-4 sm:min-h-[4rem] min-h-[3rem]">
+                  <CardTitle className="text-base">Document Info</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-4">
+                  <div className="space-y-2 sm:space-y-4">
                     <div>
                       <h3 className="text-sm font-medium">File Name</h3>
-                      <p className="text-sm text-muted-foreground">{currentState.file?.name}</p>
+                      <p className="text-sm text-muted-foreground truncate">{currentState.file?.name}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium">Document Type</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground truncate">
                         {currentState.selectedDoc?.contentJson?.documentType || "Unknown"}
                       </p>
                     </div>
@@ -1515,69 +1525,69 @@ export default function DemoPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
+              <Card className="transition-all">
+                <CardHeader className="p-4 sm:min-h-[4rem] min-h-[3rem]">
+                  <CardTitle className="text-base">Actions</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4">
                   <div className="grid grid-cols-1 gap-2">
                     <Button 
-                      className="w-full" 
+                      className="w-full text-sm h-8 sm:h-9" 
                       variant="outline"
                       onClick={downloadJson}
                     >
-                      <Code className="mr-2 h-4 w-4" />
-                      Download JSON
+                      <Code className="mr-2 h-3.5 w-3.5" />
+                      <span className="sm:inline hidden">Download</span> JSON
                     </Button>
                     <Button 
-                      className="w-full" 
+                      className="w-full text-sm h-8 sm:h-9" 
                       variant="outline"
                       onClick={downloadMarkdown}
                     >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Download Markdown
+                      <FileText className="mr-2 h-3.5 w-3.5" />
+                      <span className="sm:inline hidden">Download</span> Markdown
                     </Button>
                     <Button 
-                      className="w-full" 
+                      className="w-full text-sm h-8 sm:h-9" 
                       variant="outline"
                       onClick={downloadCsv}
                     >
-                      <TableIcon className="mr-2 h-4 w-4" />
-                      Download CSV
+                      <TableIcon className="mr-2 h-3.5 w-3.5" />
+                      <span className="sm:inline hidden">Download</span> CSV
                     </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Save Results</CardTitle>
+              <Card className="transition-all">
+                <CardHeader className="p-4 sm:min-h-[4rem] min-h-[3rem]">
+                  <CardTitle className="text-base">Save Results</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground text-center">
+                <CardContent className="p-4">
+                  <div className="space-y-2 sm:space-y-3">
+                    <p className="text-xs text-muted-foreground text-center sm:block hidden">
                       {currentState.isSaved 
                         ? "Document has been saved to your history" 
                         : "Save this document to your history for future reference"}
                     </p>
                     <Button 
-                      className="w-full flex items-center justify-center" 
+                      className="w-full flex items-center justify-center text-sm h-8 sm:h-9" 
                       onClick={handleSaveDocument}
                       disabled={!user || currentState.isSaved || isProcessing}
                     >
                       {isProcessing ? (
                         <>
-                          <RefreshCcw className="mr-2 h-4 animate-spin" />
+                          <RefreshCcw className="mr-2 h-3.5 w-3.5 animate-spin" />
                           Saving...
                         </>
                       ) : currentState.isSaved ? (
                         <>
-                          <Save className="mr-2h-4 w-4 text-green-500 " />
+                          <Save className="mr-2 h-3.5 w-3.5 text-green-500" />
                           Saved
                         </>
                       ) : (
                         <>
-                          <Save className="mr-2 h-4 w-4" />
+                          <Save className="mr-2 h-3.5 w-3.5" />
                           {user ? 'Save Document' : 'Sign in to Save'}
                         </>
                       )}
@@ -1589,10 +1599,10 @@ export default function DemoPage() {
               <Button 
                 variant="outline"
                 onClick={handleNewDocument}
-                className="w-full flex items-center justify-center"
+                className="w-full flex items-center justify-center text-sm h-8 sm:h-9"
               >
-                <RefreshCcw className="h-4 w-4 mr-2" />
-                Process New Document
+                <RefreshCcw className="h-3.5 w-3.5 mr-2" />
+                <span className="sm:inline hidden">Process</span> New Document
               </Button>
             </div>
           </div>
