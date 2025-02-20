@@ -222,7 +222,7 @@ function HistorySection() {
     if (!deleteDoc) return;
 
     try {
-      const response = await fetch(`/api/documents/${deleteDoc.id}`, {
+      const response = await fetch(`/api/documents?id=${deleteDoc.id}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: {
@@ -648,20 +648,69 @@ function HistorySection() {
 }
 
 export default function DemoPage() {
-  const [file, setFile] = useState<File | null>(null);
+  type ProcessingDocType = Exclude<DocumentType, 'history' | null>;
+
+  interface DocumentState {
+    file: File | null;
+    isProcessed: boolean;
+    selectedDoc: any;
+    extractedText: string;
+    error: string | null;
+    isSaved: boolean;
+  }
+
+  type DocumentStateMap = {
+    [K in ProcessingDocType]: DocumentState;
+  };
+
+  // Create a map to store state for each document type
+  const [documentStates, setDocumentStates] = useState<DocumentStateMap>({
+    't4': createInitialState(),
+    'bank': createInitialState(),
+    'receipt': createInitialState(),
+    'dental': createInitialState(),
+    'electricity': createInitialState(),
+  });
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
-  const [extractedText, setExtractedText] = useState<string>("");
   const [selectedType, setSelectedType] = useState<DocumentType>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDoc, setSelectedDoc] = useState<any>(null);
-  const [isProcessed, setIsProcessed] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const { user } = useAuthContext();
   const router = useRouter();
+
+  // Helper function to create initial state
+  function createInitialState(): DocumentState {
+    return {
+      file: null,
+      isProcessed: false,
+      selectedDoc: null,
+      extractedText: "",
+      error: null,
+      isSaved: false,
+    };
+  }
+
+  // Get current document state
+  const currentState = selectedType && selectedType !== 'history' 
+    ? documentStates[selectedType as ProcessingDocType] 
+    : createInitialState();
+
+  // Helper function to update state for current document type
+  const updateCurrentDocumentState = (updates: Partial<DocumentState>) => {
+    if (!selectedType || selectedType === 'history') return;
+    
+    const docType = selectedType as ProcessingDocType;
+    setDocumentStates(prev => ({
+      ...prev,
+      [docType]: {
+        ...prev[docType],
+        ...updates
+      }
+    }));
+  };
 
   const validateFileType = (file: File): boolean => {
     const supportedTypes = {
@@ -673,7 +722,7 @@ export default function DemoPage() {
     } as const;
     
     if (!(file.type in supportedTypes)) {
-      setError(`Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).`);
+      updateCurrentDocumentState({ error: `Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).` });
       return false;
     }
     return true;
@@ -681,7 +730,7 @@ export default function DemoPage() {
 
   const validateDocumentContent = (result: any): boolean => {
     if (!result.analysis?.documentType) {
-      setError('Unable to determine document type. Please ensure you uploaded the correct document.');
+      updateCurrentDocumentState({ error: 'Unable to determine document type. Please ensure you uploaded the correct document.' });
       return false;
     }
 
@@ -697,7 +746,9 @@ export default function DemoPage() {
     const expectedTypeArray = expectedTypes[selectedType as keyof typeof expectedTypes] || [];
     
     if (!expectedTypeArray.some(type => detectedType.toLowerCase().includes(type.toLowerCase()))) {
-      setError(`This document appears to be a "${detectedType}" which doesn't match the selected document type "${documentTypeLabels[selectedType as keyof typeof documentTypeLabels].title}". Please verify and try again.`);
+      updateCurrentDocumentState({ 
+        error: `This document appears to be a "${detectedType}" which doesn't match the selected document type "${documentTypeLabels[selectedType as keyof typeof documentTypeLabels].title}". Please verify and try again.` 
+      });
       return false;
     }
 
@@ -707,7 +758,7 @@ export default function DemoPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (acceptedFiles) => {
       const droppedFile = acceptedFiles[0];
-      setError(null); // Clear any previous errors
+      updateCurrentDocumentState({ error: null }); // Clear any previous errors
       
       if (droppedFile) {
         if (!validateFileType(droppedFile)) {
@@ -716,8 +767,7 @@ export default function DemoPage() {
 
         try {
           setIsProcessing(true);
-          setFile(droppedFile);
-          resetStates();
+          updateCurrentDocumentState({ file: droppedFile });
           
           const base64Data = await convertFileToBase64(droppedFile);
           const endpoint = `/api/analyze/${selectedType}`;
@@ -742,30 +792,34 @@ export default function DemoPage() {
           }
           
           if (result.success) {
-            // Validate document content before proceeding
             if (!validateDocumentContent(result)) {
-              setFile(null);
+              updateCurrentDocumentState({ file: null });
               setIsProcessing(false);
               return;
             }
 
-            setExtractedText(result.analysis.content?.text || "No text extracted");
-            setSelectedDoc({
-              summary: result.analysis.analysis?.summary || "",
-              keywords: result.analysis.analysis?.keywords || [],
-              sentiment: result.analysis.analysis?.sentiment || "",
-              rawJson: result.analysis,
-              contentJson: result.result
+            updateCurrentDocumentState({
+              extractedText: result.analysis.content?.text || "No text extracted",
+              selectedDoc: {
+                summary: result.analysis.analysis?.summary || "",
+                keywords: result.analysis.analysis?.keywords || [],
+                sentiment: result.analysis.analysis?.sentiment || "",
+                rawJson: result.analysis,
+                contentJson: result.result
+              },
+              isProcessed: true,
+              error: null
             });
-            setIsProcessed(true);
             console.log("Document processed successfully!");
           } else {
             throw new Error(result.error || 'Analysis failed');
           }
         } catch (error) {
           console.error("Error analyzing document:", error);
-          setError(error instanceof Error ? error.message : 'An unexpected error occurred');
-          setFile(null);
+          updateCurrentDocumentState({ 
+            error: error instanceof Error ? error.message : 'An unexpected error occurred',
+            file: null 
+          });
         } finally {
           setIsProcessing(false);
         }
@@ -779,114 +833,6 @@ export default function DemoPage() {
     multiple: false
   });
 
-  const resetStates = () => {
-    setExtractedText("");
-    setSelectedDoc(null);
-    setProgress(0);
-    setIsProcessed(false);
-    setError(null);
-    setIsSaved(false);
-  };
-
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const base64String = reader.result as string;
-        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
-        resolve(base64String.split(',')[1]);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const processDocument = async () => {
-    if (!file || !selectedType) {
-      console.error("Please select a document type and upload a file first");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      console.error("Maximum file size is 10MB");
-      return;
-    }
-
-    setIsProcessing(true);
-    setProgress(0);
-
-    try {
-      const base64Data = await convertFileToBase64(file);
-      setProgress(20);
-      
-      console.log("Processing started: Converting and analyzing document...");
-
-      const endpoint = `/api/analyze/${selectedType}`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: base64Data
-        }),
-      });
-
-      setProgress(60);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API request failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      setProgress(80);
-
-      if (result.success) {
-        if (!result.analysis) {
-          throw new Error("No analysis data received");
-        }
-
-        setExtractedText(result.analysis.content?.text || "No text extracted");
-        setSelectedDoc({
-          summary: result.analysis.analysis?.summary || "",
-          keywords: result.analysis.analysis?.keywords || [],
-          sentiment: result.analysis.analysis?.sentiment || "",
-          rawJson: result.analysis,
-          contentJson: result.result
-        });
-        setIsProcessed(true);
-        console.log("Document processed successfully!");
-      } else {
-        throw new Error(result.error || 'Processing failed');
-      }
-
-      setProgress(100);
-    } catch (error) {
-      console.error("Error processing document:", error);
-      let errorMessage = "An unexpected error occurred";
-      
-      if (error instanceof Error) {
-        if (error.message.includes("API request failed")) {
-          errorMessage = "Failed to connect to the analysis service";
-        } else if (error.message.includes("JSON")) {
-          errorMessage = "Failed to process the document results";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
-      console.error(errorMessage);
-      setProgress(0);
-    }
-    setIsProcessing(false);
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    console.log("JSON data copied to clipboard");
-  };
-
   const handleDemoSelect = (demoType: string) => {
     if (demoType === 'history') {
       setShowHistory(true);
@@ -894,39 +840,41 @@ export default function DemoPage() {
       return;
     }
     setShowHistory(false);
-    // Set the selected type and reset states
     setSelectedType(demoType as DocumentType);
-    resetStates();
-    setFile(null);
+  };
+
+  const handleNewDocument = () => {
+    if (!selectedType) return;
+    setDocumentStates(prev => ({
+      ...prev,
+      [selectedType]: createInitialState()
+    }));
   };
 
   const handleSaveDocument = async () => {
-    if (!user || !selectedType || !selectedDoc?.contentJson || isSaved) return;
+    if (!user || !selectedType || !currentState.selectedDoc?.contentJson || currentState.isSaved) return;
 
     try {
       setIsProcessing(true);
-      // Combine the content and analysis data
       const contentWithAnalysis = {
-        ...selectedDoc.contentJson,
+        ...currentState.selectedDoc.contentJson,
         analysis: {
-          summary: selectedDoc.summary,
-          keywords: selectedDoc.keywords,
-          insights: selectedDoc.rawJson?.analysis?.insights || [],
-          confidenceScore: selectedDoc.rawJson?.analysis?.confidenceScore || 0,
-          documentType: selectedDoc.rawJson?.analysis?.documentType || selectedType
+          summary: currentState.selectedDoc.summary,
+          keywords: currentState.selectedDoc.keywords,
+          insights: currentState.selectedDoc.rawJson?.analysis?.insights || [],
+          confidenceScore: currentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
+          documentType: currentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
         }
       };
 
       const documentData = {
-        title: file?.name || `${selectedType.toUpperCase()} Document`,
+        title: currentState.file?.name || `${selectedType.toUpperCase()} Document`,
         type: selectedType,
         date: new Date().toISOString(),
-        confidence: selectedDoc.rawJson?.analysis?.confidenceScore ? 
-          Math.round(selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
+        confidence: currentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 
+          Math.round(currentState.selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
         contentJson: contentWithAnalysis
       };
-
-      console.log('Saving document with data:', documentData);
 
       const response = await fetch('/api/documents', {
         method: 'POST',
@@ -939,14 +887,10 @@ export default function DemoPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Server response:', errorData);
         throw new Error(errorData.error || 'Failed to save document');
       }
 
-      const result = await response.json();
-      console.log('Document saved successfully:', result);
-
-      setIsSaved(true);
+      updateCurrentDocumentState({ isSaved: true });
       toast({
         title: "Success",
         description: "Document saved successfully",
@@ -964,12 +908,12 @@ export default function DemoPage() {
   };
 
   const downloadJson = () => {
-    const jsonString = JSON.stringify(selectedDoc?.contentJson, null, 2);
+    const jsonString = JSON.stringify(currentState.selectedDoc?.contentJson, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${file?.name || 'document'}.json`;
+    a.download = `${currentState.file?.name || 'document'}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -977,12 +921,12 @@ export default function DemoPage() {
   };
 
   const downloadMarkdown = () => {
-    const markdownContent = generateMarkdown(selectedDoc?.contentJson);
+    const markdownContent = generateMarkdown(currentState.selectedDoc?.contentJson);
     const blob = new Blob([markdownContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${file?.name || 'document'}.md`;
+    a.download = `${currentState.file?.name || 'document'}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -990,7 +934,7 @@ export default function DemoPage() {
   };
 
   const downloadCsv = () => {
-    const content = selectedDoc?.contentJson;
+    const content = currentState.selectedDoc?.contentJson;
     let csvContent = '';
     
     // Add metadata
@@ -1033,11 +977,109 @@ export default function DemoPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${file?.name || 'document'}.csv`;
+    a.download = `${currentState.file?.name || 'document'}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+        resolve(base64String.split(',')[1]);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const processDocument = async () => {
+    if (!currentState.file || !selectedType) {
+      console.error("Please select a document type and upload a file first");
+      return;
+    }
+
+    if (currentState.file.size > 10 * 1024 * 1024) {
+      console.error("Maximum file size is 10MB");
+      return;
+    }
+
+    setIsProcessing(true);
+    setProgress(0);
+
+    try {
+      const base64Data = await convertFileToBase64(currentState.file);
+      setProgress(20);
+      
+      console.log("Processing started: Converting and analyzing document...");
+
+      const endpoint = `/api/analyze/${selectedType}`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: base64Data
+        }),
+      });
+
+      setProgress(60);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API request failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setProgress(80);
+
+      if (result.success) {
+        if (!result.analysis) {
+          throw new Error("No analysis data received");
+        }
+
+        updateCurrentDocumentState({
+          extractedText: result.analysis.content?.text || "No text extracted",
+          selectedDoc: {
+            summary: result.analysis.analysis?.summary || "",
+            keywords: result.analysis.analysis?.keywords || [],
+            sentiment: result.analysis.analysis?.sentiment || "",
+            rawJson: result.analysis,
+            contentJson: result.result
+          },
+          isProcessed: true
+        });
+        console.log("Document processed successfully!");
+      } else {
+        throw new Error(result.error || 'Processing failed');
+      }
+
+      setProgress(100);
+    } catch (error) {
+      console.error("Error processing document:", error);
+      let errorMessage = "An unexpected error occurred";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("API request failed")) {
+          errorMessage = "Failed to connect to the analysis service";
+        } else if (error.message.includes("JSON")) {
+          errorMessage = "Failed to process the document results";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      updateCurrentDocumentState({ error: errorMessage });
+      console.error(errorMessage);
+      setProgress(0);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (showHistory) {
@@ -1097,7 +1139,7 @@ export default function DemoPage() {
     );
   }
 
-  if (!isProcessed) {
+  if (!currentState.isProcessed) {
     return (
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar
@@ -1130,9 +1172,9 @@ export default function DemoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {error && (
+                  {currentState.error && (
                     <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
-                      {error}
+                      {currentState.error}
                     </div>
                   )}
                   {selectedType ? (
@@ -1148,7 +1190,7 @@ export default function DemoPage() {
                               "group"
                             )}
                           >
-                            {file ? (
+                            {currentState.file ? (
                               <div className="relative w-full h-full flex items-center justify-center">
                                 <div className="w-full max-w-xl bg-muted/50 rounded-lg border-2 border-border p-4">
                                   <div className="flex items-center justify-between">
@@ -1161,9 +1203,9 @@ export default function DemoPage() {
                                         {selectedType === 'electricity' && <BatteryCharging className="h-5 w-5 text-primary" />}
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{file.name}</p>
+                                        <p className="text-sm font-medium truncate">{currentState.file.name}</p>
                                         <p className="text-xs text-muted-foreground">
-                                          {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type.split('/')[1].toUpperCase()}
+                                          {(currentState.file.size / 1024 / 1024).toFixed(2)} MB · {currentState.file.type.split('/')[1].toUpperCase()}
                                         </p>
                                       </div>
                                     </div>
@@ -1173,7 +1215,7 @@ export default function DemoPage() {
                                         size="sm"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setFile(null);
+                                          updateCurrentDocumentState({ file: null });
                                         }}
                                       >
                                         Change File
@@ -1344,13 +1386,13 @@ export default function DemoPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedDoc?.contentJson, null, 2))}
+                                onClick={() => navigator.clipboard.writeText(JSON.stringify(currentState.selectedDoc?.contentJson, null, 2))}
                               >
                                 <Copy className="h-4 w-4" />
                               </Button>
                             </div>
                             <pre className="p-2 text-sm break-all whitespace-pre-wrap bg-muted min-h-full rounded-md select-text [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                              {JSON.stringify(selectedDoc?.contentJson, null, 2)}
+                              {JSON.stringify(currentState.selectedDoc?.contentJson, null, 2)}
                             </pre>
                           </motion.div>
                         )}
@@ -1366,13 +1408,13 @@ export default function DemoPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => navigator.clipboard.writeText(generateMarkdown(selectedDoc?.contentJson))}
+                                onClick={() => navigator.clipboard.writeText(generateMarkdown(currentState.selectedDoc?.contentJson))}
                               >
                                 <Copy className="h-4 w-4" />
                               </Button>
                             </div>
                             <pre className="p-2 text-sm whitespace-pre bg-muted min-h-full rounded-md select-text [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                              {generateMarkdown(selectedDoc?.contentJson)}
+                              {generateMarkdown(currentState.selectedDoc?.contentJson)}
                             </pre>
                           </motion.div>
                         )}
@@ -1386,7 +1428,7 @@ export default function DemoPage() {
                           >
                             <div className="max-h-full overflow-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:ml-1">
                               <div className="bg-background rounded-lg p-2">
-                                {generateFormattedView(selectedDoc?.contentJson)}
+                                {generateFormattedView(currentState.selectedDoc?.contentJson)}
                               </div>
                             </div>
                           </motion.div>
@@ -1403,13 +1445,13 @@ export default function DemoPage() {
                               <div>
                                 <h3 className="text-lg font-medium mb-2">Summary</h3>
                                 <p className="text-sm text-muted-foreground">
-                                  {selectedDoc?.summary}
+                                  {currentState.selectedDoc?.summary}
                                 </p>
                               </div>
                               <div className="mt-6">
                                 <h3 className="text-lg font-medium mb-2">Keywords</h3>
                                 <div className="flex flex-wrap gap-2">
-                                  {selectedDoc?.keywords?.map((keyword: string, index: number) => (
+                                  {currentState.selectedDoc?.keywords?.map((keyword: string, index: number) => (
                                     <span
                                       key={index}
                                       className="px-2 py-1 bg-primary/10 rounded-full text-sm"
@@ -1422,7 +1464,7 @@ export default function DemoPage() {
                               <div className="mt-6">
                                 <h3 className="text-lg font-medium mb-2">Insights</h3>
                                 <div className="space-y-2">
-                                  {selectedDoc?.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
+                                  {currentState.selectedDoc?.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
                                     <p key={index} className="text-sm text-muted-foreground">
                                       • {insight}
                                     </p>
@@ -1449,24 +1491,24 @@ export default function DemoPage() {
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-sm font-medium">File Name</h3>
-                      <p className="text-sm text-muted-foreground">{file?.name}</p>
+                      <p className="text-sm text-muted-foreground">{currentState.file?.name}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium">Document Type</h3>
                       <p className="text-sm text-muted-foreground">
-                        {selectedDoc?.contentJson?.documentType || "Unknown"}
+                        {currentState.selectedDoc?.contentJson?.documentType || "Unknown"}
                       </p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium">Page Count</h3>
                       <p className="text-sm text-muted-foreground">
-                        {selectedDoc?.contentJson?.metadata?.pageCount || "N/A"}
+                        {currentState.selectedDoc?.contentJson?.metadata?.pageCount || "N/A"}
                       </p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium">Confidence Score</h3>
                       <p className="text-sm text-muted-foreground">
-                        {(selectedDoc?.rawJson?.analysis?.confidenceScore * 100).toFixed(1)}%
+                        {(currentState.selectedDoc?.rawJson?.analysis?.confidenceScore * 100).toFixed(1)}%
                       </p>
                     </div>
                   </div>
@@ -1514,21 +1556,21 @@ export default function DemoPage() {
                 <CardContent>
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground text-center">
-                      {isSaved 
+                      {currentState.isSaved 
                         ? "Document has been saved to your history" 
                         : "Save this document to your history for future reference"}
                     </p>
                     <Button 
                       className="w-full flex items-center justify-center" 
                       onClick={handleSaveDocument}
-                      disabled={!user || isSaved || isProcessing}
+                      disabled={!user || currentState.isSaved || isProcessing}
                     >
                       {isProcessing ? (
                         <>
                           <RefreshCcw className="mr-2 h-4 animate-spin" />
                           Saving...
                         </>
-                      ) : isSaved ? (
+                      ) : currentState.isSaved ? (
                         <>
                           <Save className="mr-2h-4 w-4 text-green-500 " />
                           Saved
@@ -1546,10 +1588,7 @@ export default function DemoPage() {
 
               <Button 
                 variant="outline"
-                onClick={() => {
-                  setFile(null);
-                  resetStates();
-                }}
+                onClick={handleNewDocument}
                 className="w-full flex items-center justify-center"
               >
                 <RefreshCcw className="h-4 w-4 mr-2" />
