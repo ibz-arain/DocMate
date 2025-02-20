@@ -206,10 +206,20 @@ export default function DemoPage() {
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
   const [selectedType, setSelectedType] = useState<DocumentType>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sidebarCollapsed');
+      return stored ? JSON.parse(stored) : false;
+    }
+    return false;
+  });
   const [showHistory, setShowHistory] = useState(false);
   const { user } = useAuthContext();
   const router = useRouter();
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   const currentState = selectedType && selectedType !== 'history' 
     ? documentStates[selectedType as ProcessingDocType] 
@@ -521,14 +531,14 @@ export default function DemoPage() {
   };
 
   if (showHistory) {
-    return (
-      <div className="flex h-full overflow-hidden bg-background">
-        <CustomSidebar
-          isCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
-          onSelectDemo={handleDemoSelect}
-          selectedType="history"
-        />
+      return (
+        <div className="flex h-full overflow-hidden bg-background">
+          <CustomSidebar
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={setIsSidebarCollapsed}
+            onSelectDemo={handleDemoSelect}
+            selectedType="history"
+          />
         <HistorySection user={user} />
       </div>
     );
