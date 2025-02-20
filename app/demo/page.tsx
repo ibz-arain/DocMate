@@ -544,7 +544,7 @@ function HistorySection() {
                       className="relative h-full"
                     >
                       <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
-                        <div className="relative bg-muted">
+                        <div className="relative bg-muted min-w-[600px]">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -1328,53 +1328,56 @@ export default function DemoPage() {
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto pt-6 pr-6">
-          <div className="grid gap-6 pb-6 h-full" style={{ 
-            gridTemplateColumns: `minmax(0, ${isSidebarCollapsed ? '1fr' : '2fr'}) minmax(250px, 300px)`,
+        <main className="flex-1 overflow-y-auto md:pt-6 md:pr-6 md:px-0 pt-14 px-4">
+          <div className="grid gap-6 pb-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1" style={{ 
             transition: 'grid-template-columns 0.2s ease-in-out'
           }}>
             {/* Main Content Area */}
-            <div className="space-y-4 min-w-0">
+            <div className="space-y-4 min-w-0 h-full">
               <Card className="h-full">
                 <CardContent className="pt-6 pl-6 pr-6 flex flex-col h-full">
-                  <div className="flex items-center justify-end gap-2 mb-6 flex-none">
-                      <Button
-                        variant={activeTab === 'json' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('json')}
-                        className="flex items-center gap-2"
-                      >
-                        <Code className="h-4 w-4" />
-                        JSON
-                      </Button>
-                      <Button
-                        variant={activeTab === 'markdown' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('markdown')}
-                        className="flex items-center gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Markdown
-                      </Button>
-                      <Button
-                        variant={activeTab === 'formatted' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('formatted')}
-                        className="flex items-center gap-2"
-                      >
+                  <div className="flex items-center justify-end gap-1 sm:gap-2 mb-6 flex-none overflow-x-auto pb-2 -mx-6 px-6">
+                    <Button
+                      variant={activeTab === 'json' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setActiveTab('json')}
+                      className="flex items-center gap-1 sm:gap-2 whitespace-nowrap"
+                    >
+                      <Code className="h-4 w-4" />
+                      <span className="hidden sm:inline">JSON</span>
+                      <span className="sm:hidden">JS</span>
+                    </Button>
+                    <Button
+                      variant={activeTab === 'markdown' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setActiveTab('markdown')}
+                      className="flex items-center gap-1 sm:gap-2 whitespace-nowrap"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="hidden sm:inline">Markdown</span>
+                      <span className="sm:hidden">MD</span>
+                    </Button>
+                    <Button
+                      variant={activeTab === 'formatted' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setActiveTab('formatted')}
+                      className="flex items-center gap-1 sm:gap-2 whitespace-nowrap"
+                    >
                       <TableIcon className="h-4 w-4" />
-                        Formatted
-                      </Button>
-                      <Button
-                        variant={activeTab === 'analysis' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('analysis')}
-                        className="flex items-center gap-2"
-                      >
-                        <Brain className="h-4 w-4" />
-                        Analysis
-                      </Button>
-                    </div>
+                      <span className="hidden sm:inline">Formatted</span>
+                      <span className="sm:hidden">FMT</span>
+                    </Button>
+                    <Button
+                      variant={activeTab === 'analysis' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setActiveTab('analysis')}
+                      className="flex items-center gap-1 sm:gap-2 whitespace-nowrap"
+                    >
+                      <Brain className="h-4 w-4" />
+                      <span className="hidden sm:inline">Analysis</span>
+                      <span className="sm:hidden">AI</span>
+                    </Button>
+                  </div>
                   <div className="flex-1 min-h-0 relative">
                     <div className="h-[calc(100vh-10rem)]">
                       <AnimatePresence mode="wait">
@@ -1387,7 +1390,7 @@ export default function DemoPage() {
                             className="relative h-full"
                           >
                             <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
-                              <div className="relative bg-muted">
+                              <div className="relative bg-muted min-w-[600px]">
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -1492,7 +1495,7 @@ export default function DemoPage() {
             </div>
 
             {/* Info Sidebar - Dynamic width */}
-            <div className="space-y-4 min-w-[250px] w-full overflow-auto">
+            <div className="space-y-4 min-w-0 w-full lg:overflow-auto">
               <Card className="transition-all">
                 <CardHeader className="p-4 sm:min-h-[4rem] min-h-[3rem]">
                   <CardTitle className="text-base">Document Info</CardTitle>
@@ -1604,6 +1607,8 @@ export default function DemoPage() {
                 <RefreshCcw className="h-3.5 w-3.5 mr-2" />
                 <span className="sm:inline hidden">Process</span> New Document
               </Button>
+              <p>
+              </p>
             </div>
           </div>
         </main>
