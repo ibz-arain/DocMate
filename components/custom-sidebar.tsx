@@ -213,13 +213,15 @@ export function CustomSidebar({
     <TooltipProvider delayDuration={0}>
       {/* Mobile Menu Button - Only visible on mobile */}
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
         className={cn(
-          "fixed top-4 left-4 z-[100] md:hidden",
-          "h-12 w-12 rounded-full",
-          "bg-background shadow-md border",
-          "hover:scale-105 hover:shadow-lg transition-all",
+          "fixed top-3 left-3 z-[100] md:hidden",
+          "h-10 w-10",
+          "bg-background/80 backdrop-blur-sm",
+          "border shadow-sm",
+          "hover:bg-accent",
+          "transition-all duration-200",
           isMobileOpen && "hidden"
         )}
         onClick={() => setIsMobileOpen(true)}
@@ -230,19 +232,18 @@ export function CustomSidebar({
       {/* Mobile Sidebar */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
         <SheetContent 
-          side="bottom"
+          side="left"
           className={cn(
             "p-0 border bg-background/80 backdrop-blur-lg",
-            "rounded-xl shadow-lg",
-            "w-[90%] max-w-[400px]",
-            "h-[90vh] max-h-[600px]",
-            "transition-opacity duration-20",
+            "w-[85%] max-w-[300px]",
+            "h-full",
+            "transition-opacity duration-200",
             "data-[state=open]:opacity-100",
             "data-[state=closed]:opacity-0"
           )}
         >
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-          <div className="h-full flex flex-col rounded-xl overflow-hidden">
+          <div className="h-full flex flex-col overflow-hidden">
             {/* Header */}
             <div className="h-14 flex items-center px-4 border-b">
               <div className="font-semibold text-lg text-primary">
