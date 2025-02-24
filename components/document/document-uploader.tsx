@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Upload, RefreshCcw, Zap, FileText } from "lucide-react";
+import { Upload, RefreshCcw, Zap, FileText, ReceiptText, Building2, Stethoscope, BatteryCharging } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,16 @@ interface DocumentUploaderProps {
   progress: number;
   onProcessDocument: () => void;
   onFileChange: (file: File | null) => void;
+  onSelectType?: (type: DocumentType) => void;
 }
+
+const documentTypeIcons = {
+  't4': <FileText className="h-8 w-8" />,
+  'bank': <Building2 className="h-8 w-8" />,
+  'receipt': <ReceiptText className="h-8 w-8" />,
+  'dental': <Stethoscope className="h-8 w-8" />,
+  'electricity': <BatteryCharging className="h-8 w-8" />,
+};
 
 export function DocumentUploader({
   selectedType,
@@ -24,6 +33,7 @@ export function DocumentUploader({
   progress,
   onProcessDocument,
   onFileChange,
+  onSelectType,
 }: DocumentUploaderProps) {
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop: (acceptedFiles) => {
@@ -42,7 +52,6 @@ export function DocumentUploader({
 
   const handleChangeFile = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Open file selector dialog
     open();
   };
 
@@ -53,15 +62,31 @@ export function DocumentUploader({
 
   if (!selectedType) {
     return (
-      <Card className="w-full max-w-2xl p-8 text-center">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <FileText className="h-12 w-12 text-muted-foreground" />
-          <h2 className="text-2xl font-bold">Select a Document Type</h2>
-          <p className="text-muted-foreground">
-            Please select a document type from the sidebar to begin.
-          </p>
+      <div className="w-full max-w-5xl mx-auto p-8">
+        <h2 className="text-3xl font-bold text-center mb-8">Select a Document Type</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Object.entries(documentTypeLabels).map(([type, info]) => {
+            if (type === 'history') return null;
+            return (
+              <Card
+                key={type}
+                className="p-6 hover:bg-muted/50 cursor-pointer transition-colors group"
+                onClick={() => onSelectType?.(type as DocumentType)}
+              >
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                    {documentTypeIcons[type as keyof typeof documentTypeIcons]}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">{info.title}</h3>
+                    <p className="text-muted-foreground text-sm">{info.description}</p>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
-      </Card>
+      </div>
     );
   }
 

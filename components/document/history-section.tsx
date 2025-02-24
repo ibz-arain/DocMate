@@ -205,17 +205,17 @@ export function HistorySection({ user }: HistorySectionProps) {
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
-          <div className="flex gap-6 h-full">
+          <div className="grid gap-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
             <div className="flex-1 min-w-0">
               <Card className="h-full">
                 <CardContent className="p-0">
-                  <div className="rounded-md border h-full">
+                  <div className="rounded-md border h-full overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Document</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Date</TableHead>
+                          <TableHead className="hidden md:table-cell">Type</TableHead>
+                          <TableHead className="hidden md:table-cell">Date</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -230,11 +230,17 @@ export function HistorySection({ user }: HistorySectionProps) {
                                   {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
                                   {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
                                   {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                                  <span>{doc.title}</span>
+                                  <span className="truncate">{doc.title}</span>
+                                  <div className="flex items-center gap-2 md:hidden">
+                                    <span className="text-xs text-muted-foreground capitalize">({doc.type})</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {new Date(doc.date).toLocaleDateString()}
+                                    </span>
+                                  </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="capitalize">{doc.type}</TableCell>
-                              <TableCell>{new Date(doc.date).toLocaleDateString()}</TableCell>
+                              <TableCell className="hidden md:table-cell capitalize">{doc.type}</TableCell>
+                              <TableCell className="hidden md:table-cell">{new Date(doc.date).toLocaleDateString()}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
                                   <Button
@@ -273,7 +279,7 @@ export function HistorySection({ user }: HistorySectionProps) {
               </Card>
             </div>
 
-            <div className="w-80 flex-none space-y-6">
+            <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Document Types</CardTitle>
@@ -366,18 +372,18 @@ export function HistorySection({ user }: HistorySectionProps) {
         <DialogContent className="max-w-5xl w-[90vw] h-[90vh] p-0 [&>button]:hidden">
           <div className="flex flex-col h-full">
             <div className="flex-none p-6 border-b bg-background">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <DialogTitle className="text-2xl font-bold">
                   {selectedDoc?.title || "Document Preview"}
                 </DialogTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant={activeTab === 'json' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setActiveTab('json')}
                   >
                     <Code className="h-4 w-4 mr-2" />
-                    JSON
+                    <span className="hidden md:inline">JSON</span>
                   </Button>
                   <Button
                     variant={activeTab === 'markdown' ? 'default' : 'ghost'}
@@ -385,7 +391,7 @@ export function HistorySection({ user }: HistorySectionProps) {
                     onClick={() => setActiveTab('markdown')}
                   >
                     <FileText className="h-4 w-4 mr-2" />
-                    Markdown
+                    <span className="hidden md:inline">Markdown</span>
                   </Button>
                   <Button
                     variant={activeTab === 'formatted' ? 'default' : 'ghost'}
@@ -393,7 +399,7 @@ export function HistorySection({ user }: HistorySectionProps) {
                     onClick={() => setActiveTab('formatted')}
                   >
                     <Table2Icon className="h-4 w-4 mr-2" />
-                    Formatted
+                    <span className="hidden md:inline">Formatted</span>
                   </Button>
                   <Button
                     variant={activeTab === 'analysis' ? 'default' : 'ghost'}
@@ -401,7 +407,7 @@ export function HistorySection({ user }: HistorySectionProps) {
                     onClick={() => setActiveTab('analysis')}
                   >
                     <Brain className="h-4 w-4 mr-2" />
-                    Analysis
+                    <span className="hidden md:inline">Analysis</span>
                   </Button>
                   <DialogClose asChild>
                     <Button

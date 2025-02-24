@@ -577,6 +577,10 @@ export default function DemoPage() {
             progress={progress}
             onProcessDocument={processDocument}
             onFileChange={(file: File | null) => updateCurrentDocumentState({ file, error: null })}
+            onSelectType={(type) => {
+              setShowHistory(false);
+              setSelectedType(type);
+            }}
           />
         </div>
       </div>
