@@ -73,7 +73,7 @@ export function DocumentViewer({
                   className="relative h-full"
                 >
                   <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
-                    <div className="relative bg-muted min-w-[600px]">
+                    <div className="relative bg-muted min-w-[600px] w-full">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -82,7 +82,7 @@ export function DocumentViewer({
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
-                      <pre className="p-6 text-sm break-all whitespace-pre-wrap select-text">
+                      <pre className="p-6 text-sm whitespace-pre-wrap break-words select-text w-full bg-muted">
                         {JSON.stringify(currentState.selectedDoc?.contentJson, null, 2)}
                       </pre>
                     </div>
@@ -98,7 +98,7 @@ export function DocumentViewer({
                   className="relative h-full"
                 >
                   <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
-                    <div className="relative bg-muted">
+                    <div className="relative bg-muted min-w-[600px] w-full">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -107,7 +107,7 @@ export function DocumentViewer({
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
-                      <pre className="p-6 text-sm whitespace-pre select-text">
+                      <pre className="p-6 text-sm whitespace-pre select-text w-full bg-muted overflow-x-auto">
                         {generateMarkdown(currentState.selectedDoc?.contentJson)}
                       </pre>
                     </div>
