@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Code, FileText, TableIcon, Save, RefreshCcw } from "lucide-react";
 import { DocumentState } from "@/types/document";
+import { cn } from "@/lib/utils";
 
 interface DocumentInfoProps {
   currentState: DocumentState;
@@ -65,7 +66,11 @@ export function DocumentInfo({
         <CardContent className="p-4">
           <div className="grid grid-cols-1 gap-2">
             <Button 
-              className="w-full text-sm h-8 sm:h-9" 
+              className={cn(
+                "w-full text-sm h-8 sm:h-9",
+                "hover:bg-primary/10 hover:text-primary",
+                "active:bg-primary/20"
+              )}
               variant="outline"
               onClick={onDownloadJson}
             >
@@ -73,7 +78,11 @@ export function DocumentInfo({
               <span className="sm:inline hidden">Download</span> JSON
             </Button>
             <Button 
-              className="w-full text-sm h-8 sm:h-9" 
+              className={cn(
+                "w-full text-sm h-8 sm:h-9",
+                "hover:bg-primary/10 hover:text-primary",
+                "active:bg-primary/20"
+              )}
               variant="outline"
               onClick={onDownloadMarkdown}
             >
@@ -81,7 +90,11 @@ export function DocumentInfo({
               <span className="sm:inline hidden">Download</span> Markdown
             </Button>
             <Button 
-              className="w-full text-sm h-8 sm:h-9" 
+              className={cn(
+                "w-full text-sm h-8 sm:h-9",
+                "hover:bg-primary/10 hover:text-primary",
+                "active:bg-primary/20"
+              )}
               variant="outline"
               onClick={onDownloadCsv}
             >
@@ -104,7 +117,12 @@ export function DocumentInfo({
                 : "Save this document to your history for future reference"}
             </p>
             <Button 
-              className="w-full flex items-center justify-center text-sm h-8 sm:h-9" 
+              className={cn(
+                "w-full flex items-center justify-center text-sm h-8 sm:h-9",
+                "bg-primary/10 text-primary",
+                "hover:bg-primary/20",
+                currentState.isSaved && "opacity-50 cursor-not-allowed"
+              )}
               onClick={onSaveDocument}
               disabled={!user || currentState.isSaved || isProcessing}
             >
@@ -115,7 +133,7 @@ export function DocumentInfo({
                 </>
               ) : currentState.isSaved ? (
                 <>
-                  <Save className="mr-2 h-3.5 w-3.5 text-green-500" />
+                  <Save className="mr-2 h-3.5 w-3.5" />
                   Saved
                 </>
               ) : (
@@ -132,7 +150,11 @@ export function DocumentInfo({
       <Button 
         variant="outline"
         onClick={onNewDocument}
-        className="w-full flex items-center justify-center text-sm h-8 sm:h-9"
+        className={cn(
+          "w-full flex items-center justify-center text-sm h-8 sm:h-9",
+          "hover:bg-primary/10 hover:text-primary",
+          "active:bg-primary/20"
+        )}
       >
         <RefreshCcw className="h-3.5 w-3.5 mr-2" />
         <span className="sm:inline hidden">Process</span> New Document

@@ -35,6 +35,7 @@ import { useRouter } from "next/navigation";
 import { LoadingSkeleton } from "./loading-skeleton";
 import { generateMarkdown, generateFormattedView } from "@/lib/document-utils";
 import { SavedDocument, DocumentType } from "@/types/document";
+import { cn } from "@/lib/utils";
 
 interface HistorySectionProps {
   user: any;
@@ -110,11 +111,21 @@ export function HistorySection({ user }: HistorySectionProps) {
   };
 
   const handleViewDocument = (doc: any) => {
+    const contentJson = typeof doc.content_json === 'string' 
+      ? JSON.parse(doc.content_json) 
+      : doc.content_json;
+
     const mappedDoc = {
       ...doc,
-      contentJson: typeof doc.content_json === 'string' 
-        ? JSON.parse(doc.content_json) 
-        : doc.content_json
+      contentJson,
+      summary: contentJson.analysis?.summary || "",
+      keywords: contentJson.analysis?.keywords || [],
+      rawJson: {
+        analysis: {
+          insights: contentJson.analysis?.insights || [],
+          confidenceScore: contentJson.analysis?.confidenceScore || 0
+        }
+      }
     };
     setSelectedDoc(mappedDoc);
     setIsPreviewOpen(true);
@@ -169,7 +180,7 @@ export function HistorySection({ user }: HistorySectionProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col overflow-auto bg-background">
       <div className="flex-none p-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -201,11 +212,11 @@ export function HistorySection({ user }: HistorySectionProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden p-6">
+      <div className="flex-1 overflow-auto p-6">
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
-          <div className="grid gap-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
+          <div className="grid gap-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1 min-h-[calc(100vh-16rem)]">
             <div className="flex-1 min-w-0">
               <Card className="h-full">
                 <CardContent className="p-0">
@@ -247,6 +258,7 @@ export function HistorySection({ user }: HistorySectionProps) {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleViewDocument(doc)}
+                                    className="bg-primary/10 text-primary hover:bg-primary/20"
                                   >
                                     <FileSearch className="h-4 w-4" />
                                   </Button>
@@ -254,6 +266,7 @@ export function HistorySection({ user }: HistorySectionProps) {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setDeleteDoc(doc)}
+                                    className="bg-primary/10 text-primary hover:bg-primary/20"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -369,45 +382,81 @@ export function HistorySection({ user }: HistorySectionProps) {
       </AlertDialog>
 
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-5xl w-[90vw] h-[90vh] p-0 [&>button]:hidden">
-          <div className="flex flex-col h-full">
+        <DialogContent className="max-w-5xl w-[95vw] h-[95vh] p-0 overflow-hidden [&>button]:hidden">
+          <div className="flex flex-col h-full overflow-hidden">
             <div className="flex-none p-6 border-b bg-background">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <DialogTitle className="text-2xl font-bold">
+                <DialogTitle className="text-2xl font-bold truncate">
                   {selectedDoc?.title || "Document Preview"}
                 </DialogTitle>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-2 -mx-6 px-6">
                   <Button
                     variant={activeTab === 'json' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setActiveTab('json')}
+                    className={cn(
+                      "flex items-center gap-1 sm:gap-2 whitespace-nowrap",
+                      activeTab === 'json' ? (
+                        "bg-primary/10 text-primary hover:bg-primary/20"
+                      ) : (
+                        "hover:bg-primary/10 hover:text-primary"
+                      )
+                    )}
                   >
-                    <Code className="h-4 w-4 mr-2" />
-                    <span className="hidden md:inline">JSON</span>
+                    <Code className="h-4 w-4" />
+                    <span className="hidden sm:inline">JSON</span>
+                    <span className="sm:hidden">JS</span>
                   </Button>
                   <Button
                     variant={activeTab === 'markdown' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setActiveTab('markdown')}
+                    className={cn(
+                      "flex items-center gap-1 sm:gap-2 whitespace-nowrap",
+                      activeTab === 'markdown' ? (
+                        "bg-primary/10 text-primary hover:bg-primary/20"
+                      ) : (
+                        "hover:bg-primary/10 hover:text-primary"
+                      )
+                    )}
                   >
-                    <FileText className="h-4 w-4 mr-2" />
-                    <span className="hidden md:inline">Markdown</span>
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden sm:inline">Markdown</span>
+                    <span className="sm:hidden">MD</span>
                   </Button>
                   <Button
                     variant={activeTab === 'formatted' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setActiveTab('formatted')}
+                    className={cn(
+                      "flex items-center gap-1 sm:gap-2 whitespace-nowrap",
+                      activeTab === 'formatted' ? (
+                        "bg-primary/10 text-primary hover:bg-primary/20"
+                      ) : (
+                        "hover:bg-primary/10 hover:text-primary"
+                      )
+                    )}
                   >
-                    <Table2Icon className="h-4 w-4 mr-2" />
-                    <span className="hidden md:inline">Formatted</span>
+                    <Table2Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">Formatted</span>
+                    <span className="sm:hidden">FMT</span>
                   </Button>
                   <Button
                     variant={activeTab === 'analysis' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setActiveTab('analysis')}
+                    className={cn(
+                      "flex items-center gap-1 sm:gap-2 whitespace-nowrap",
+                      activeTab === 'analysis' ? (
+                        "bg-primary/10 text-primary hover:bg-primary/20"
+                      ) : (
+                        "hover:bg-primary/10 hover:text-primary"
+                      )
+                    )}
                   >
-                    <Brain className="h-4 w-4 mr-2" />
-                    <span className="hidden md:inline">Analysis</span>
+                    <Brain className="h-4 w-4" />
+                    <span className="hidden sm:inline">Analysis</span>
+                    <span className="sm:hidden">AI</span>
                   </Button>
                   <DialogClose asChild>
                     <Button
@@ -422,117 +471,196 @@ export function HistorySection({ user }: HistorySectionProps) {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 relative">
-              <div className="h-[calc(100vh-12rem)]">
-                <AnimatePresence mode="wait">
-                  {activeTab === 'json' && (
-                    <motion.div
-                      key="json"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="relative h-full"
-                    >
-                      <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
-                        <div className="relative bg-muted min-w-[600px] w-full">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="absolute right-2 top-2 z-10 opacity-70 hover:opacity-100"
-                            onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedDoc?.contentJson, null, 2))}
+            <div className="flex-1 overflow-hidden">
+              <Card className="h-full rounded-none border-0">
+                <CardContent className="p-0 h-full">
+                  <div className="h-full overflow-hidden">
+                    <div className="h-full overflow-auto">
+                      <AnimatePresence mode="wait">
+                        {activeTab === 'json' && (
+                          <motion.div
+                            key="json"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="min-h-full w-full"
                           >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <pre className="p-6 text-sm whitespace-pre-wrap break-words select-text w-full bg-muted">
-                            {JSON.stringify(selectedDoc?.contentJson, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                  {activeTab === 'markdown' && (
-                    <motion.div
-                      key="markdown"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="relative h-full"
-                    >
-                      <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
-                        <div className="relative bg-muted min-w-[600px] w-full">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="absolute right-2 top-2 z-10 opacity-70 hover:opacity-100"
-                            onClick={() => navigator.clipboard.writeText(generateMarkdown(selectedDoc?.contentJson))}
+                            <div className="relative bg-muted w-full overflow-auto">
+                              <div className="sticky top-0 flex justify-end p-2 bg-muted border-b z-10">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className={cn(
+                                    "bg-primary/10 text-primary",
+                                    "hover:bg-primary/20"
+                                  )}
+                                  onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedDoc?.contentJson, null, 2))}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="min-w-[600px] inline-block min-h-full w-full">
+                                <pre className="p-6 text-sm whitespace-pre select-text w-full">
+                                  {JSON.stringify(selectedDoc?.contentJson, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                        {activeTab === 'markdown' && (
+                          <motion.div
+                            key="markdown"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="min-h-full w-full"
                           >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <pre className="p-6 text-sm whitespace-pre select-text w-full bg-muted overflow-x-auto">
-                            {generateMarkdown(selectedDoc?.contentJson)}
-                          </pre>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                  {activeTab === 'formatted' && (
-                    <motion.div
-                      key="formatted"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="relative h-full"
-                    >
-                      <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-muted">
-                        <div className="bg-background rounded-lg p-2">
-                          {generateFormattedView(selectedDoc?.contentJson)}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                  {activeTab === 'analysis' && (
-                    <motion.div
-                      key="analysis"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="space-y-6"
-                    >
-                      <div className="bg-background rounded-lg p-6">
-                        <div>
-                          <h3 className="text-lg font-medium mb-2">Summary</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedDoc?.summary}
-                          </p>
-                        </div>
-                        <div className="mt-6">
-                          <h3 className="text-lg font-medium mb-2">Keywords</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedDoc?.keywords?.map((keyword: string, index: number) => (
-                              <span
-                                key={index}
-                                className="px-2 py-1 bg-primary/10 rounded-full text-sm"
-                              >
-                                {keyword}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="mt-6">
-                          <h3 className="text-lg font-medium mb-2">Insights</h3>
-                          <div className="space-y-2">
-                            {selectedDoc?.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
-                              <p key={index} className="text-sm text-muted-foreground">
-                                • {insight}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                            <div className="relative bg-muted w-full overflow-auto">
+                              <div className="sticky top-0 flex justify-end p-2 bg-muted border-b z-10">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className={cn(
+                                    "bg-primary/10 text-primary",
+                                    "hover:bg-primary/20"
+                                  )}
+                                  onClick={() => navigator.clipboard.writeText(generateMarkdown(selectedDoc?.contentJson))}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="min-w-[600px] inline-block min-h-full w-full">
+                                <pre className="p-6 text-sm whitespace-pre select-text w-full">
+                                  {generateMarkdown(selectedDoc?.contentJson)}
+                                </pre>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                        {activeTab === 'formatted' && (
+                          <motion.div
+                            key="formatted"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="min-h-full w-full p-6"
+                          >
+                            <div className="bg-background rounded-lg">
+                              {generateFormattedView(selectedDoc?.contentJson)}
+                            </div>
+                          </motion.div>
+                        )}
+                        {activeTab === 'analysis' && (
+                          <motion.div
+                            key="analysis"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="min-h-full w-full"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                              {/* Summary Card */}
+                              <Card className="col-span-full bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
+                                <CardContent className="pt-6">
+                                  <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                      <FileText className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-medium mb-2">Summary</h3>
+                                      <p className="text-sm text-muted-foreground leading-relaxed">
+                                        {selectedDoc?.summary}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              {/* Keywords Card */}
+                              <Card className="bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
+                                <CardContent className="pt-6">
+                                  <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                      <Code className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-medium mb-3">Keywords</h3>
+                                      <div className="flex flex-wrap gap-2">
+                                        {selectedDoc?.keywords?.map((keyword: string, index: number) => (
+                                          <span
+                                            key={index}
+                                            className="px-3 py-1 bg-primary/10 hover:bg-primary/20 rounded-full text-sm text-primary transition-colors cursor-default"
+                                          >
+                                            {keyword}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              {/* Confidence Score Card */}
+                              <Card className="bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
+                                <CardContent className="pt-6">
+                                  <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                      <Brain className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-medium mb-3">AI Confidence</h3>
+                                      <div className="space-y-2">
+                                        <div className="w-full bg-muted rounded-full h-2.5">
+                                          <div 
+                                            className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                                            style={{ 
+                                              width: `${(selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100}%` 
+                                            }}
+                                          />
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                          {((selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100).toFixed(1)}% confidence in analysis
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              {/* Insights Card */}
+                              <Card className="col-span-full bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
+                                <CardContent className="pt-6">
+                                  <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                      <Table2Icon className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-medium mb-3">Key Insights</h3>
+                                      <div className="grid gap-3">
+                                        {selectedDoc?.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
+                                          <div 
+                                            key={index}
+                                            className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                                          >
+                                            <div className="flex-shrink-0 h-1.5 w-1.5 mt-2 rounded-full bg-primary" />
+                                            <p className="text-sm text-muted-foreground flex-1">
+                                              {insight}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </DialogContent>

@@ -159,6 +159,10 @@ export function DocumentUploader({
             <Button
               onClick={handleProcessDocument}
               disabled={isProcessing}
+              className={cn(
+                "bg-primary/10 text-primary",
+                "hover:bg-primary/20"
+              )}
             >
               {isProcessing ? "Processing..." : "Process Document"}
             </Button>
