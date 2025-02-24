@@ -466,10 +466,37 @@ export default function DemoPage() {
     setProgress(0);
 
     try {
-      const base64Data = await convertFileToBase64(currentState.file);
+      // Validate file size before processing
+      if (currentState.file.size > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error('File size exceeds 10MB limit');
+      }
+
+      let base64Data;
+      try {
+        base64Data = await convertFileToBase64(currentState.file);
+        if (!base64Data || typeof base64Data !== 'string') {
+          throw new Error('Failed to convert file to base64');
+        }
+        // Remove data URL prefix if present
+        base64Data = base64Data.split(',')[1] || base64Data;
+      } catch (conversionError) {
+        throw new Error('Failed to prepare file for processing');
+      }
+      
       setProgress(20);
       
       console.log("Processing started: Converting and analyzing document...");
+
+      // Validate request data
+      const requestData = {
+        imageData: base64Data,
+        mimeType: currentState.file.type || 'application/octet-stream'
+      };
+
+      // Ensure all required fields are present and valid
+      if (!requestData.imageData) {
+        throw new Error('Invalid file data');
+      }
 
       const endpoint = `/api/analyze/${selectedType}`;
       const response = await fetch(endpoint, {
@@ -478,68 +505,95 @@ export default function DemoPage() {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        credentials: 'include', // Important for auth
-        body: JSON.stringify({
-          imageData: base64Data,
-          fileName: currentState.file.name,
-          fileType: currentState.file.type,
-          fileSize: currentState.file.size
-        }),
+        credentials: 'include',
+        body: JSON.stringify(requestData),
       });
 
       setProgress(60);
 
+      // Handle non-OK responses
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API request failed: ${response.statusText}`);
+        let errorMessage;
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || 'Server processing error';
+          } catch {
+            errorMessage = 'Failed to parse error response';
+          }
+        } else {
+          errorMessage = response.statusText || 'Server processing error';
+        }
+
+        updateCurrentDocumentState({ error: errorMessage });
+        setProgress(0);
+        return;
       }
 
-      const result = await response.json();
+      // Parse successful response
+      let result;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Invalid response format from server');
+        }
+        result = await response.json();
+      } catch (parseError) {
+        updateCurrentDocumentState({ error: 'Failed to parse server response' });
+        setProgress(0);
+        return;
+      }
+      
       setProgress(80);
 
-      if (result.success) {
-        if (!result.analysis) {
-          throw new Error("No analysis data received");
-        }
-
-        if (!validateDocumentContent(result)) {
-          return;
-        }
-
-        updateCurrentDocumentState({
-          extractedText: result.analysis.content?.text || "No text extracted",
-          selectedDoc: {
-            summary: result.analysis.analysis?.summary || "",
-            keywords: result.analysis.analysis?.keywords || [],
-            sentiment: result.analysis.analysis?.sentiment || "",
-            rawJson: result.analysis,
-            contentJson: result.result
-          },
-          isProcessed: true,
-          error: null
-        });
-        console.log("Document processed successfully!");
-      } else {
-        throw new Error(result.error || 'Processing failed');
+      // Validate response data
+      if (!result || typeof result !== 'object') {
+        updateCurrentDocumentState({ error: 'Invalid response data from server' });
+        setProgress(0);
+        return;
       }
 
+      if (!result.success) {
+        updateCurrentDocumentState({ error: result.error || 'Processing failed' });
+        setProgress(0);
+        return;
+      }
+
+      if (!result.analysis) {
+        updateCurrentDocumentState({ error: 'No analysis data received' });
+        setProgress(0);
+        return;
+      }
+
+      if (!validateDocumentContent(result)) {
+        setProgress(0);
+        return;
+      }
+
+      // Update state with successful result
+      updateCurrentDocumentState({
+        extractedText: result.analysis.content?.text || "No text extracted",
+        selectedDoc: {
+          summary: result.analysis.analysis?.summary || "",
+          keywords: result.analysis.analysis?.keywords || [],
+          sentiment: result.analysis.analysis?.sentiment || "",
+          rawJson: result.analysis,
+          contentJson: result.result
+        },
+        isProcessed: true,
+        error: null
+      });
+
+      console.log("Document processed successfully!");
       setProgress(100);
     } catch (error) {
-      console.error("Error processing document:", error);
-      let errorMessage = "An unexpected error occurred";
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
       
-      if (error instanceof Error) {
-        if (error.message.includes("API request failed")) {
-          errorMessage = "Failed to connect to the analysis service";
-        } else if (error.message.includes("JSON")) {
-          errorMessage = "Failed to process the document results";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
       updateCurrentDocumentState({ error: errorMessage });
-      console.error(errorMessage);
       setProgress(0);
     } finally {
       setIsProcessing(false);
