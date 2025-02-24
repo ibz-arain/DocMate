@@ -41,8 +41,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
-
-type DocumentType = 't4' | 'bank' | 'receipt' | 'dental' | 'electricity' | 'history' | null;
+import { DocumentType, DocumentState, ProcessingDocType, DocumentStateMap } from "@/types/document";
+import { DocumentUploader } from "@/components/document/document-uploader";
+import { DocumentViewer } from "@/components/document/document-viewer";
+import { DocumentInfo } from "@/components/document/document-info";
+import { HistorySection } from "@/components/document/history-section";
+import { generateMarkdown } from "@/lib/document-utils";
 
 const documentTypeLabels: Record<string, { title: string, description: string }> = {
   't4': {
@@ -178,522 +182,61 @@ function LoadingSkeleton() {
   );
 }
 
-// History Component
-function HistorySection() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [selectedDoc, setSelectedDoc] = useState<any>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('formatted');
-  const [documents, setDocuments] = useState<SavedDocument[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [deleteDoc, setDeleteDoc] = useState<SavedDocument | null>(null);
-  const { user } = useAuthContext();
-
-  // Fetch documents on mount
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const response = await fetch('/api/documents', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Failed to fetch documents');
-        const data = await response.json();
-        setDocuments(data);
-      } catch (error) {
-        console.error('Error fetching documents:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load documents",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDocuments();
-  }, []);
-
-  const handleDeleteDocument = async () => {
-    if (!deleteDoc) return;
-
-    try {
-      const response = await fetch(`/api/documents/${deleteDoc.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to delete document');
-
-      setDocuments(docs => docs.filter(d => d.id !== deleteDoc.id));
-      toast({
-        title: "Success",
-        description: "Document deleted successfully",
-      });
-    } catch (error) {
-      console.error('Error deleting document:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete document",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteDoc(null);
-    }
+function createInitialState(): DocumentState {
+  return {
+    file: null,
+    isProcessed: false,
+    selectedDoc: null,
+    extractedText: "",
+    error: null,
+    isSaved: false,
   };
-
-  const handleViewDocument = (doc: any) => {
-    // Map the database fields to the expected format
-    const mappedDoc = {
-      ...doc,
-      contentJson: typeof doc.content_json === 'string' 
-        ? JSON.parse(doc.content_json) 
-        : doc.content_json
-    };
-    setSelectedDoc(mappedDoc);
-    setIsPreviewOpen(true);
-  };
-
-  // Filter documents for the table display
-  const filteredDocuments = documents
-    .filter((doc) => {
-      if (filterType !== "all" && doc.type !== filterType) return false;
-      return doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-    })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  // Use all documents for stats (unfiltered)
-  const documentStats = documents.reduce((acc: Record<string, number>, doc) => {
-    if (doc.type) {  // Only count non-null types
-      acc[doc.type] = (acc[doc.type] || 0) + 1;
-    }
-    return acc;
-  }, {});
-
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      <div className="flex-none p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search documents..."
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex gap-4">
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Documents</SelectItem>
-                <SelectItem value="t4">T4 Forms</SelectItem>
-                <SelectItem value="receipt">Receipts</SelectItem>
-                <SelectItem value="dental">Dental Claims</SelectItem>
-                <SelectItem value="electricity">Utility Bills</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* Split View Content */}
-      <div className="flex-1 overflow-hidden p-6">
-        {isLoading ? (
-          <LoadingSkeleton />
-        ) : (
-          <div className="flex gap-6 h-full">
-            {/* Documents Table */}
-            <div className="flex-1 min-w-0">
-              <Card className="h-full">
-                <CardContent className="p-0">
-                  <div className="rounded-md border h-full">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Document</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredDocuments.length > 0 ? (
-                          filteredDocuments.map((doc) => (
-                            <TableRow key={doc.id}>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                                  <span>{doc.title}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="capitalize">{doc.type}</TableCell>
-                              <TableCell>{new Date(doc.date).toLocaleDateString()}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleViewDocument(doc)}
-                                  >
-                                    <FileSearch className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setDeleteDoc(doc)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">
-                              <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                <FileText className="h-8 w-8 mb-2" />
-                                <p>No documents found</p>
-                                {searchQuery && <p className="text-sm">Try adjusting your search or filters</p>}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right Side Stats */}
-            <div className="w-80 flex-none space-y-6">
-              {/* Document Types */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Document Types</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {Object.entries(documentStats).length > 0 ? (
-                      Object.entries(documentStats).map(([type, count]) => (
-                        <div key={type} className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            {type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
-                            {type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
-                            {type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
-                            {type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
-                            {type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                            <span className="text-muted-foreground capitalize">{type}</span>
-                          </div>
-                          <span className="font-medium">{count}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-8 text-center text-muted-foreground">
-                        <TableIcon className="h-8 w-8 mx-auto mb-2" />
-                        <p>No document types to display</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {documents.length > 0 ? (
-                      documents.slice(0, 5).map((doc) => (
-                        <div key={doc.id} className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
-                            {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
-                            {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
-                            {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
-                            {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                            <span className="font-medium truncate">{doc.title}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span className="capitalize">{doc.type}</span>
-                            <span>{new Date(doc.date).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-8 text-center text-muted-foreground">
-                        <History className="h-8 w-8 mx-auto mb-2" />
-                        <p>No recent activity to display</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteDoc} onOpenChange={() => setDeleteDoc(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the document
-              "{deleteDoc?.title}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteDocument}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Document Preview Dialog */}
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-5xl w-[90vw] h-[90vh] p-0 [&>button]:hidden">
-          <div className="flex flex-col h-full">
-            <div className="flex-none p-6 border-b bg-background">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-2xl font-bold">
-                  {selectedDoc?.title || "Document Preview"}
-                </DialogTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={activeTab === 'json' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('json')}
-                  >
-                    <Code className="h-4 w-4 mr-2" />
-                    JSON
-                  </Button>
-                  <Button
-                    variant={activeTab === 'markdown' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('markdown')}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Markdown
-                  </Button>
-                  <Button
-                    variant={activeTab === 'formatted' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('formatted')}
-                  >
-                    <TableIcon className="h-4 w-4 mr-2" />
-                    Formatted
-                  </Button>
-                  <Button
-                    variant={activeTab === 'analysis' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('analysis')}
-                  >
-                    <Brain className="h-4 w-4 mr-2" />
-                    Analysis
-                  </Button>
-                  <DialogClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
-                  </DialogClose>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 min-h-0">
-              <ScrollArea className="h-full">
-                <div className="p-6">
-                  <AnimatePresence mode="wait">
-                    {activeTab === 'json' && (
-                      <motion.div
-                        key="json"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="relative"
-                      >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="absolute right-2 top-2 z-10"
-                          onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedDoc?.contentJson, null, 2))}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <div className="max-h-[calc(90vh-10rem)] overflow-auto">
-                          <pre className="bg-muted p-4 rounded-lg">
-                            <code className="text-sm break-all whitespace-pre-wrap">
-                              {JSON.stringify(selectedDoc?.contentJson, null, 2)}
-                            </code>
-                          </pre>
-                        </div>
-                      </motion.div>
-                    )}
-                    {activeTab === 'markdown' && (
-                      <motion.div
-                        key="markdown"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="relative"
-                      >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="absolute right-2 top-2 z-10"
-                          onClick={() => navigator.clipboard.writeText(generateMarkdown(selectedDoc?.contentJson))}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <div className="max-h-[calc(90vh-10rem)] overflow-auto">
-                          <pre className="bg-muted p-4 rounded-lg">
-                            <code className="text-sm whitespace-pre">
-                              {generateMarkdown(selectedDoc?.contentJson)}
-                            </code>
-                          </pre>
-                        </div>
-                      </motion.div>
-                    )}
-                    {activeTab === 'formatted' && (
-                      <motion.div
-                        key="formatted"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="relative"
-                      >
-                        <div className="max-h-[calc(90vh-10rem)] overflow-auto">
-                          <div className="bg-background rounded-lg">
-                            {generateFormattedView(selectedDoc?.contentJson)}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                    {activeTab === 'analysis' && (
-                      <motion.div
-                        key="analysis"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="space-y-6"
-                      >
-                        <div>
-                          <h3 className="text-lg font-medium mb-2">Summary</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedDoc?.contentJson?.analysis?.summary || "No summary available"}
-                          </p>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-medium mb-2">Keywords</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedDoc?.contentJson?.analysis?.keywords?.length > 0 ? (
-                              selectedDoc.contentJson.analysis.keywords.map((keyword: string, index: number) => (
-                                <span
-                                  key={index}
-                                  className="px-2 py-1 bg-primary/10 rounded-full text-sm"
-                                >
-                                  {keyword}
-                                </span>
-                              ))
-                            ) : (
-                              <p className="text-sm text-muted-foreground">No keywords available</p>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-medium mb-2">Insights</h3>
-                          <div className="space-y-2">
-                            {selectedDoc?.contentJson?.analysis?.insights?.length > 0 ? (
-                              selectedDoc.contentJson.analysis.insights.map((insight: string, index: number) => (
-                                <p key={index} className="text-sm text-muted-foreground">
-                                  • {insight}
-                                </p>
-                              ))
-                            ) : (
-                              <p className="text-sm text-muted-foreground">No insights available</p>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-medium mb-2">Confidence Score</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedDoc?.contentJson?.analysis?.confidenceScore 
-                              ? `${(selectedDoc.contentJson.analysis.confidenceScore * 100).toFixed(1)}%`
-                              : "No confidence score available"}
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
 }
 
 export default function DemoPage() {
-  const [file, setFile] = useState<File | null>(null);
+  const [documentStates, setDocumentStates] = useState<DocumentStateMap>({
+    't4': createInitialState(),
+    'bank': createInitialState(),
+    'receipt': createInitialState(),
+    'dental': createInitialState(),
+    'electricity': createInitialState(),
+  });
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
-  const [extractedText, setExtractedText] = useState<string>("");
   const [selectedType, setSelectedType] = useState<DocumentType>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [aiInsights, setAiInsights] = useState<{
-    summary: string;
-    keywords: string[];
-    sentiment: string;
-    rawJson: any;
-    contentJson: any;
-  }>({
-    summary: "",
-    keywords: [],
-    sentiment: "",
-    rawJson: null,
-    contentJson: null
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sidebarCollapsed');
+      return stored ? JSON.parse(stored) : false;
+    }
+    return false;
   });
-  const [isProcessed, setIsProcessed] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const { user } = useAuthContext();
   const router = useRouter();
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  const currentState = selectedType && selectedType !== 'history' 
+    ? documentStates[selectedType as ProcessingDocType] 
+    : createInitialState();
+
+  const updateCurrentDocumentState = (updates: Partial<DocumentState>) => {
+    if (!selectedType || selectedType === 'history') return;
+    
+    const docType = selectedType as ProcessingDocType;
+    setDocumentStates((prev: DocumentStateMap) => ({
+      ...prev,
+      [docType]: {
+        ...prev[docType],
+        ...updates
+      }
+    }));
+  };
 
   const validateFileType = (file: File): boolean => {
     const supportedTypes = {
@@ -704,8 +247,20 @@ export default function DemoPage() {
       'application/pdf': true
     } as const;
     
+    if (!file) {
+      updateCurrentDocumentState({ error: 'No file selected.' });
+      return false;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      updateCurrentDocumentState({ error: 'File size exceeds 10MB limit.' });
+      return false;
+    }
+    
     if (!(file.type in supportedTypes)) {
-      setError(`Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).`);
+      updateCurrentDocumentState({ 
+        error: `Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).` 
+      });
       return false;
     }
     return true;
@@ -713,7 +268,7 @@ export default function DemoPage() {
 
   const validateDocumentContent = (result: any): boolean => {
     if (!result.analysis?.documentType) {
-      setError('Unable to determine document type. Please ensure you uploaded the correct document.');
+      updateCurrentDocumentState({ error: 'Unable to determine document type. Please ensure you uploaded the correct document.' });
       return false;
     }
 
@@ -729,200 +284,13 @@ export default function DemoPage() {
     const expectedTypeArray = expectedTypes[selectedType as keyof typeof expectedTypes] || [];
     
     if (!expectedTypeArray.some(type => detectedType.toLowerCase().includes(type.toLowerCase()))) {
-      setError(`This document appears to be a "${detectedType}" which doesn't match the selected document type "${documentTypeLabels[selectedType as keyof typeof documentTypeLabels].title}". Please verify and try again.`);
+      updateCurrentDocumentState({ 
+        error: `This document appears to be a "${detectedType}" which doesn't match the selected document type. Please verify and try again.` 
+      });
       return false;
     }
 
     return true;
-  };
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: async (acceptedFiles) => {
-      const droppedFile = acceptedFiles[0];
-      setError(null); // Clear any previous errors
-      
-      if (droppedFile) {
-        if (!validateFileType(droppedFile)) {
-          return;
-        }
-
-        try {
-          setIsProcessing(true);
-          setFile(droppedFile);
-          resetStates();
-          
-          const base64Data = await convertFileToBase64(droppedFile);
-          const endpoint = `/api/analyze/${selectedType}`;
-          
-          console.log("Sending request to:", endpoint);
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              imageData: base64Data,
-              mimeType: droppedFile.type
-            }),
-          });
-
-          const result = await response.json();
-
-          if (!response.ok) {
-            console.error('Server error:', result);
-            throw new Error(result.error || 'Analysis failed');
-          }
-          
-          if (result.success) {
-            // Validate document content before proceeding
-            if (!validateDocumentContent(result)) {
-              setFile(null);
-              setIsProcessing(false);
-              return;
-            }
-
-            setExtractedText(result.analysis.content?.text || "No text extracted");
-            setAiInsights({
-              summary: result.analysis.analysis?.summary || "",
-              keywords: result.analysis.analysis?.keywords || [],
-              sentiment: result.analysis.analysis?.sentiment || "",
-              rawJson: result.analysis,
-              contentJson: result.result
-            });
-            setIsProcessed(true);
-            console.log("Document processed successfully!");
-          } else {
-            throw new Error(result.error || 'Analysis failed');
-          }
-        } catch (error) {
-          console.error("Error analyzing document:", error);
-          setError(error instanceof Error ? error.message : 'An unexpected error occurred');
-          setFile(null);
-        } finally {
-          setIsProcessing(false);
-        }
-      }
-    },
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-      'application/pdf': ['.pdf']
-    },
-    maxSize: 10 * 1024 * 1024, // 10MB max size
-    multiple: false
-  });
-
-  const resetStates = () => {
-    setExtractedText("");
-    setAiInsights({
-      summary: "",
-      keywords: [],
-      sentiment: "",
-      rawJson: null,
-      contentJson: null
-    });
-    setProgress(0);
-    setIsProcessed(false);
-    setError(null);
-    setIsSaved(false);
-  };
-
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const base64String = reader.result as string;
-        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
-        resolve(base64String.split(',')[1]);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const processDocument = async () => {
-    if (!file || !selectedType) {
-      console.error("Please select a document type and upload a file first");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      console.error("Maximum file size is 10MB");
-      return;
-    }
-
-    setIsProcessing(true);
-    setProgress(0);
-
-    try {
-      const base64Data = await convertFileToBase64(file);
-      setProgress(20);
-      
-      console.log("Processing started: Converting and analyzing document...");
-
-      const endpoint = `/api/analyze/${selectedType}`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: base64Data
-        }),
-      });
-
-      setProgress(60);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API request failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      setProgress(80);
-
-      if (result.success) {
-        if (!result.analysis) {
-          throw new Error("No analysis data received");
-        }
-
-        setExtractedText(result.analysis.content?.text || "No text extracted");
-        setAiInsights({
-          summary: result.analysis.analysis?.summary || "",
-          keywords: result.analysis.analysis?.keywords || [],
-          sentiment: result.analysis.analysis?.sentiment || "",
-          rawJson: result.analysis,
-          contentJson: result.result
-        });
-        setIsProcessed(true);
-        console.log("Document processed successfully!");
-      } else {
-        throw new Error(result.error || 'Processing failed');
-      }
-
-      setProgress(100);
-    } catch (error) {
-      console.error("Error processing document:", error);
-      let errorMessage = "An unexpected error occurred";
-      
-      if (error instanceof Error) {
-        if (error.message.includes("API request failed")) {
-          errorMessage = "Failed to connect to the analysis service";
-        } else if (error.message.includes("JSON")) {
-          errorMessage = "Failed to process the document results";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
-      console.error(errorMessage);
-      setProgress(0);
-    }
-    setIsProcessing(false);
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    console.log("JSON data copied to clipboard");
   };
 
   const handleDemoSelect = (demoType: string) => {
@@ -932,39 +300,41 @@ export default function DemoPage() {
       return;
     }
     setShowHistory(false);
-    // Set the selected type and reset states
     setSelectedType(demoType as DocumentType);
-    resetStates();
-    setFile(null);
+  };
+
+  const handleNewDocument = () => {
+    if (!selectedType) return;
+    setDocumentStates((prev: DocumentStateMap) => ({
+      ...prev,
+      [selectedType]: createInitialState()
+    }));
   };
 
   const handleSaveDocument = async () => {
-    if (!user || !selectedType || !aiInsights.contentJson || isSaved) return;
+    if (!user || !selectedType || !currentState.selectedDoc?.contentJson || currentState.isSaved) return;
 
     try {
       setIsProcessing(true);
-      // Combine the content and analysis data
       const contentWithAnalysis = {
-        ...aiInsights.contentJson,
+        ...currentState.selectedDoc.contentJson,
         analysis: {
-          summary: aiInsights.summary,
-          keywords: aiInsights.keywords,
-          insights: aiInsights.rawJson?.analysis?.insights || [],
-          confidenceScore: aiInsights.rawJson?.analysis?.confidenceScore || 0,
-          documentType: aiInsights.rawJson?.analysis?.documentType || selectedType
+          summary: currentState.selectedDoc.summary,
+          keywords: currentState.selectedDoc.keywords,
+          insights: currentState.selectedDoc.rawJson?.analysis?.insights || [],
+          confidenceScore: currentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
+          documentType: currentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
         }
       };
 
       const documentData = {
-        title: file?.name || `${selectedType.toUpperCase()} Document`,
+        title: currentState.file?.name || `${selectedType.toUpperCase()} Document`,
         type: selectedType,
         date: new Date().toISOString(),
-        confidence: aiInsights.rawJson?.analysis?.confidenceScore ? 
-          Math.round(aiInsights.rawJson.analysis.confidenceScore * 100) : 95,
+        confidence: currentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 
+          Math.round(currentState.selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
         contentJson: contentWithAnalysis
       };
-
-      console.log('Saving document with data:', documentData);
 
       const response = await fetch('/api/documents', {
         method: 'POST',
@@ -977,14 +347,10 @@ export default function DemoPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Server response:', errorData);
         throw new Error(errorData.error || 'Failed to save document');
       }
 
-      const result = await response.json();
-      console.log('Document saved successfully:', result);
-
-      setIsSaved(true);
+      updateCurrentDocumentState({ isSaved: true });
       toast({
         title: "Success",
         description: "Document saved successfully",
@@ -1002,12 +368,12 @@ export default function DemoPage() {
   };
 
   const downloadJson = () => {
-    const jsonString = JSON.stringify(aiInsights.contentJson, null, 2);
+    const jsonString = JSON.stringify(currentState.selectedDoc?.contentJson, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${file?.name || 'document'}.json`;
+    a.download = `${currentState.file?.name || 'document'}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1015,12 +381,12 @@ export default function DemoPage() {
   };
 
   const downloadMarkdown = () => {
-    const markdownContent = generateMarkdown(aiInsights.contentJson);
+    const markdownContent = generateMarkdown(currentState.selectedDoc?.contentJson);
     const blob = new Blob([markdownContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${file?.name || 'document'}.md`;
+    a.download = `${currentState.file?.name || 'document'}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1028,10 +394,9 @@ export default function DemoPage() {
   };
 
   const downloadCsv = () => {
-    const content = aiInsights.contentJson;
+    const content = currentState.selectedDoc?.contentJson;
     let csvContent = '';
     
-    // Add metadata
     if (content.metadata) {
       csvContent += 'Metadata\n';
       Object.entries(content.metadata).forEach(([key, value]) => {
@@ -1046,19 +411,16 @@ export default function DemoPage() {
       csvContent += '\n';
     }
 
-    // Add content
     if (content.content) {
       csvContent += 'Content\n';
       Object.entries(content.content).forEach(([key, value]) => {
         if (Array.isArray(value)) {
-          // Handle array of objects
           const headers = Object.keys(value[0] || {});
           csvContent += `${key}\n${headers.join(',')}\n`;
           value.forEach(item => {
             csvContent += `${Object.values(item).join(',')}\n`;
           });
         } else if (typeof value === 'object') {
-          // Handle object
           Object.entries(value as any).forEach(([subKey, subValue]) => {
             csvContent += `${key},${subKey},${subValue}\n`;
           });
@@ -1071,15 +433,174 @@ export default function DemoPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${file?.name || 'document'}.csv`;
+    a.download = `${currentState.file?.name || 'document'}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        resolve(base64String.split(',')[1]);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const processDocument = async () => {
+    if (!currentState.file || !selectedType) {
+      updateCurrentDocumentState({ error: "Please select a document type and upload a file first" });
+      return;
+    }
+
+    if (!validateFileType(currentState.file)) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setProgress(0);
+
+    try {
+      // Validate file size before processing
+      if (currentState.file.size > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error('File size exceeds 10MB limit');
+      }
+
+      let base64Data;
+      try {
+        base64Data = await convertFileToBase64(currentState.file);
+        if (!base64Data || typeof base64Data !== 'string') {
+          throw new Error('Failed to convert file to base64');
+        }
+        // Remove data URL prefix if present
+        base64Data = base64Data.split(',')[1] || base64Data;
+      } catch (conversionError) {
+        throw new Error('Failed to prepare file for processing');
+      }
+      
+      setProgress(20);
+      
+      console.log("Processing started: Converting and analyzing document...");
+
+      // Validate request data
+      const requestData = {
+        imageData: base64Data,
+        mimeType: currentState.file.type || 'application/octet-stream'
+      };
+
+      // Ensure all required fields are present and valid
+      if (!requestData.imageData) {
+        throw new Error('Invalid file data');
+      }
+
+      const endpoint = `/api/analyze/${selectedType}`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestData),
+      });
+
+      setProgress(60);
+
+      // Handle non-OK responses
+      if (!response.ok) {
+        let errorMessage;
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || 'Server processing error';
+          } catch {
+            errorMessage = 'Failed to parse error response';
+          }
+        } else {
+          errorMessage = response.statusText || 'Server processing error';
+        }
+
+        updateCurrentDocumentState({ error: errorMessage });
+        setProgress(0);
+        return;
+      }
+
+      // Parse successful response
+      let result;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Invalid response format from server');
+        }
+        result = await response.json();
+      } catch (parseError) {
+        updateCurrentDocumentState({ error: 'Failed to parse server response' });
+        setProgress(0);
+        return;
+      }
+      
+      setProgress(80);
+
+      // Validate response data
+      if (!result || typeof result !== 'object') {
+        updateCurrentDocumentState({ error: 'Invalid response data from server' });
+        setProgress(0);
+        return;
+      }
+
+      if (!result.success) {
+        updateCurrentDocumentState({ error: result.error || 'Processing failed' });
+        setProgress(0);
+        return;
+      }
+
+      if (!result.analysis) {
+        updateCurrentDocumentState({ error: 'No analysis data received' });
+        setProgress(0);
+        return;
+      }
+
+      if (!validateDocumentContent(result)) {
+        setProgress(0);
+        return;
+      }
+
+      // Update state with successful result
+      updateCurrentDocumentState({
+        extractedText: result.analysis.content?.text || "No text extracted",
+        selectedDoc: {
+          summary: result.analysis.analysis?.summary || "",
+          keywords: result.analysis.analysis?.keywords || [],
+          sentiment: result.analysis.analysis?.sentiment || "",
+          rawJson: result.analysis,
+          contentJson: result.result
+        },
+        isProcessed: true,
+        error: null
+      });
+
+      console.log("Document processed successfully!");
+      setProgress(100);
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
+      updateCurrentDocumentState({ error: errorMessage });
+      setProgress(0);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (showHistory) {
-    if (!user) {
       return (
         <div className="flex h-full overflow-hidden bg-background">
           <CustomSidebar
@@ -1088,54 +609,12 @@ export default function DemoPage() {
             onSelectDemo={handleDemoSelect}
             selectedType="history"
           />
-          
-          <div className="flex-1 p-6 overflow-hidden flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-2xl"
-            >
-              <Card className="border-2">
-                <CardHeader>
-                  <CardTitle className="text-center text-2xl flex items-center justify-center gap-2">
-                    <History className="h-6 w-6" />
-                    Document History
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="text-center space-y-4">
-                    <p className="text-muted-foreground">
-                      Sign in to view and manage your document history
-                    </p>
-                    <Button
-                      onClick={() => router.push('/login')}
-                      className="w-full max-w-sm"
-                    >
-                      Sign In
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex h-full overflow-hidden bg-background">
-        <CustomSidebar
-          isCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
-          onSelectDemo={handleDemoSelect}
-          selectedType="history"
-        />
-        <HistorySection />
+        <HistorySection user={user} />
       </div>
     );
   }
 
-  if (!isProcessed) {
+  if (!currentState.isProcessed) {
     return (
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar
@@ -1144,167 +623,19 @@ export default function DemoPage() {
           onSelectDemo={handleDemoSelect}
           selectedType={selectedType}
         />
-        
         <div className="flex-1 p-6 overflow-hidden flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-2xl"
-          >
-            <Card className="border-2">
-              <CardHeader>
-                <CardTitle className="text-center text-2xl">
-                  {selectedType ? documentTypeLabels[selectedType].title : "Select Document Type"}
-                </CardTitle>
-                {selectedType && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center text-muted-foreground mt-2"
-                  >
-                    {documentTypeLabels[selectedType].description}
-                  </motion.div>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {error && (
-                    <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
-                      {error}
-                    </div>
-                  )}
-                  {selectedType ? (
-                    <>
-                      <Card className="relative border-2 border-dashed transition-all duration-200 hover:border-primary/50">
-                        <CardContent className="p-0">
-                          <div
-                            {...getRootProps()}
-                            className={cn(
-                              "relative min-h-[300px] flex flex-col items-center justify-center gap-4 p-8 transition-all duration-200",
-                              "cursor-pointer rounded-lg",
-                              isDragActive ? "bg-primary/10 border-primary" : "hover:bg-primary/5",
-                              "group"
-                            )}
-                          >
-                            {file ? (
-                              <div className="relative w-full h-full flex items-center justify-center">
-                                <div className="w-full max-w-xl bg-muted/50 rounded-lg border-2 border-border p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                        {selectedType === 't4' && <FileStack className="h-5 w-5 text-primary" />}
-                                        {selectedType === 'bank' && <Building2 className="h-5 w-5 text-primary" />}
-                                        {selectedType === 'receipt' && <ReceiptText className="h-5 w-5 text-primary" />}
-                                        {selectedType === 'dental' && <Stethoscope className="h-5 w-5 text-primary" />}
-                                        {selectedType === 'electricity' && <BatteryCharging className="h-5 w-5 text-primary" />}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{file.name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type.split('/')[1].toUpperCase()}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setFile(null);
-                                        }}
-                                      >
-                                        Change File
-                                      </Button>
-                                      <Button
-                                        onClick={processDocument}
-                                        disabled={isProcessing}
-                                        size="sm"
-                                        className={cn(
-                                          "transition-all duration-500",
-                                          isProcessing ? "bg-primary/10 text-primary" : "bg-primary"
-                                        )}
-                                      >
-                                        {isProcessing ? (
-                                          <>
-                                            <div className="animate-spin mr-2">
-                                              <RefreshCcw className="h-4" />
-                                            </div>
-                                            Processing...
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Zap className="mr-2 h-4 w-4" />
-                                            Process Document
-                                          </>
-                                        )}
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  {isProcessing && (
-                                    <motion.div
-                                      initial={{ opacity: 0 }}
-                                      animate={{ opacity: 1 }}
-                                      className="mt-4"
-                                    >
-                                      <Progress value={progress} className="h-1" />
-                                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                                        Analyzing document...
-                                      </p>
-                                    </motion.div>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="relative">
-                                  <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                  <Upload className={cn(
-                                    "h-12 w-12 transition-all duration-200",
-                                    isDragActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-primary group-hover:scale-110"
-                                  )} />
-                                </div>
-                                <div className="space-y-2 text-center relative">
-                                  <p className={cn(
-                                    "text-lg font-medium transition-colors duration-200",
-                                    isDragActive ? "text-primary" : "text-foreground"
-                                  )}>
-                                    Drop your {documentTypeLabels[selectedType].title.toLowerCase()} here
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    or click to browse files
-                                  </p>
-                                  <div className={cn(
-                                    "flex flex-wrap gap-2 justify-center text-xs text-muted-foreground mt-4",
-                                    isDragActive && "text-primary/70"
-                                  )}>
-                                    <span className="px-2 py-1 rounded-full bg-muted">PNG</span>
-                                    <span className="px-2 py-1 rounded-full bg-muted">JPG</span>
-                                    <span className="px-2 py-1 rounded-full bg-muted">JPEG</span>
-                                    <span className="px-2 py-1 rounded-full bg-muted">GIF</span>
-                                    <span className="px-2 py-1 rounded-full bg-muted">WebP</span>
-                                    <span className="px-2 py-1 rounded-full bg-muted">PDF</span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    Maximum file size: 10MB
-                                  </p>
-                                </div>
-                              </>
-                            )}
-                            <input {...getInputProps()} />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Please select a document type from the sidebar to begin</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <DocumentUploader
+            selectedType={selectedType}
+            currentState={currentState}
+            isProcessing={isProcessing}
+            progress={progress}
+            onProcessDocument={processDocument}
+            onFileChange={(file: File | null) => updateCurrentDocumentState({ file, error: null })}
+            onSelectType={(type) => {
+              setShowHistory(false);
+              setSelectedType(type);
+            }}
+          />
         </div>
       </div>
     );
@@ -1320,398 +651,29 @@ export default function DemoPage() {
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="grid gap-8 pb-6" style={{ 
-            gridTemplateColumns: `minmax(0, ${isSidebarCollapsed ? '1fr' : '2fr'}) 350px`,
-            transition: 'grid-template-columns 0.2s ease-in-out'
-          }}>
-            {/* Main Content Area */}
-            <div className="space-y-4 min-w-0">
-              <Card className="h-[calc(100vh-7rem)]">
-                <CardContent className="p-6 h-full flex flex-col">
-                  <div className="flex items-center justify-end gap-2 mb-6 flex-none">
-                      <Button
-                        variant={activeTab === 'json' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('json')}
-                        className="flex items-center gap-2"
-                      >
-                        <Code className="h-4 w-4" />
-                        JSON
-                      </Button>
-                      <Button
-                        variant={activeTab === 'markdown' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('markdown')}
-                        className="flex items-center gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Markdown
-                      </Button>
-                      <Button
-                        variant={activeTab === 'formatted' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('formatted')}
-                        className="flex items-center gap-2"
-                      >
-                      <TableIcon className="h-4 w-4" />
-                        Formatted
-                      </Button>
-                      <Button
-                        variant={activeTab === 'analysis' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('analysis')}
-                        className="flex items-center gap-2"
-                      >
-                        <Brain className="h-4 w-4" />
-                        Analysis
-                      </Button>
-                    </div>
-                  <div className="flex-1 min-h-0 relative rounded-md border">
-                    <ScrollArea className="h-full absolute inset-0">
-                      <div className="p-4">
-                        <AnimatePresence mode="wait">
-                          {activeTab === 'json' && (
-                            <motion.div
-                              key="json"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="relative"
-                            >
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="absolute right-2 top-2 z-10"
-                                onClick={() => navigator.clipboard.writeText(JSON.stringify(aiInsights.contentJson, null, 2))}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <div className="max-h-[calc(90vh-10rem)] overflow-auto">
-                                <pre className="bg-muted p-4 rounded-lg">
-                                  <code className="text-sm break-all whitespace-pre-wrap">
-                                    {JSON.stringify(aiInsights.contentJson, null, 2)}
-                                  </code>
-                                </pre>
-                              </div>
-                            </motion.div>
-                          )}
-                          {activeTab === 'markdown' && (
-                            <motion.div
-                              key="markdown"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="relative"
-                            >
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="absolute right-2 top-2 z-10"
-                                onClick={() => navigator.clipboard.writeText(generateMarkdown(aiInsights.contentJson))}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <div className="max-h-[calc(90vh-10rem)] overflow-auto">
-                                <pre className="bg-muted p-4 rounded-lg">
-                                  <code className="text-sm whitespace-pre">
-                                    {generateMarkdown(aiInsights.contentJson)}
-                                  </code>
-                                </pre>
-                              </div>
-                            </motion.div>
-                          )}
-                          {activeTab === 'formatted' && (
-                            <motion.div
-                              key="formatted"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="relative"
-                            >
-                              <div className="max-h-[calc(90vh-10rem)] overflow-auto">
-                                <div className="bg-background rounded-lg">
-                                  {generateFormattedView(aiInsights.contentJson)}
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                          {activeTab === 'analysis' && (
-                            <motion.div
-                              key="analysis"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="space-y-6"
-                            >
-                              <div>
-                                <h3 className="text-lg font-medium mb-2">Summary</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {aiInsights.summary}
-                                </p>
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-medium mb-2">Keywords</h3>
-                                <div className="flex flex-wrap gap-2">
-                                  {aiInsights.keywords.map((keyword, index) => (
-                                    <span
-                                      key={index}
-                                      className="px-2 py-1 bg-primary/10 rounded-full text-sm"
-                                    >
-                                      {keyword}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-medium mb-2">Insights</h3>
-                                <div className="space-y-2">
-                                  {aiInsights.rawJson?.analysis?.insights?.map((insight: string, index: number) => (
-                                    <p key={index} className="text-sm text-muted-foreground">
-                                      • {insight}
-                                    </p>
-                                  ))}
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Info Sidebar - Fixed width */}
-            <div className="space-y-4 w-[350px]">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Document Info</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-medium">File Name</h3>
-                      <p className="text-sm text-muted-foreground">{file?.name}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium">Document Type</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {aiInsights.contentJson?.documentType || "Unknown"}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium">Page Count</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {aiInsights.contentJson?.metadata?.pageCount || "N/A"}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium">Confidence Score</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {(aiInsights.rawJson?.analysis?.confidenceScore * 100).toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 gap-2">
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={downloadJson}
-                    >
-                      <Code className="mr-2 h-4 w-4" />
-                      Download JSON
-                    </Button>
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={downloadMarkdown}
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Download Markdown
-                    </Button>
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={downloadCsv}
-                    >
-                      <TableIcon className="mr-2 h-4 w-4" />
-                      Download CSV
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Save Results</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground text-center">
-                      {isSaved 
-                        ? "Document has been saved to your history" 
-                        : "Save this document to your history for future reference"}
-                    </p>
-                    <Button 
-                      className="w-full flex items-center justify-center" 
-                      onClick={handleSaveDocument}
-                      disabled={!user || isSaved || isProcessing}
-                    >
-                      {isProcessing ? (
-                        <>
-                          <RefreshCcw className="mr-2 h-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : isSaved ? (
-                        <>
-                          <Save className="mr-2h-4 w-4 text-green-500 " />
-                          Saved
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          {user ? 'Save Document' : 'Sign in to Save'}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  setFile(null);
-                  resetStates();
-                }}
-                className="w-full flex items-center justify-center"
-              >
-                <RefreshCcw className="h-4 w-4 mr-2" />
-                Process New Document
-              </Button>
-            </div>
+        <main className="flex-1 overflow-y-auto md:pt-6 md:pr-6 md:px-0 pt-14 px-4">
+          <div className="grid gap-6 pb-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
+            <DocumentViewer
+              currentState={currentState}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+            <DocumentInfo
+              currentState={currentState}
+              isProcessing={isProcessing}
+              user={user}
+              onDownloadJson={downloadJson}
+              onDownloadMarkdown={downloadMarkdown}
+              onDownloadCsv={downloadCsv}
+              onSaveDocument={handleSaveDocument}
+              onNewDocument={handleNewDocument}
+            />
           </div>
         </main>
       </div>
     </div>
   );
 }
-
-const generateMarkdown = (data: any): string => {
-  if (!data) return '';
-
-  const padValue = (str: string, length: number) => {
-    return str.padEnd(length, ' ');
-  };
-
-  const formatTableValue = (value: any): string => {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'object') return JSON.stringify(value);
-    // Handle multi-line addresses by replacing newlines with spaces
-    return String(value)
-      .replace(/\n\s*/g, ' ')  // Replace newlines and following whitespace with a single space
-      .replace(/\s+/g, ' ')    // Normalize multiple spaces into single space
-      .replace(/\|/g, '\\|')   // Escape pipe characters
-      .trim();                 // Remove leading/trailing whitespace
-  };
-
-  const createTable = (data: Record<string, any>, headers: string[] = ['Property', 'Value']) => {
-    // Calculate maximum widths for each column
-    const columnWidths = headers.map(header => header.length);
-    const rows = Object.entries(data).map(([key, value]) => {
-      const formattedValue = formatTableValue(value);
-      columnWidths[0] = Math.max(columnWidths[0], key.length);
-      columnWidths[1] = Math.max(columnWidths[1], formattedValue.length);
-      return [key, formattedValue];
-    });
-
-    // Add padding to ensure minimum column width
-    columnWidths[0] = Math.max(columnWidths[0], 8);  // "Property"
-    columnWidths[1] = Math.max(columnWidths[1], 5);  // "Value"
-
-    // Create header
-    let table = `| ${padValue(headers[0], columnWidths[0])} | ${padValue(headers[1], columnWidths[1])} |\n`;
-    table += `|${'-'.repeat(columnWidths[0] + 2)}|${'-'.repeat(columnWidths[1] + 2)}|\n`;
-
-    // Add rows
-    rows.forEach(([key, value]) => {
-      table += `| ${padValue(key, columnWidths[0])} | ${padValue(value, columnWidths[1])} |\n`;
-    });
-
-    return table;
-  };
-
-  const createArrayTable = (array: any[]) => {
-    if (array.length === 0) return '';
-    
-    const headers = Object.keys(array[0]);
-    const columnWidths = headers.map(header => header.length);
-
-    // Calculate maximum width for each column
-    array.forEach(item => {
-      headers.forEach((header, index) => {
-        const value = formatTableValue(item[header]);
-        columnWidths[index] = Math.max(columnWidths[index], value.length);
-      });
-    });
-
-    // Create header
-    let table = '| ' + headers.map((header, i) => padValue(header, columnWidths[i])).join(' | ') + ' |\n';
-    table += '|' + columnWidths.map(width => '-'.repeat(width + 2)).join('|') + '|\n';
-
-    // Add rows
-    array.forEach(item => {
-      table += '| ' + headers.map((header, i) => {
-        const value = formatTableValue(item[header]);
-        return padValue(value, columnWidths[i]);
-      }).join(' | ') + ' |\n';
-    });
-
-    return table;
-  };
-
-  let markdown = `# ${data.documentType}\n\n`;
-
-  // Add metadata section
-  if (data.metadata) {
-    markdown += '## Metadata\n\n';
-    Object.entries(data.metadata).forEach(([key, value]: [string, any]) => {
-      markdown += `### ${key}\n\n`;
-      if (typeof value === 'object' && !Array.isArray(value)) {
-        markdown += createTable(value);
-      } else {
-        markdown += createTable({ [key]: value });
-      }
-      markdown += '\n';
-    });
-  }
-
-  // Add content section
-  if (data.content) {
-    markdown += '## Content\n\n';
-    Object.entries(data.content).forEach(([key, value]: [string, any]) => {
-      markdown += `### ${key}\n\n`;
-      if (Array.isArray(value) && value.length > 0) {
-        markdown += createArrayTable(value);
-      } else if (typeof value === 'object') {
-        markdown += createTable(value);
-      }
-      markdown += '\n';
-    });
-  }
-
-  return markdown;
-};
 
 const generateFormattedView = (data: any) => {
   if (!data) return null;
