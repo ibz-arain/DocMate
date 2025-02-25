@@ -462,10 +462,10 @@ export default function DemoPage() {
       return;
     }
 
-    setIsProcessing(true);
-    setProgress(0);
-
     try {
+      setIsProcessing(true);
+      setProgress(0);
+
       // Validate file size before processing
       if (currentState.file.size > 10 * 1024 * 1024) { // 10MB limit
         throw new Error('File size exceeds 10MB limit');
@@ -477,23 +477,19 @@ export default function DemoPage() {
         if (!base64Data || typeof base64Data !== 'string') {
           throw new Error('Failed to convert file to base64');
         }
-        // Remove data URL prefix if present
         base64Data = base64Data.split(',')[1] || base64Data;
       } catch (conversionError) {
         throw new Error('Failed to prepare file for processing');
       }
       
       setProgress(20);
-      
       console.log("Processing started: Converting and analyzing document...");
 
-      // Validate request data
       const requestData = {
         imageData: base64Data,
         mimeType: currentState.file.type || 'application/octet-stream'
       };
 
-      // Ensure all required fields are present and valid
       if (!requestData.imageData) {
         throw new Error('Invalid file data');
       }
@@ -511,7 +507,6 @@ export default function DemoPage() {
 
       setProgress(60);
 
-      // Handle non-OK responses
       if (!response.ok) {
         let errorMessage;
         const contentType = response.headers.get('content-type');
@@ -527,12 +522,9 @@ export default function DemoPage() {
           errorMessage = response.statusText || 'Server processing error';
         }
 
-        updateCurrentDocumentState({ error: errorMessage });
-        setProgress(0);
-        return;
+        throw new Error(errorMessage);
       }
 
-      // Parse successful response
       let result;
       try {
         const contentType = response.headers.get('content-type');
@@ -541,39 +533,29 @@ export default function DemoPage() {
         }
         result = await response.json();
       } catch (parseError) {
-        updateCurrentDocumentState({ error: 'Failed to parse server response' });
-        setProgress(0);
-        return;
+        throw new Error('Failed to parse server response');
       }
       
       setProgress(80);
 
-      // Validate response data
       if (!result || typeof result !== 'object') {
-        updateCurrentDocumentState({ error: 'Invalid response data from server' });
-        setProgress(0);
-        return;
+        throw new Error('Invalid response data from server');
       }
 
       if (!result.success) {
-        updateCurrentDocumentState({ error: result.error || 'Processing failed' });
-        setProgress(0);
-        return;
+        throw new Error(result.error || 'Processing failed');
       }
 
       if (!result.analysis) {
-        updateCurrentDocumentState({ error: 'No analysis data received' });
-        setProgress(0);
-        return;
+        throw new Error('No analysis data received');
       }
 
       if (!validateDocumentContent(result)) {
-        setProgress(0);
-        return;
+        throw new Error('Invalid document content');
       }
 
-      // Update state with successful result
-      updateCurrentDocumentState({
+      // Batch state updates together
+      const updates = {
         extractedText: result.analysis.content?.text || "No text extracted",
         selectedDoc: {
           summary: result.analysis.analysis?.summary || "",
@@ -584,15 +566,15 @@ export default function DemoPage() {
         },
         isProcessed: true,
         error: null
-      });
+      };
 
-      console.log("Document processed successfully!");
+      // Update all states at once
+      updateCurrentDocumentState(updates);
       setProgress(100);
+      console.log("Document processed successfully!");
+
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred';
-      
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       updateCurrentDocumentState({ error: errorMessage });
       setProgress(0);
     } finally {
