@@ -171,11 +171,30 @@ export function DocumentUploader({
 
         {/* Progress bar */}
         {isProcessing && (
-          <div className="space-y-2">
-            <Progress value={progress} className="h-2" />
-            <p className="text-center text-sm text-muted-foreground">
-              Processing document... {progress}%
-            </p>
+          <div className="space-y-3">
+            <Progress 
+              value={progress} 
+              className={cn(
+                "h-2 transition-all",
+                progress === 100 ? "duration-150" : "duration-[800ms]"
+              )}
+            />
+            <div className="text-center space-y-1">
+              <p className={cn(
+                "text-sm font-medium transition-colors duration-200",
+                progress === 100 ? "text-primary" : "text-primary/80"
+              )}>
+                {progress < 35 && "Preparing document..."}
+                {progress >= 35 && progress < 73 && "Analyzing content..."}
+                {progress >= 73 && progress < 89 && "Processing results..."}
+                {progress >= 89 && progress < 99 && "Finalizing..."}
+                {progress >= 99 && progress < 100 && "Almost ready..."}
+                {progress === 100 && "Opening document..."}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {progress.toFixed(1)}% complete
+              </p>
+            </div>
           </div>
         )}
       </div>
