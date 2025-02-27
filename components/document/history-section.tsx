@@ -390,6 +390,23 @@ export function HistorySection({ user }: HistorySectionProps) {
                   {selectedDoc?.title || "Document Preview"}
                 </DialogTitle>
                 <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-2 -mx-6 px-6">
+                  {(activeTab === 'json' || activeTab === 'markdown') && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={cn(
+                        "bg-primary/10 text-primary",
+                        "hover:bg-primary/20"
+                      )}
+                      onClick={() => navigator.clipboard.writeText(
+                        activeTab === 'json' 
+                          ? JSON.stringify(selectedDoc?.contentJson, null, 2)
+                          : generateMarkdown(selectedDoc?.contentJson)
+                      )}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant={activeTab === 'json' ? 'default' : 'ghost'}
                     size="sm"
@@ -486,20 +503,7 @@ export function HistorySection({ user }: HistorySectionProps) {
                             className="min-h-full w-full"
                           >
                             <div className="relative bg-muted w-full overflow-auto">
-                              <div className="sticky top-0 flex justify-end p-2 bg-muted border-b z-10">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className={cn(
-                                    "bg-primary/10 text-primary",
-                                    "hover:bg-primary/20"
-                                  )}
-                                  onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedDoc?.contentJson, null, 2))}
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              <div className="min-w-[600px] inline-block min-h-full w-full">
+                              <div className="min-w-[600px] w-full">
                                 <pre className="p-6 text-sm whitespace-pre select-text w-full">
                                   {JSON.stringify(selectedDoc?.contentJson, null, 2)}
                                 </pre>
@@ -516,20 +520,7 @@ export function HistorySection({ user }: HistorySectionProps) {
                             className="min-h-full w-full"
                           >
                             <div className="relative bg-muted w-full overflow-auto">
-                              <div className="sticky top-0 flex justify-end p-2 bg-muted border-b z-10">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className={cn(
-                                    "bg-primary/10 text-primary",
-                                    "hover:bg-primary/20"
-                                  )}
-                                  onClick={() => navigator.clipboard.writeText(generateMarkdown(selectedDoc?.contentJson))}
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              <div className="min-w-[600px] inline-block min-h-full w-full">
+                              <div className="min-w-[600px] w-full">
                                 <pre className="p-6 text-sm whitespace-pre select-text w-full">
                                   {generateMarkdown(selectedDoc?.contentJson)}
                                 </pre>

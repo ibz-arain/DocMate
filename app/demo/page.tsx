@@ -462,118 +462,151 @@ export default function DemoPage() {
       return;
     }
 
-    setIsProcessing(true);
-    setProgress(0);
-
     try {
-      // Validate file size before processing
-      if (currentState.file.size > 10 * 1024 * 1024) { // 10MB limit
-        throw new Error('File size exceeds 10MB limit');
+      setIsProcessing(true);
+      setProgress(0);
+      let currentProgress = 0;
+
+      // Helper function to add small random variation (only positive)
+      const addVariation = (value: number, range: number = 0.5) => {
+        const variation = Math.random() * range;
+        return value + variation;
+      };
+
+      // Function to create micro-movements in progress
+      const microMovement = async (baseProgress: number, duration: number = 800) => {
+        const smallSteps = Math.floor(duration / 100); // Update every 100ms
+        
+        for (let i = 0; i < smallSteps; i++) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          // Add only positive tiny variations
+          const variation = Math.random() * 0.3;
+          const newProgress = Math.min(baseProgress + variation, baseProgress + 0.5);
+          currentProgress = Math.max(currentProgress, newProgress);
+          setProgress(Math.round(currentProgress * 10) / 10);
+        }
+      };
+
+      // Function to smoothly increment progress with natural variation
+      const incrementProgress = async (start: number, end: number, duration: number) => {
+        const steps = Math.floor((end - start) * 1.5); // More granular steps
+        const baseStepDelay = duration / steps;
+        
+        for (let i = 1; i <= steps; i++) {
+          // Add variation to the delay between steps
+          const stepDelay = addVariation(baseStepDelay, baseStepDelay * 0.3);
+          await new Promise(resolve => setTimeout(resolve, stepDelay));
+          
+          // Calculate progress with slight positive variation
+          const rawProgress = start + ((end - start) * (i / steps));
+          const progress = Math.min(end, rawProgress + (Math.random() * 0.3));
+          currentProgress = Math.max(currentProgress, progress);
+          setProgress(Math.round(currentProgress * 10) / 10);
+        }
+      };
+
+      // Initial jump to show quick response
+      await incrementProgress(0, 8, 300);
+      
+      // Slower progress through main processing stages with natural pauses
+      const stages = [
+        { end: 35, duration: 2500 },
+        { end: 58, duration: 3000 },
+        { end: 73, duration: 2800 },
+        { end: 89, duration: 2500 }
+      ];
+
+      for (const stage of stages) {
+        await incrementProgress(currentProgress, stage.end, stage.duration);
+        // Add micro-movements during "processing" pauses
+        const pauseDuration = addVariation(1500, 500);
+        await microMovement(currentProgress, pauseDuration);
       }
 
-      let base64Data;
+      // Process the document
+      let result;
       try {
-        base64Data = await convertFileToBase64(currentState.file);
+        // Validate file size before processing
+        if (currentState.file.size > 10 * 1024 * 1024) {
+          throw new Error('File size exceeds 10MB limit');
+        }
+
+        let base64Data = await convertFileToBase64(currentState.file);
         if (!base64Data || typeof base64Data !== 'string') {
           throw new Error('Failed to convert file to base64');
         }
-        // Remove data URL prefix if present
         base64Data = base64Data.split(',')[1] || base64Data;
-      } catch (conversionError) {
-        throw new Error('Failed to prepare file for processing');
-      }
-      
-      setProgress(20);
-      
-      console.log("Processing started: Converting and analyzing document...");
 
-      // Validate request data
-      const requestData = {
-        imageData: base64Data,
-        mimeType: currentState.file.type || 'application/octet-stream'
-      };
+        const requestData = {
+          imageData: base64Data,
+          mimeType: currentState.file.type || 'application/octet-stream'
+        };
 
-      // Ensure all required fields are present and valid
-      if (!requestData.imageData) {
-        throw new Error('Invalid file data');
-      }
-
-      const endpoint = `/api/analyze/${selectedType}`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(requestData),
-      });
-
-      setProgress(60);
-
-      // Handle non-OK responses
-      if (!response.ok) {
-        let errorMessage;
-        const contentType = response.headers.get('content-type');
-        
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || 'Server processing error';
-          } catch {
-            errorMessage = 'Failed to parse error response';
-          }
-        } else {
-          errorMessage = response.statusText || 'Server processing error';
+        if (!requestData.imageData) {
+          throw new Error('Invalid file data');
         }
 
-        updateCurrentDocumentState({ error: errorMessage });
-        setProgress(0);
-        return;
-      }
+        const endpoint = `/api/analyze/${selectedType}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(requestData),
+        });
 
-      // Parse successful response
-      let result;
-      try {
+        if (!response.ok) {
+          let errorMessage;
+          const contentType = response.headers.get('content-type');
+          
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.error || 'Server processing error';
+          } else {
+            errorMessage = response.statusText || 'Server processing error';
+          }
+          throw new Error(errorMessage);
+        }
+
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           throw new Error('Invalid response format from server');
         }
         result = await response.json();
-      } catch (parseError) {
-        updateCurrentDocumentState({ error: 'Failed to parse server response' });
-        setProgress(0);
-        return;
+
+        if (!result || typeof result !== 'object') {
+          throw new Error('Invalid response data from server');
+        }
+
+        if (!result.success) {
+          throw new Error(result.error || 'Processing failed');
+        }
+
+        if (!result.analysis) {
+          throw new Error('No analysis data received');
+        }
+
+        if (!validateDocumentContent(result)) {
+          throw new Error('Invalid document content');
+        }
+      } catch (error) {
+        throw error;
       }
+
+      // Quick but smooth jump to completion
+      await incrementProgress(currentProgress, 99, 300);
+      await microMovement(99, 400); // Small movements at 99%
       
-      setProgress(80);
-
-      // Validate response data
-      if (!result || typeof result !== 'object') {
-        updateCurrentDocumentState({ error: 'Invalid response data from server' });
-        setProgress(0);
-        return;
-      }
-
-      if (!result.success) {
-        updateCurrentDocumentState({ error: result.error || 'Processing failed' });
-        setProgress(0);
-        return;
-      }
-
-      if (!result.analysis) {
-        updateCurrentDocumentState({ error: 'No analysis data received' });
-        setProgress(0);
-        return;
-      }
-
-      if (!validateDocumentContent(result)) {
-        setProgress(0);
-        return;
-      }
-
-      // Update state with successful result
-      updateCurrentDocumentState({
+      // Final jump to 100%
+      setProgress(100);
+      
+      // Brief pause at 100%
+      await new Promise(resolve => setTimeout(resolve, 250));
+      
+      // Now update the state with results
+      const updates = {
         extractedText: result.analysis.content?.text || "No text extracted",
         selectedDoc: {
           summary: result.analysis.analysis?.summary || "",
@@ -584,15 +617,15 @@ export default function DemoPage() {
         },
         isProcessed: true,
         error: null
-      });
+      };
 
-      console.log("Document processed successfully!");
-      setProgress(100);
-    } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred';
+      // Update all states at once after showing 100%
+      updateCurrentDocumentState(updates);
       
+      console.log("Document processed successfully!");
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       updateCurrentDocumentState({ error: errorMessage });
       setProgress(0);
     } finally {

@@ -103,13 +103,14 @@ export function DocumentViewer({
                 >
                   <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary/20 hover:[&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
                     <div className="relative bg-muted min-w-[600px] w-full">
-                      <div className="sticky top-2 flex justify-end pr-2">
+                      <div className="sticky top-2 right-2 flex justify-end pr-2 z-10">
                         <Button
                           size="sm"
                           variant="ghost"
                           className={cn(
                             "bg-primary/10 text-primary",
-                            "hover:bg-primary/20"
+                            "hover:bg-primary/20",
+                            "absolute right-2 top-0"
                           )}
                           onClick={() => navigator.clipboard.writeText(JSON.stringify(currentState.selectedDoc?.contentJson, null, 2))}
                         >
@@ -133,13 +134,14 @@ export function DocumentViewer({
                 >
                   <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary/20 hover:[&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
                     <div className="relative bg-muted min-w-[600px] w-full">
-                      <div className="sticky top-2 flex justify-end pr-2">
+                      <div className="sticky top-2 right-2 flex justify-end pr-2 z-10">
                         <Button
                           size="sm"
                           variant="ghost"
                           className={cn(
                             "bg-primary/10 text-primary",
-                            "hover:bg-primary/20"
+                            "hover:bg-primary/20",
+                            "absolute right-2 top-0"
                           )}
                           onClick={() => navigator.clipboard.writeText(generateMarkdown(currentState.selectedDoc?.contentJson))}
                         >
