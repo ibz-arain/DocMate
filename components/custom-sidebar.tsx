@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+
 const documentTypes = [
   {
     title: "T4 Tax Form",
@@ -51,6 +53,34 @@ interface CustomSidebarProps {
   onSelectDemo: (demoType: string) => void;
   selectedType?: string | null;
 }
+
+// Add TypeWriter component at the top of the file
+const TypeWriter = ({ text, delay = 50 }: { text: string; delay?: number }) => {
+  const [currentText, setCurrentText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    // Reset on unmount
+    return () => {
+      setCurrentText("");
+      setCurrentIndex(0);
+      setIsDeleting(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDeleting && currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setCurrentText(prev => prev + text[currentIndex]);
+        setCurrentIndex(currentIndex + 1);
+      }, delay);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIndex, delay, text, isDeleting]);
+
+  return <span>{currentText}</span>;
+};
 
 export function CustomSidebar({
   isCollapsed,
@@ -217,16 +247,16 @@ export function CustomSidebar({
         size="icon"
         className={cn(
           "fixed top-3 left-3 z-[100] md:hidden",
-          "h-10 w-10",
-          "bg-background/80 backdrop-blur-sm",
-          "border shadow-sm",
+          "h-12 w-12",
+          "bg-background/90 backdrop-blur-sm",
+          "border shadow-md rounded-full",
           "hover:bg-accent",
           "transition-all duration-200",
           isMobileOpen && "hidden"
         )}
         onClick={() => setIsMobileOpen(true)}
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-6 w-6" />
       </Button>
 
       {/* Mobile Sidebar */}
@@ -234,34 +264,44 @@ export function CustomSidebar({
         <SheetContent 
           side="left"
           className={cn(
-            "p-0 border bg-background/80 backdrop-blur-lg",
-            "w-[85%] max-w-[300px]",
+            "p-0 border-0 bg-background backdrop-blur-lg",
+            "w-full max-w-full sm:max-w-[350px] sm:border",
             "h-full",
             "transition-opacity duration-200",
             "data-[state=open]:opacity-100",
-            "data-[state=closed]:opacity-0"
+            "data-[state=closed]:opacity-0",
+            "z-50"
           )}
         >
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <div className="h-full flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="h-14 flex items-center px-4 border-b">
+            <div className="h-16 flex items-center justify-between px-4 border-b">
               <div className="font-semibold text-lg text-primary">
                 <Image 
                   src="/logo-text.png" 
                   alt="Logo" 
-                  width={100} 
-                  height={80} 
+                  width={120} 
+                  height={100} 
                   priority
                   className="select-none"
                 />
               </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsMobileOpen(false)}
+                className="h-10 w-10 rounded-full"
+                aria-label="Close menu"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
             </div>
 
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-4">
-                <nav className="space-y-1">
+                <nav className="space-y-2">
                   {documentTypes.map((item) => {
                     const isSelected = selectedType === item.demoType;
                     return (
@@ -273,12 +313,16 @@ export function CustomSidebar({
                           setIsMobileOpen(false);
                         }}
                         className={cn(
-                          "w-full justify-start",
+                          "w-full justify-start h-14 text-base",
                           isSelected && "bg-accent text-accent-foreground"
                         )}
                       >
-                        {item.icon}
-                        <span className="ml-2">{item.title}</span>
+                        <div className="flex items-center">
+                          <div className="mr-3">
+                            {item.icon}
+                          </div>
+                          <span>{item.title}</span>
+                        </div>
                       </Button>
                     );
                   })}
@@ -286,7 +330,7 @@ export function CustomSidebar({
                   {/* History Section - Only visible for signed-in users */}
                   {user && (
                     <>
-                      <div className="h-px bg-border my-2" />
+                      <div className="h-px bg-border my-3" />
                       <Button
                         variant="ghost"
                         onClick={() => {
@@ -294,12 +338,16 @@ export function CustomSidebar({
                           setIsMobileOpen(false);
                         }}
                         className={cn(
-                          "w-full justify-start",
+                          "w-full justify-start h-14 text-base",
                           selectedType === 'history' && "bg-accent text-accent-foreground"
                         )}
                       >
-                        <History className="h-5 w-5" />
-                        <span className="ml-2">History</span>
+                        <div className="flex items-center">
+                          <div className="mr-3">
+                            <History className="h-5 w-5" />
+                          </div>
+                          <span>History</span>
+                        </div>
                       </Button>
                     </>
                   )}
@@ -311,62 +359,78 @@ export function CustomSidebar({
             <div className="border-t p-4">
               {user ? (
                 <>
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                  <div className="px-2 py-2 text-sm text-muted-foreground">
                     Signed in as {user.username}
                   </div>
-                  <div className="space-y-1 mt-2">
+                  <div className="space-y-2 mt-3">
                     <Button
                       variant="ghost"
-                      className="w-full justify-start"
+                      className="w-full justify-start h-14 text-base"
                       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                     >
-                      <div className="relative h-5 w-5">
-                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                        <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      <div className="flex items-center">
+                        <div className="mr-3 relative h-5 w-5">
+                          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                          <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                        </div>
+                        <span>Toggle theme</span>
                       </div>
-                      <span className="ml-2">Toggle theme</span>
                     </Button>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start"
+                      className="w-full justify-start h-14 text-base"
                       onClick={() => {
                         setShowSettings(true);
                         setIsMobileOpen(false);
                       }}
                     >
-                      <Settings className="h-5 w-5" />
-                      <span className="ml-2">Settings</span>
+                      <div className="flex items-center">
+                        <div className="mr-3">
+                          <Settings className="h-5 w-5" />
+                        </div>
+                        <span>Settings</span>
+                      </div>
                     </Button>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start"
+                      className="w-full justify-start h-14 text-base"
                       onClick={handleLogout}
                     >
-                      <LogOut className="h-5 w-5" />
-                      <span className="ml-2">Sign Out</span>
+                      <div className="flex items-center">
+                        <div className="mr-3">
+                          <LogOut className="h-5 w-5" />
+                        </div>
+                        <span>Sign Out</span>
+                      </div>
                     </Button>
                   </div>
                 </>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Button
                     variant="ghost"
-                    className="w-full justify-start"
+                    className="w-full justify-start h-14 text-base"
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                   >
-                    <div className="relative h-5 w-5">
-                      <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                      <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    <div className="flex items-center">
+                      <div className="mr-3 relative h-5 w-5">
+                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                        <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      </div>
+                      <span>Toggle theme</span>
                     </div>
-                    <span className="ml-2">Toggle theme</span>
                   </Button>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start"
+                    className="w-full justify-start h-14 text-base"
                     onClick={handleAccountClick}
                   >
-                    <User className="h-5 w-5" />
-                    <span className="ml-2">Account</span>
+                    <div className="flex items-center">
+                      <div className="mr-3">
+                        <User className="h-5 w-5" />
+                      </div>
+                      <span>Account</span>
+                    </div>
                   </Button>
                 </div>
               )}
@@ -386,7 +450,7 @@ export function CustomSidebar({
             duration: 0.2,
             ease: "easeInOut"
           }}
-          className="h-[calc(100vh-3rem)] sticky top-6 bg-card/80 dark:bg-card/50 backdrop-blur-lg rounded-xl border shadow-lg overflow-hidden flex flex-col"
+          className="h-[calc(100vh-3rem)] sticky top-6 bg-card/80 dark:bg-card/50 backdrop-blur-lg rounded-xl border shadow overflow-hidden flex flex-col"
         >
           {/* Desktop Header */}
           <div className="h-16 flex items-center justify-between px-3 border-b border-border/50">
@@ -557,13 +621,26 @@ export function CustomSidebar({
                 <AnimatePresence mode="wait">
                   {!isCollapsed && (
                     <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.15 }}
-                      className="px-3 py-2 text-sm text-muted-foreground"
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ 
+                        width: "auto", 
+                        opacity: 1,
+                        transition: {
+                          width: { duration: 0.2, ease: "easeOut" },
+                          opacity: { duration: 0.3, ease: "easeInOut" }
+                        }
+                      }}
+                      exit={{ 
+                        width: 0, 
+                        opacity: 0,
+                        transition: {
+                          width: { duration: 0.2, ease: "easeIn" },
+                          opacity: { duration: 0.15, ease: "easeInOut" }
+                        }
+                      }}
+                      className="px-3 py-2 text-sm text-muted-foreground overflow-hidden whitespace-nowrap"
                     >
-                      Signed in as {user.username}
+                      <TypeWriter text={`Signed in as ${user.username}`} delay={50} />
                     </motion.div>
                   )}
                 </AnimatePresence>
