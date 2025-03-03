@@ -21,6 +21,23 @@ export function DocumentViewer({
     <Card className="h-full">
       <CardContent className="pt-6 pl-6 pr-6 flex flex-col h-full">
         <div className="flex items-center justify-end gap-1 sm:gap-2 mb-6 flex-none overflow-x-auto pb-2 -mx-6 px-6">
+          {(activeTab === 'json' || activeTab === 'markdown') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className={cn(
+                "bg-primary/10 text-primary",
+                "hover:bg-primary/20"
+              )}
+              onClick={() => navigator.clipboard.writeText(
+                activeTab === 'json' 
+                  ? JSON.stringify(currentState.selectedDoc?.contentJson, null, 2)
+                  : generateMarkdown(currentState.selectedDoc?.contentJson)
+              )}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant={activeTab === 'json' ? 'default' : 'ghost'}
             size="sm"
@@ -103,20 +120,6 @@ export function DocumentViewer({
                 >
                   <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary/20 hover:[&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
                     <div className="relative bg-muted min-w-[600px] w-full">
-                      <div className="sticky top-2 right-2 flex justify-end pr-2 z-10">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className={cn(
-                            "bg-primary/10 text-primary",
-                            "hover:bg-primary/20",
-                            "absolute right-2 top-0"
-                          )}
-                          onClick={() => navigator.clipboard.writeText(JSON.stringify(currentState.selectedDoc?.contentJson, null, 2))}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
                       <pre className="p-6 text-sm whitespace-pre-wrap break-words select-text w-full bg-muted">
                         {JSON.stringify(currentState.selectedDoc?.contentJson, null, 2)}
                       </pre>
@@ -134,20 +137,6 @@ export function DocumentViewer({
                 >
                   <div className="h-full overflow-auto scrollbar-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-primary/20 hover:[&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar]:absolute [&::-webkit-scrollbar]:right-0">
                     <div className="relative bg-muted min-w-[600px] w-full">
-                      <div className="sticky top-2 right-2 flex justify-end pr-2 z-10">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className={cn(
-                            "bg-primary/10 text-primary",
-                            "hover:bg-primary/20",
-                            "absolute right-2 top-0"
-                          )}
-                          onClick={() => navigator.clipboard.writeText(generateMarkdown(currentState.selectedDoc?.contentJson))}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
                       <pre className="p-6 text-sm whitespace-pre select-text w-full bg-muted overflow-x-auto">
                         {generateMarkdown(currentState.selectedDoc?.contentJson)}
                       </pre>

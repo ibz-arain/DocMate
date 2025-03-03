@@ -218,78 +218,74 @@ export function HistorySection({ user }: HistorySectionProps) {
         ) : (
           <div className="grid gap-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1 min-h-[calc(100vh-16rem)]">
             <div className="flex-1 min-w-0">
-              <Card className="h-full">
-                <CardContent className="p-0">
-                  <div className="rounded-md border h-full overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Document</TableHead>
-                          <TableHead className="hidden md:table-cell">Type</TableHead>
-                          <TableHead className="hidden md:table-cell">Date</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredDocuments.length > 0 ? (
-                          filteredDocuments.map((doc) => (
-                            <TableRow key={doc.id}>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
-                                  {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
-                                  <span className="truncate">{doc.title}</span>
-                                  <div className="flex items-center gap-2 md:hidden">
-                                    <span className="text-xs text-muted-foreground capitalize">({doc.type})</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {new Date(doc.date).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell capitalize">{doc.type}</TableCell>
-                              <TableCell className="hidden md:table-cell">{new Date(doc.date).toLocaleDateString()}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleViewDocument(doc)}
-                                    className="bg-primary/10 text-primary hover:bg-primary/20"
-                                  >
-                                    <FileSearch className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setDeleteDoc(doc)}
-                                    className="bg-primary/10 text-primary hover:bg-primary/20"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">
-                              <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                <FileText className="h-8 w-8 mb-2" />
-                                <p>No documents found</p>
-                                {searchQuery && <p className="text-sm">Try adjusting your search or filters</p>}
+              <div className="rounded-md border h-full overflow-x-auto bg-background">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Document</TableHead>
+                      <TableHead className="hidden md:table-cell">Type</TableHead>
+                      <TableHead className="hidden md:table-cell">Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDocuments.length > 0 ? (
+                      filteredDocuments.map((doc) => (
+                        <TableRow key={doc.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {doc.type === 't4' && <FileStack className="h-4 w-4 text-muted-foreground" />}
+                              {doc.type === 'bank' && <Building2 className="h-4 w-4 text-muted-foreground" />}
+                              {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
+                              {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
+                              {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                              <span className="truncate">{doc.title}</span>
+                              <div className="flex items-center gap-2 md:hidden">
+                                <span className="text-xs text-muted-foreground capitalize">({doc.type})</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(doc.date).toLocaleDateString()}
+                                </span>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell capitalize">{doc.type}</TableCell>
+                          <TableCell className="hidden md:table-cell">{new Date(doc.date).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleViewDocument(doc)}
+                                className="bg-primary/10 text-primary hover:bg-primary/20"
+                              >
+                                <FileSearch className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeleteDoc(doc)}
+                                className="bg-primary/10 text-primary hover:bg-primary/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <FileText className="h-8 w-8 mb-2" />
+                            <p>No documents found</p>
+                            {searchQuery && <p className="text-sm">Try adjusting your search or filters</p>}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
 
             <div className="space-y-6">

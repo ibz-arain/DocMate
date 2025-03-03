@@ -7,6 +7,7 @@ import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DocumentState, DocumentType, documentTypeLabels } from "@/types/document";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DocumentUploaderProps {
   selectedType: DocumentType;
@@ -62,30 +63,34 @@ export function DocumentUploader({
 
   if (!selectedType) {
     return (
-      <div className="w-full max-w-5xl mx-auto p-8">
-        <h2 className="text-3xl font-bold text-center mb-8">Select a Document Type</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Object.entries(documentTypeLabels).map(([type, info]) => {
-            if (type === 'history') return null;
-            return (
-              <Card
-                key={type}
-                className="p-6 hover:bg-muted/50 cursor-pointer transition-colors group"
-                onClick={() => onSelectType?.(type as DocumentType)}
-              >
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="p-3 rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                    {documentTypeIcons[type as keyof typeof documentTypeIcons]}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">{info.title}</h3>
-                    <p className="text-muted-foreground text-sm">{info.description}</p>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+      <div className="w-full h-full flex flex-col">
+        <ScrollArea className="flex-1 w-full">
+          <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6">Select a Document Type</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+              {Object.entries(documentTypeLabels).map(([type, info]) => {
+                if (type === 'history') return null;
+                return (
+                  <Card
+                    key={type}
+                    className="p-4 sm:p-6 hover:bg-muted/50 cursor-pointer transition-colors group border-2 hover:border-primary/20"
+                    onClick={() => onSelectType?.(type as DocumentType)}
+                  >
+                    <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
+                      <div className="p-3 rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                        {documentTypeIcons[type as keyof typeof documentTypeIcons]}
+                      </div>
+                      <div>
+                        <h3 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2">{info.title}</h3>
+                        <p className="text-muted-foreground text-xs sm:text-sm">{info.description}</p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </ScrollArea>
       </div>
     );
   }
