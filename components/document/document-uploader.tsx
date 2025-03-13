@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Upload, RefreshCcw, Zap, FileText, ReceiptText, Building2, Stethoscope, BatteryCharging } from "lucide-react";
+import { Upload, RefreshCcw, Zap, FileText, ReceiptText, Building2, Stethoscope, BatteryCharging, Code } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ const documentTypeIcons = {
   'receipt': <ReceiptText className="h-8 w-8" />,
   'dental': <Stethoscope className="h-8 w-8" />,
   'electricity': <BatteryCharging className="h-8 w-8" />,
+  'custom': <Code className="h-8 w-8" />,
 };
 
 export function DocumentUploader({

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging, Table as TableIcon, History, Eye, Filter, Search, Trash2, Save, X } from "lucide-react";
+import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging, Table as TableIcon, History, Eye, Filter, Search, Trash2, Save, X, Plus, Minus, Check, Circle, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,78 @@ import { DocumentViewer } from "@/components/document/document-viewer";
 import { DocumentInfo } from "@/components/document/document-info";
 import { HistorySection } from "@/components/document/history-section";
 import { generateMarkdown } from "@/lib/document-utils";
+import { Textarea } from "@/components/ui/textarea";
+
+interface FieldConfig {
+  name: string;
+  type: 'string' | 'number' | 'date' | 'array' | 'boolean' | 'object' | 'currency' | 'percentage' | 'email' | 'phone';
+  description?: string;
+  isRequired?: boolean;
+  format?: string;
+}
+
+interface DataTypeTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  defaultFields: FieldConfig[];
+}
+
+const dataTypeTemplates: DataTypeTemplate[] = [
+  {
+    id: 'financial',
+    name: 'Financial Document',
+    description: 'Extract financial data like transactions, amounts, and account details',
+    icon: <FileText className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'amount', type: 'currency', description: 'Transaction amount', isRequired: true },
+      { name: 'date', type: 'date', description: 'Transaction date', isRequired: true },
+      { name: 'description', type: 'string', description: 'Transaction description' },
+      { name: 'category', type: 'string', description: 'Transaction category' },
+      { name: 'accountNumber', type: 'string', description: 'Account number', format: 'XXXX-XXXX-XXXX' }
+    ]
+  },
+  {
+    id: 'identity',
+    name: 'Identity Document',
+    description: 'Extract personal information from ID cards, passports, etc.',
+    icon: <User className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'fullName', type: 'string', description: 'Full legal name', isRequired: true },
+      { name: 'dateOfBirth', type: 'date', description: 'Date of birth', isRequired: true },
+      { name: 'documentNumber', type: 'string', description: 'ID/Passport number', isRequired: true },
+      { name: 'nationality', type: 'string', description: 'Nationality' },
+      { name: 'expiryDate', type: 'date', description: 'Document expiry date' }
+    ]
+  },
+  {
+    id: 'invoice',
+    name: 'Invoice/Receipt',
+    description: 'Extract line items, totals, and payment details from invoices',
+    icon: <ReceiptText className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'invoiceNumber', type: 'string', description: 'Invoice number', isRequired: true },
+      { name: 'issueDate', type: 'date', description: 'Invoice date', isRequired: true },
+      { name: 'totalAmount', type: 'currency', description: 'Total amount', isRequired: true },
+      { name: 'items', type: 'array', description: 'Line items' },
+      { name: 'tax', type: 'percentage', description: 'Tax rate' }
+    ]
+  },
+  {
+    id: 'contract',
+    name: 'Contract/Agreement',
+    description: 'Extract key terms, dates, and parties from legal documents',
+    icon: <FileStack className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'parties', type: 'array', description: 'Contract parties', isRequired: true },
+      { name: 'startDate', type: 'date', description: 'Contract start date', isRequired: true },
+      { name: 'endDate', type: 'date', description: 'Contract end date' },
+      { name: 'value', type: 'currency', description: 'Contract value' },
+      { name: 'terms', type: 'array', description: 'Key terms and conditions' }
+    ]
+  }
+];
 
 const documentTypeLabels: Record<string, { title: string, description: string }> = {
   't4': {
@@ -68,6 +140,10 @@ const documentTypeLabels: Record<string, { title: string, description: string }>
   'electricity': {
     title: 'Electricity Bill',
     description: 'Upload your electricity bill for analysis'
+  },
+  'custom': {
+    title: 'Custom API',
+    description: 'Create and test your own custom document analysis API'
   },
   'history': {
     title: 'Document History',
@@ -193,6 +269,505 @@ function createInitialState(): DocumentState {
   };
 }
 
+interface TableConfig {
+  name: string;
+  description?: string;
+  fields: FieldConfig[];
+}
+
+function CustomAPISection({ 
+  currentState, 
+  onFileChange, 
+  onProcess, 
+  isProcessing, 
+  progress 
+}: { 
+  currentState: DocumentState; 
+  onFileChange: (file: File | null) => void; 
+  onProcess: (customPrompt: string, outputFormat: any) => void; 
+  isProcessing: boolean; 
+  progress: number;
+}) {
+  const [tables, setTables] = useState<TableConfig[]>([]);
+  const [documentName, setDocumentName] = useState<string>("");
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        onFileChange(acceptedFiles[0]);
+      }
+    },
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+      'application/pdf': ['.pdf']
+    },
+    maxSize: 10 * 1024 * 1024,
+    multiple: false
+  });
+
+  const hasRequiredField = tables.some(table => 
+    table.fields.some(field => field.isRequired)
+  );
+
+  const addTable = () => {
+    setTables([...tables, {
+      name: '',
+      description: '',
+      fields: []
+    }]);
+  };
+
+  const removeTable = (tableIndex: number) => {
+    const newTables = [...tables];
+    newTables.splice(tableIndex, 1);
+    setTables(newTables);
+  };
+
+  const updateTable = (tableIndex: number, updates: Partial<TableConfig>) => {
+    const newTables = [...tables];
+    newTables[tableIndex] = { ...newTables[tableIndex], ...updates };
+    setTables(newTables);
+  };
+
+  const addField = (tableIndex: number) => {
+    const newTables = [...tables];
+    const hasRequired = newTables[tableIndex].fields.some(f => f.isRequired);
+    newTables[tableIndex].fields.push({
+      name: '',
+      type: 'string',
+      description: '',
+      isRequired: !hasRequired
+    });
+    setTables(newTables);
+  };
+
+  const removeField = (tableIndex: number, fieldIndex: number) => {
+    const newTables = [...tables];
+    const table = newTables[tableIndex];
+    const field = table.fields[fieldIndex];
+    
+    if (field.isRequired && table.fields.filter(f => f.isRequired).length === 1) {
+      toast({
+        title: "Cannot delete field",
+        description: "Each table must have at least one required field",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    table.fields.splice(fieldIndex, 1);
+    setTables(newTables);
+  };
+
+  const updateField = (tableIndex: number, fieldIndex: number, updates: Partial<FieldConfig>) => {
+    const newTables = [...tables];
+    newTables[tableIndex].fields[fieldIndex] = {
+      ...newTables[tableIndex].fields[fieldIndex],
+      ...updates
+    };
+    setTables(newTables);
+  };
+
+  const handleSubmit = () => {
+    if (tables.length === 0) {
+      toast({
+        title: "No tables defined",
+        description: "Please add at least one table with fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    for (const table of tables) {
+      if (!table.name.trim()) {
+        toast({
+          title: "Invalid table name",
+          description: "All tables must have a name",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (table.fields.length === 0) {
+        toast({
+          title: "Empty table",
+          description: `Table "${table.name}" has no fields`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!table.fields.some(f => f.isRequired)) {
+        toast({
+          title: "Missing required field",
+          description: `Table "${table.name}" must have at least one required field`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      for (const field of table.fields) {
+        if (!field.name.trim()) {
+          toast({
+            title: "Invalid field name",
+            description: `All fields in table "${table.name}" must have a name`,
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+    }
+
+    const outputFormat = {
+      documentType: documentName || "Custom Document",
+      tables: tables.map(table => ({
+        name: table.name,
+        description: table.description,
+        fields: table.fields.map(field => ({
+          name: field.name,
+          type: field.type,
+          description: field.description || '',
+          required: field.isRequired || false,
+          format: field.format
+        }))
+      }))
+    };
+
+    const prompt = `Analyze this document and extract the following information in a structured format:
+
+${tables.map((table, i) => `Table ${i + 1}: ${table.name}
+${table.description ? `Description: ${table.description}\n` : ''}
+Fields:
+${table.fields.map(field => 
+  `- ${field.name}: ${field.description || ''} (${field.type}${field.isRequired ? ', required' : ''}${field.format ? `, format: ${field.format}` : ''})`
+).join('\n')}`).join('\n\n')}`;
+
+    onProcess(prompt, outputFormat);
+  };
+
+  return (
+    <div className="grid h-[calc(100vh-3rem)] grid-cols-[1fr_300px] gap-6">
+      {/* Main Configuration Area */}
+      <Card className="flex-1 overflow-hidden">
+        <CardHeader className="border-b py-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <Input
+                value={documentName}
+                onChange={(e) => setDocumentName(e.target.value)}
+                placeholder="Document Type Name"
+                className="max-w-[300px]"
+              />
+              <Button
+                variant="outline"
+                onClick={addTable}
+                className="bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary"
+              >
+                <Plus className="h-4 w-4 mr-2" /> Add Data Table
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <ScrollArea className="flex-1 h-[calc(100%-8rem)]">
+          <div className="p-6">
+            <div className="space-y-8">
+              {tables.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">No Tables Added Yet</h3>
+                  <p className="text-sm max-w-md mx-auto">
+                    Start by adding a data table. Each table can contain multiple fields that you want to extract from your document.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={addTable}
+                    className="mt-4 bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Add Your First Table
+                  </Button>
+                </div>
+              ) : (
+                tables.map((table, tableIndex) => (
+                  <div key={tableIndex} className="rounded-xl border-2 bg-card">
+                    {/* Table Header */}
+                    <div className="p-6 border-b bg-muted/30">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <Input
+                              value={table.name}
+                              onChange={(e) => updateTable(tableIndex, { name: e.target.value })}
+                              placeholder="Table Name (e.g., Line Items, Customer Details)"
+                              className="text-lg font-medium bg-background"
+                            />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeTable(tableIndex)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Remove Table
+                          </Button>
+                        </div>
+                        <Input
+                          value={table.description || ''}
+                          onChange={(e) => updateTable(tableIndex, { description: e.target.value })}
+                          placeholder="Table Description (optional)"
+                          className="text-sm bg-background"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fields Section */}
+                    <div className="p-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-medium text-muted-foreground">Fields</h3>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addField(tableIndex)}
+                            className="bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary"
+                          >
+                            <Plus className="h-4 w-4 mr-2" /> Add Field
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {table.fields.map((field, fieldIndex) => (
+                            <Card key={fieldIndex} className={cn(
+                              "border transition-colors",
+                              field.isRequired ? "border-primary/50 bg-primary/5" : "hover:bg-muted/50"
+                            )}>
+                              <CardContent className="p-4">
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex-1">
+                                      <Input
+                                        value={field.name}
+                                        onChange={(e) => updateField(tableIndex, fieldIndex, { name: e.target.value })}
+                                        placeholder="Field name (e.g., amount, date)"
+                                        className={cn(
+                                          "bg-background",
+                                          field.isRequired && "border-primary/50"
+                                        )}
+                                      />
+                                    </div>
+                                    <Select
+                                      value={field.type}
+                                      onValueChange={(value: any) => updateField(tableIndex, fieldIndex, { type: value })}
+                                    >
+                                      <SelectTrigger className="w-[140px] bg-background">
+                                        <SelectValue placeholder="Type" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="string">Text</SelectItem>
+                                        <SelectItem value="number">Number</SelectItem>
+                                        <SelectItem value="date">Date</SelectItem>
+                                        <SelectItem value="currency">Currency</SelectItem>
+                                        <SelectItem value="percentage">Percentage</SelectItem>
+                                        <SelectItem value="boolean">Yes/No</SelectItem>
+                                        <SelectItem value="array">List</SelectItem>
+                                        <SelectItem value="email">Email</SelectItem>
+                                        <SelectItem value="phone">Phone</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeField(tableIndex, fieldIndex)}
+                                      className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <Button
+                                      variant={field.isRequired ? "default" : "outline"}
+                                      size="sm"
+                                      className={cn(
+                                        "h-8 px-3 shrink-0",
+                                        field.isRequired && 
+                                        table.fields.filter(f => f.isRequired).length === 1 && 
+                                        "opacity-50 cursor-not-allowed"
+                                      )}
+                                      onClick={() => {
+                                        if (field.isRequired && table.fields.filter(f => f.isRequired).length === 1) {
+                                          toast({
+                                            title: "Cannot change field",
+                                            description: "Each table must have at least one required field",
+                                            variant: "destructive"
+                                          });
+                                          return;
+                                        }
+                                        updateField(tableIndex, fieldIndex, { isRequired: !field.isRequired });
+                                      }}
+                                    >
+                                      {field.isRequired ? (
+                                        <Check className="h-4 w-4 mr-2" />
+                                      ) : (
+                                        <Circle className="h-4 w-4 mr-2" />
+                                      )}
+                                      Required
+                                    </Button>
+                                    <Input
+                                      value={field.description || ''}
+                                      onChange={(e) => updateField(tableIndex, fieldIndex, { description: e.target.value })}
+                                      placeholder="Field description (optional)"
+                                      className="flex-1 bg-background"
+                                    />
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                          {table.fields.length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground bg-muted/30 rounded-lg border-2 border-dashed">
+                              <FileText className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                              <p className="text-sm">No fields added yet. Click "Add Field" to get started.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </ScrollArea>
+      </Card>
+
+      {/* Right Side Panel */}
+      <div className="flex flex-col gap-4">
+        {/* Document Upload */}
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b py-3">
+            <CardTitle className="text-sm font-medium">Document Upload</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div
+              {...getRootProps()}
+              className={cn(
+                "flex flex-col items-center justify-center px-4 py-8 text-center transition-colors",
+                isDragActive ? "bg-primary/5 border-primary" : "hover:bg-muted/50",
+                currentState.file ? "bg-muted/50" : ""
+              )}
+            >
+              <input {...getInputProps()} />
+              {currentState.file ? (
+                <div className="space-y-2">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">{currentState.file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(currentState.file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFileChange(null);
+                    }}
+                  >
+                    Change File
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      {isDragActive ? "Drop file here" : "Upload Document"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Drag & drop or click to upload
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-center text-xs">
+                    <span className="px-2 py-1 rounded-full bg-muted">PNG</span>
+                    <span className="px-2 py-1 rounded-full bg-muted">JPG</span>
+                    <span className="px-2 py-1 rounded-full bg-muted">PDF</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t">
+              <Button
+                className="w-full"
+                disabled={!documentName || tables.length === 0 || !hasRequiredField || !currentState.file || isProcessing}
+                onClick={handleSubmit}
+              >
+                {isProcessing ? (
+                  <>
+                    <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Analyze Document
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Progress */}
+        {isProcessing && (
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <Progress value={progress} className="h-2" />
+              <p className="text-xs text-center text-muted-foreground">
+                {progress}% - Analyzing document...
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quick Start Guide */}
+        <Card>
+          <CardHeader className="border-b py-3">
+            <CardTitle className="text-sm font-medium">Quick Guide</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="space-y-3 text-sm">
+              <div className="space-y-1">
+                <p className="font-medium">1. Name Your Document Type</p>
+                <p className="text-xs text-muted-foreground">Give your document analysis a name</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">2. Create Data Tables</p>
+                <p className="text-xs text-muted-foreground">Add tables to organize related information (e.g., "Line Items", "Customer Details")</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">3. Add Fields to Tables</p>
+                <p className="text-xs text-muted-foreground">Define what data to extract in each table (e.g., "amount", "date")</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">4. Upload Document</p>
+                <p className="text-xs text-muted-foreground">Upload the document you want to analyze</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">5. Process</p>
+                <p className="text-xs text-muted-foreground">Click Analyze to extract your data</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function DemoPage() {
   const [documentStates, setDocumentStates] = useState<DocumentStateMap>({
     't4': createInitialState(),
@@ -200,6 +775,7 @@ export default function DemoPage() {
     'receipt': createInitialState(),
     'dental': createInitialState(),
     'electricity': createInitialState(),
+    'custom': createInitialState(),
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -270,6 +846,11 @@ export default function DemoPage() {
     if (!result.analysis?.documentType) {
       updateCurrentDocumentState({ error: 'Unable to determine document type. Please ensure you uploaded the correct document.' });
       return false;
+    }
+
+    // Skip validation for custom document type
+    if (selectedType === 'custom') {
+      return true;
     }
 
     const expectedTypes = {
@@ -452,50 +1033,37 @@ export default function DemoPage() {
     });
   };
 
-  const processDocument = async () => {
-    if (!currentState.file || !selectedType) {
-      updateCurrentDocumentState({ error: "Please select a document type and upload a file first" });
-      return;
-    }
-
-    if (!validateFileType(currentState.file)) {
-      return;
-    }
-
+  const processDocument = async (customPrompt?: string, outputFormat?: any) => {
+    if (!currentState.file || isProcessing) return;
+    
     try {
       setIsProcessing(true);
       setProgress(0);
+      
       let currentProgress = 0;
-
-      // Helper function to add small random variation (only positive)
+      
+      // Calculate progress with slight positive variation
       const addVariation = (value: number, range: number = 0.5) => {
-        const variation = Math.random() * range;
-        return value + variation;
+        return value + (Math.random() * range);
       };
-
-      // Function to create micro-movements in progress
+      
       const microMovement = async (baseProgress: number, duration: number = 800) => {
-        const smallSteps = Math.floor(duration / 100); // Update every 100ms
+        const startTime = Date.now();
+        const endTime = startTime + duration;
         
-        for (let i = 0; i < smallSteps; i++) {
+        while (Date.now() < endTime) {
           await new Promise(resolve => setTimeout(resolve, 100));
-          // Add only positive tiny variations
-          const variation = Math.random() * 0.3;
-          const newProgress = Math.min(baseProgress + variation, baseProgress + 0.5);
-          currentProgress = Math.max(currentProgress, newProgress);
-          setProgress(Math.round(currentProgress * 10) / 10);
+          const smallVariation = (Math.random() * 0.3) - 0.15;
+          setProgress(Math.min(99, Math.max(baseProgress, baseProgress + smallVariation)));
         }
       };
-
-      // Function to smoothly increment progress with natural variation
+      
       const incrementProgress = async (start: number, end: number, duration: number) => {
-        const steps = Math.floor((end - start) * 1.5); // More granular steps
-        const baseStepDelay = duration / steps;
+        const steps = 20;
+        const stepDuration = duration / steps;
         
         for (let i = 1; i <= steps; i++) {
-          // Add variation to the delay between steps
-          const stepDelay = addVariation(baseStepDelay, baseStepDelay * 0.3);
-          await new Promise(resolve => setTimeout(resolve, stepDelay));
+          await new Promise(resolve => setTimeout(resolve, stepDuration));
           
           // Calculate progress with slight positive variation
           const rawProgress = start + ((end - start) * (i / steps));
@@ -541,6 +1109,14 @@ export default function DemoPage() {
           imageData: base64Data,
           mimeType: currentState.file.type || 'application/octet-stream'
         };
+
+        // Add custom prompt and output format for custom API
+        if (selectedType === 'custom' && customPrompt) {
+          Object.assign(requestData, { 
+            customPrompt, 
+            outputFormat 
+          });
+        }
 
         if (!requestData.imageData) {
           throw new Error('Invalid file data');
@@ -656,19 +1232,37 @@ export default function DemoPage() {
           onSelectDemo={handleDemoSelect}
           selectedType={selectedType}
         />
-        <div className="flex-1 p-6 overflow-hidden flex items-center justify-center">
-          <DocumentUploader
-            selectedType={selectedType}
-            currentState={currentState}
-            isProcessing={isProcessing}
-            progress={progress}
-            onProcessDocument={processDocument}
-            onFileChange={(file: File | null) => updateCurrentDocumentState({ file, error: null })}
-            onSelectType={(type) => {
-              setShowHistory(false);
-              setSelectedType(type);
-            }}
-          />
+        <div className="flex-1 overflow-auto p-6">
+          {selectedType === 'custom' ? (
+            <CustomAPISection
+              currentState={currentState}
+              onFileChange={(file) => {
+                updateCurrentDocumentState({
+                  file,
+                  isProcessed: false,
+                  error: null
+                });
+              }}
+              onProcess={(customPrompt, outputFormat) => processDocument(customPrompt, outputFormat)}
+              isProcessing={isProcessing}
+              progress={progress}
+            />
+          ) : (
+            <div className="flex flex-col gap-6 h-full">
+              <DocumentUploader
+                selectedType={selectedType}
+                currentState={currentState}
+                isProcessing={isProcessing}
+                progress={progress}
+                onProcessDocument={processDocument}
+                onFileChange={(file: File | null) => updateCurrentDocumentState({ file, error: null })}
+                onSelectType={(type) => {
+                  setShowHistory(false);
+                  setSelectedType(type);
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     );
@@ -750,54 +1344,44 @@ const generateFormattedView = (data: any) => {
         {data.content && (
           <div className="space-y-6 mt-8">
             <h3 className="text-xl font-semibold">Content</h3>
-            {Object.entries(data.content).map(([key, value]: [string, any]) => (
-              <div key={key} className="rounded-lg border">
-                <div className="px-4 py-3 border-b bg-muted">
-                  <h4 className="font-medium capitalize">{key}</h4>
-                </div>
-                <div className="p-4">
-                  {Array.isArray(value) ? (
+            {Object.entries(data.content).map(([tableName, tableData]: [string, any]) => {
+              // Ensure tableData is an array
+              const entries = Array.isArray(tableData) ? tableData : [tableData];
+              // Get field names from the first entry
+              const fields = entries[0] ? Object.keys(entries[0]) : [];
+
+              return (
+                <div key={tableName} className="rounded-lg border">
+                  <div className="px-4 py-3 border-b bg-muted">
+                    <h4 className="font-medium capitalize">{tableName}</h4>
+                  </div>
+                  <div className="p-4">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b">
-                          {Object.keys(value[0] || {}).map((header) => (
-                            <th key={header} className="py-2 text-left font-medium capitalize">
-                              {header}
+                          {fields.map((field) => (
+                            <th key={field} className="py-2 text-left font-medium capitalize">
+                              {field}
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {value.map((item, index) => (
+                        {entries.map((entry, index) => (
                           <tr key={index} className="border-b last:border-0">
-                            {Object.values(item).map((cellValue, cellIndex) => (
-                              <td key={cellIndex} className="py-2">
-                                {String(cellValue)}
+                            {fields.map((field) => (
+                              <td key={field} className="py-2">
+                                {String(entry[field] || '')}
                               </td>
                             ))}
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  ) : (
-                    <table className="w-full">
-                      <tbody>
-                        {Object.entries(value).map(([subKey, subValue]: [string, any]) => (
-                          <tr key={subKey} className="border-b last:border-0">
-                            <td className="py-2 font-medium capitalize w-1/3">{subKey}</td>
-                            <td className="py-2">
-                              {typeof subValue === 'object' 
-                                ? JSON.stringify(subValue, null, 2)
-                                : String(subValue)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

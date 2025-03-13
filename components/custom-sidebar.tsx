@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging, LogOut, User, Settings, Sun, Moon, History, Menu } from "lucide-react";
+import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging, LogOut, User, Settings, Sun, Moon, History, Menu, Code } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,11 @@ const documentTypes = [
     title: "Electricity Bill",
     icon: <BatteryCharging className="h-5 w-5" />,
     demoType: "electricity"
+  },
+  {
+    title: "Custom API",
+    icon: <Code className="h-5 w-5" />,
+    demoType: "custom"
   }
 ];
 
