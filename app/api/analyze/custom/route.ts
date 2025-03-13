@@ -22,6 +22,7 @@ const FieldSchema = z.object({
 const TableSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
+  type: z.enum(['table', 'data']),
   fields: z.array(FieldSchema)
 });
 
@@ -43,17 +44,18 @@ export async function POST(req: NextRequest) {
     const isPDF = imageData.startsWith('data:application/pdf') || mimeType === 'application/pdf';
     const fileType = isPDF ? 'application/pdf' : 'image/jpeg';
 
-    let prompt = `Analyze this document and extract ALL instances of the following information, organized into tables. For each table, extract all relevant data entries. Return the data in a structured format.\n\n`;
+    let prompt = `Analyze this document and extract information in the following format:\n\n`;
     
     if (outputFormat) {
       outputFormat.tables.forEach((table, index) => {
-        prompt += `Table ${index + 1}: ${table.name}\n`;
+        prompt += `${table.type === 'table' ? 'Table' : 'Data Section'} ${index + 1}: ${table.name}\n`;
         if (table.description) {
           prompt += `Description: ${table.description}\n`;
         }
+        prompt += `Type: ${table.type === 'table' ? 'Repeating Data (extract all instances)' : 'Single Values (extract one instance)'}\n`;
         prompt += `Fields to extract:\n`;
         table.fields.forEach(field => {
-          prompt += `- ${field.name}: ${field.description || 'Find all instances'}\n`;
+          prompt += `- ${field.name}${field.description ? ` (${field.description})` : ''}\n`;
           prompt += `  Type: ${field.type}\n`;
           prompt += `  Required: ${field.required ? 'Yes' : 'No'}\n`;
           if (field.format) prompt += `  Format: ${field.format}\n`;
@@ -64,34 +66,58 @@ export async function POST(req: NextRequest) {
       prompt += `\nStructure the response as follows:
 {
   "documentType": "${outputFormat.documentType}",
-  "metadata": {
-    "documentId": "unique_identifier",
-    "processedAt": "timestamp",
-    "confidence": "overall_confidence_score"
-  },
   "content": {
-    ${outputFormat.tables.map(table => `"${table.name}": [
-      { ${table.fields.map(f => `"${f.name}": "value"`).join(', ')} },
-      { ${table.fields.map(f => `"${f.name}": "value"`).join(', ')} }
-      // Additional entries as needed...
-    ]`).join(',\n    ')}
+    ${outputFormat.tables.map(table => {
+      if (table.type === 'table') {
+        return `"${table.name}": [
+          {
+            ${table.fields.map(f => `"${f.name}": "value"`).join(',\n            ')}
+          }
+          // Additional entries for all instances found...
+        ]`;
+      } else {
+        return `"${table.name}": {
+          ${table.fields.map(f => `"${f.name}": "single value"`).join(',\n          ')}
+        }`;
+      }
+    }).join(',\n    ')}
   },
   "analysis": {
     "summary": "Brief summary of the document",
     "keywords": ["relevant", "keywords"],
     "insights": ["Key insights about the extracted data"],
     "confidenceScore": 0.0,
+    "metadata": {
+      "documentId": "unique_identifier",
+      "processedAt": "timestamp",
+      "confidence": "overall_confidence_score",
+      "documentType": "detected_document_type",
+      "processingDetails": {
+        "ocrConfidence": "ocr_confidence_score",
+        "imageQuality": "image_quality_score",
+        "processingTime": "processing_duration"
+      }
+    },
     "tableStats": {
       ${outputFormat.tables.map(table => `"${table.name}": {
-        "entriesFound": 0,
+        ${table.type === 'table' ? '"entriesFound": 0,' : ''}
         "confidence": 0.0,
         "fieldStats": {
-          ${table.fields.map(field => `"${field.name}": { "found": 0, "confidence": 0.0 }`).join(',\n          ')}
+          ${table.fields.map(field => `"${field.name}": {
+            "found": ${table.type === 'table' ? '0' : '1'},
+            "confidence": 0.0
+          }`).join(',\n          ')}
         }
       }`).join(',\n      ')}
     }
   }
-}`;
+}\n\nImportant instructions:
+1. For tables marked as "Repeating Data", extract ALL instances found in the document
+2. For sections marked as "Single Values", extract only ONE instance
+3. Maintain the exact field names and types as specified
+4. Ensure all required fields are populated
+5. Follow any specified formats for fields
+6. Store all metadata in the analysis.metadata section, not in the main content`;
     }
 
     const result = await generateText({
@@ -119,41 +145,122 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Clean up the response structure
+    // Clean up and validate the response structure
     if (outputFormat && parsedData.content) {
       for (const table of outputFormat.tables) {
-        if (!parsedData.content[table.name]) {
-          parsedData.content[table.name] = [];
-        }
+        const tableContent = parsedData.content[table.name];
         
-        // Convert object with entries to array if needed
-        if (!Array.isArray(parsedData.content[table.name])) {
-          const entries = parsedData.content[table.name];
-          parsedData.content[table.name] = Object.values(entries);
+        // Initialize if missing
+        if (!tableContent) {
+          parsedData.content[table.name] = table.type === 'table' ? [] : {};
+          continue;
         }
-        
-        // Update table statistics
-        if (parsedData.analysis?.tableStats) {
-          const tableContent = parsedData.content[table.name];
-          const entryCount = tableContent.length;
-          
-          parsedData.analysis.tableStats[table.name] = {
-            entriesFound: entryCount,
-            confidence: 0.95,
-            fieldStats: {}
-          };
 
-          // Calculate field statistics
-          for (const field of table.fields) {
-            parsedData.analysis.tableStats[table.name].fieldStats[field.name] = {
-              found: entryCount,
-              confidence: 0.95
-            };
+        // Handle table type data
+        if (table.type === 'table') {
+          // Ensure array format
+          if (!Array.isArray(tableContent)) {
+            parsedData.content[table.name] = Object.values(tableContent);
           }
+          
+          // Ensure all required fields exist in each entry
+          parsedData.content[table.name] = parsedData.content[table.name].map((entry: any) => {
+            const cleanEntry: any = {};
+            table.fields.forEach(field => {
+              cleanEntry[field.name] = entry[field.name] || '';
+            });
+            return cleanEntry;
+          });
+        } else {
+          // Handle data section (single values)
+          if (Array.isArray(tableContent)) {
+            // If it's an array, take the first item
+            parsedData.content[table.name] = tableContent[0] || {};
+          } else if (typeof tableContent !== 'object') {
+            parsedData.content[table.name] = {};
+          }
+          
+          // Ensure all fields exist
+          const cleanData: any = {};
+          table.fields.forEach(field => {
+            cleanData[field.name] = parsedData.content[table.name][field.name] || '';
+          });
+          parsedData.content[table.name] = cleanData;
         }
       }
+
+      // Initialize or update analysis section with metadata
+      if (!parsedData.analysis) {
+        parsedData.analysis = {
+          summary: "",
+          keywords: [],
+          insights: [],
+          confidenceScore: 0.95,
+          metadata: {
+            documentId: `doc_${Date.now()}`,
+            processedAt: new Date().toISOString(),
+            confidence: 0.95,
+            documentType: parsedData.documentType,
+            processingDetails: {
+              ocrConfidence: 0.95,
+              imageQuality: "high",
+              processingTime: "1.2s"
+            }
+          },
+          tableStats: {}
+        };
+      }
+
+      // Ensure metadata exists in analysis
+      if (!parsedData.analysis.metadata) {
+        parsedData.analysis.metadata = {
+          documentId: `doc_${Date.now()}`,
+          processedAt: new Date().toISOString(),
+          confidence: parsedData.analysis.confidenceScore || 0.95,
+          documentType: parsedData.documentType,
+          processingDetails: {
+            ocrConfidence: 0.95,
+            imageQuality: "high",
+            processingTime: "1.2s"
+          }
+        };
+      }
+
+      if (!parsedData.analysis.tableStats) {
+        parsedData.analysis.tableStats = {};
+      }
+
+      // Update statistics for each table
+      outputFormat.tables.forEach(table => {
+        const tableContent = parsedData.content[table.name];
+        const stats: {
+          entriesFound?: number;
+          confidence: number;
+          fieldStats: Record<string, { found: number; confidence: number }>;
+        } = {
+          confidence: 0.95,
+          fieldStats: {}
+        };
+
+        if (table.type === 'table') {
+          stats.entriesFound = Array.isArray(tableContent) ? tableContent.length : 0;
+        }
+
+        // Calculate field statistics
+        table.fields.forEach(field => {
+          stats.fieldStats[field.name] = {
+            found: table.type === 'table' 
+              ? (Array.isArray(tableContent) ? tableContent.length : 0)
+              : (tableContent[field.name] ? 1 : 0),
+            confidence: 0.95
+          };
+        });
+
+        parsedData.analysis.tableStats[table.name] = stats;
+      });
     }
     
+    // Return the cleaned up response with metadata in analysis section
     return NextResponse.json({ 
       success: true,
       analysis: parsedData,

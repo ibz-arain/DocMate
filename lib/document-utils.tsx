@@ -81,7 +81,6 @@ export const generateMarkdown = (data: any): string => {
   }
 
   if (data.content) {
-    markdown += '## Content\n\n';
     Object.entries(data.content).forEach(([key, value]: [string, any]) => {
       markdown += `### ${key}\n\n`;
       if (Array.isArray(value) && value.length > 0) {
@@ -134,8 +133,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
         )}
 
         {data.content && (
-          <div className="space-y-6 mt-8">
-            <h3 className="text-xl font-semibold">Content</h3>
+          <div className="space-y-6">
             {Object.entries(data.content).map(([key, value]: [string, any]) => (
               <div key={key} className="rounded-lg border">
                 <div className="px-4 py-3 border-b bg-muted">

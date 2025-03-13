@@ -44,11 +44,6 @@ const documentTypes = [
     title: "Electricity Bill",
     icon: <BatteryCharging className="h-5 w-5" />,
     demoType: "electricity"
-  },
-  {
-    title: "Custom API",
-    icon: <Code className="h-5 w-5" />,
-    demoType: "custom"
   }
 ];
 

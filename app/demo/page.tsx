@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging, Table as TableIcon, History, Eye, Filter, Search, Trash2, Save, X, Plus, Minus, Check, Circle, User } from "lucide-react";
+import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging, Table as TableIcon, History, Eye, Filter, Search, Trash2, Save, X, Plus, Minus, Check, Circle, User, ListIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import { cn } from "@/lib/utils";
@@ -120,30 +120,240 @@ const dataTypeTemplates: DataTypeTemplate[] = [
   }
 ];
 
+// Document templates for each document type
+interface TableTemplate {
+  name: string;
+  description?: string;
+  type: 'table' | 'data';
+  fields: FieldConfig[];
+}
+
+interface DocumentTemplate {
+  documentName: string;
+  tables: TableTemplate[];
+}
+
+const documentTemplates: Record<string, DocumentTemplate> = {
+  't4': {
+    documentName: 'T4 Tax Form',
+    tables: [
+      {
+        name: 'Employee Information',
+        type: 'data',
+        fields: [
+          { name: 'employeeName', type: 'string', description: 'Full name of employee', isRequired: true },
+          { name: 'socialInsuranceNumber', type: 'string', description: 'Social Insurance Number (SIN)', isRequired: true, format: '999-999-999' },
+          { name: 'employerName', type: 'string', description: 'Name of employer', isRequired: true },
+          { name: 'taxYear', type: 'string', description: 'Tax year', isRequired: true }
+        ]
+      },
+      {
+        name: 'Income Details',
+        type: 'data',
+        fields: [
+          { name: 'employmentIncome', type: 'currency', description: 'Employment income (Box 14)', isRequired: true },
+          { name: 'incomeTaxDeducted', type: 'currency', description: 'Income tax deducted (Box 22)', isRequired: true },
+          { name: 'cppContributions', type: 'currency', description: 'CPP contributions (Box 16)', isRequired: true },
+          { name: 'eiPremiums', type: 'currency', description: 'EI premiums (Box 18)', isRequired: true },
+          { name: 'pensionAdjustment', type: 'currency', description: 'Pension adjustment (Box 52)', isRequired: false }
+        ]
+      },
+      {
+        name: 'Additional Boxes',
+        type: 'table',
+        fields: [
+          { name: 'boxNumber', type: 'string', description: 'Box number', isRequired: true },
+          { name: 'boxCode', type: 'string', description: 'Box code', isRequired: false },
+          { name: 'amount', type: 'currency', description: 'Amount', isRequired: true }
+        ]
+      }
+    ]
+  },
+  'bank': {
+    documentName: 'Bank Statement',
+    tables: [
+      {
+        name: 'Account Information',
+        type: 'data',
+        fields: [
+          { name: 'accountHolder', type: 'string', description: 'Name of account holder', isRequired: true },
+          { name: 'accountNumber', type: 'string', description: 'Account number', isRequired: true, format: 'XXXX-XXXX-XXXX-XXXX' },
+          { name: 'statementPeriod', type: 'string', description: 'Statement period', isRequired: true },
+          { name: 'bankName', type: 'string', description: 'Bank name', isRequired: true }
+        ]
+      },
+      {
+        name: 'Balance Summary',
+        type: 'data',
+        fields: [
+          { name: 'openingBalance', type: 'currency', description: 'Opening balance', isRequired: true },
+          { name: 'closingBalance', type: 'currency', description: 'Closing balance', isRequired: true },
+          { name: 'totalDeposits', type: 'currency', description: 'Total deposits', isRequired: true },
+          { name: 'totalWithdrawals', type: 'currency', description: 'Total withdrawals', isRequired: true }
+        ]
+      },
+      {
+        name: 'Transactions',
+        type: 'table',
+        fields: [
+          { name: 'date', type: 'date', description: 'Transaction date', isRequired: true },
+          { name: 'description', type: 'string', description: 'Transaction description', isRequired: true },
+          { name: 'amount', type: 'currency', description: 'Transaction amount', isRequired: true },
+          { name: 'type', type: 'string', description: 'Transaction type (debit/credit)', isRequired: true },
+          { name: 'balance', type: 'currency', description: 'Balance after transaction', isRequired: false }
+        ]
+      }
+    ]
+  },
+  'receipt': {
+    documentName: 'Store Receipt',
+    tables: [
+      {
+        name: 'Merchant Information',
+        type: 'data',
+        fields: [
+          { name: 'merchantName', type: 'string', description: 'Name of merchant/store', isRequired: true },
+          { name: 'address', type: 'string', description: 'Store address', isRequired: false },
+          { name: 'phoneNumber', type: 'phone', description: 'Store phone number', isRequired: false },
+          { name: 'receiptNumber', type: 'string', description: 'Receipt/transaction number', isRequired: true }
+        ]
+      },
+      {
+        name: 'Transaction Details',
+        type: 'data',
+        fields: [
+          { name: 'date', type: 'date', description: 'Purchase date', isRequired: true },
+          { name: 'time', type: 'string', description: 'Purchase time', isRequired: false },
+          { name: 'subtotal', type: 'currency', description: 'Subtotal amount', isRequired: true },
+          { name: 'taxAmount', type: 'currency', description: 'Tax amount', isRequired: true },
+          { name: 'totalAmount', type: 'currency', description: 'Total amount', isRequired: true },
+          { name: 'paymentMethod', type: 'string', description: 'Payment method', isRequired: false }
+        ]
+      },
+      {
+        name: 'Items',
+        type: 'table',
+        fields: [
+          { name: 'itemName', type: 'string', description: 'Item name/description', isRequired: true },
+          { name: 'quantity', type: 'number', description: 'Quantity', isRequired: true },
+          { name: 'unitPrice', type: 'currency', description: 'Unit price', isRequired: true },
+          { name: 'amount', type: 'currency', description: 'Total amount for item', isRequired: true },
+          { name: 'sku', type: 'string', description: 'SKU/Item code', isRequired: false }
+        ]
+      }
+    ]
+  },
+  'dental': {
+    documentName: 'Dental Claim Form',
+    tables: [
+      {
+        name: 'Patient Information',
+        type: 'data',
+        fields: [
+          { name: 'patientName', type: 'string', description: 'Full name of patient', isRequired: true },
+          { name: 'dateOfBirth', type: 'date', description: 'Patient date of birth', isRequired: true },
+          { name: 'insuranceProvider', type: 'string', description: 'Insurance provider name', isRequired: true },
+          { name: 'policyNumber', type: 'string', description: 'Insurance policy number', isRequired: true },
+          { name: 'certificateNumber', type: 'string', description: 'Certificate number', isRequired: false }
+        ]
+      },
+      {
+        name: 'Dentist Information',
+        type: 'data',
+        fields: [
+          { name: 'dentistName', type: 'string', description: 'Name of dentist', isRequired: true },
+          { name: 'dentistAddress', type: 'string', description: 'Dentist address', isRequired: false },
+          { name: 'dentistPhone', type: 'phone', description: 'Dentist phone number', isRequired: false },
+          { name: 'licenseNumber', type: 'string', description: 'Dentist license number', isRequired: true }
+        ]
+      },
+      {
+        name: 'Procedures',
+        type: 'table',
+        fields: [
+          { name: 'serviceDate', type: 'date', description: 'Date of service', isRequired: true },
+          { name: 'procedureCode', type: 'string', description: 'Procedure code', isRequired: true },
+          { name: 'toothCode', type: 'string', description: 'Tooth code/number', isRequired: false },
+          { name: 'procedureDescription', type: 'string', description: 'Description of service', isRequired: true },
+          { name: 'fee', type: 'currency', description: 'Professional fee', isRequired: true }
+        ]
+      },
+      {
+        name: 'Claim Summary',
+        type: 'data',
+        fields: [
+          { name: 'totalFee', type: 'currency', description: 'Total fee charged', isRequired: true },
+          { name: 'amountPaid', type: 'currency', description: 'Amount paid by patient', isRequired: false },
+          { name: 'amountClaimed', type: 'currency', description: 'Amount claimed', isRequired: true }
+        ]
+      }
+    ]
+  },
+  'electricity': {
+    documentName: 'Electricity Bill',
+    tables: [
+      {
+        name: 'Customer Information',
+        type: 'data',
+        fields: [
+          { name: 'customerName', type: 'string', description: 'Name of customer', isRequired: true },
+          { name: 'accountNumber', type: 'string', description: 'Account number', isRequired: true },
+          { name: 'serviceAddress', type: 'string', description: 'Service address', isRequired: true },
+          { name: 'billingPeriod', type: 'string', description: 'Billing period', isRequired: true }
+        ]
+      },
+      {
+        name: 'Billing Summary',
+        type: 'data',
+        fields: [
+          { name: 'previousBalance', type: 'currency', description: 'Previous balance', isRequired: false },
+          { name: 'currentCharges', type: 'currency', description: 'Current charges', isRequired: true },
+          { name: 'totalAmountDue', type: 'currency', description: 'Total amount due', isRequired: true },
+          { name: 'dueDate', type: 'date', description: 'Payment due date', isRequired: true }
+        ]
+      },
+      {
+        name: 'Usage Details',
+        type: 'data',
+        fields: [
+          { name: 'currentReading', type: 'number', description: 'Current meter reading', isRequired: true },
+          { name: 'previousReading', type: 'number', description: 'Previous meter reading', isRequired: true },
+          { name: 'totalUsage', type: 'number', description: 'Total usage (kWh)', isRequired: true },
+          { name: 'ratePerKwh', type: 'currency', description: 'Rate per kWh', isRequired: true }
+        ]
+      },
+      {
+        name: 'Charges',
+        type: 'table',
+        fields: [
+          { name: 'description', type: 'string', description: 'Charge description', isRequired: true },
+          { name: 'amount', type: 'currency', description: 'Amount', isRequired: true }
+        ]
+      }
+    ]
+  }
+};
+
 const documentTypeLabels: Record<string, { title: string, description: string }> = {
   't4': {
     title: 'T4 Tax Form',
-    description: 'Upload a picture or scan of your T4 tax slip'
+    description: 'Load T4 tax form template for document analysis'
   },
   'bank': {
     title: 'Bank Statement',
-    description: 'Upload your bank statement document'
+    description: 'Load bank statement template for document analysis'
   },
   'receipt': {
     title: 'Store Receipt',
-    description: 'Upload a picture of your store receipt'
+    description: 'Load store receipt template for document analysis'
   },
   'dental': {
     title: 'Dental Claim Form',
-    description: 'Upload your dental insurance claim form'
+    description: 'Load dental claim form template for document analysis'
   },
   'electricity': {
     title: 'Electricity Bill',
-    description: 'Upload your electricity bill for analysis'
-  },
-  'custom': {
-    title: 'Custom API',
-    description: 'Create and test your own custom document analysis API'
+    description: 'Load electricity bill template for document analysis'
   },
   'history': {
     title: 'Document History',
@@ -272,6 +482,7 @@ function createInitialState(): DocumentState {
 interface TableConfig {
   name: string;
   description?: string;
+  type: 'table' | 'data';
   fields: FieldConfig[];
 }
 
@@ -280,13 +491,15 @@ function CustomAPISection({
   onFileChange, 
   onProcess, 
   isProcessing, 
-  progress 
+  progress,
+  templateType
 }: { 
   currentState: DocumentState; 
   onFileChange: (file: File | null) => void; 
   onProcess: (customPrompt: string, outputFormat: any) => void; 
   isProcessing: boolean; 
   progress: number;
+  templateType?: string | null;
 }) {
   const [tables, setTables] = useState<TableConfig[]>([]);
   const [documentName, setDocumentName] = useState<string>("");
@@ -304,15 +517,44 @@ function CustomAPISection({
     multiple: false
   });
 
+  // Load template when templateType changes
+  useEffect(() => {
+    if (templateType && documentTemplates[templateType]) {
+      const template = documentTemplates[templateType];
+      setDocumentName(template.documentName);
+      
+      // Convert template tables to TableConfig format
+      const newTables: TableConfig[] = template.tables.map(table => ({
+        name: table.name,
+        description: table.description || '',
+        type: table.type,
+        fields: table.fields
+      }));
+      
+      setTables(newTables);
+      
+      // Show toast notification
+      toast({
+        title: `${template.documentName} Template Loaded`,
+        description: "The template has been loaded. You can now upload a document to analyze.",
+      });
+    }
+  }, [templateType]);
+
   const hasRequiredField = tables.some(table => 
     table.fields.some(field => field.isRequired)
   );
 
-  const addTable = () => {
+  const addTable = (type: 'table' | 'data') => {
     setTables([...tables, {
       name: '',
       description: '',
-      fields: []
+      type,
+      fields: type === 'table' ? [
+        { name: '', type: 'string', isRequired: true }
+      ] : [
+        { name: '', type: 'string', isRequired: true }
+      ]
     }]);
   };
 
@@ -370,8 +612,8 @@ function CustomAPISection({
   const handleSubmit = () => {
     if (tables.length === 0) {
       toast({
-        title: "No tables defined",
-        description: "Please add at least one table with fields",
+        title: "No sections defined",
+        description: "Please add at least one table or data section",
         variant: "destructive"
       });
       return;
@@ -380,8 +622,8 @@ function CustomAPISection({
     for (const table of tables) {
       if (!table.name.trim()) {
         toast({
-          title: "Invalid table name",
-          description: "All tables must have a name",
+          title: "Invalid name",
+          description: `All ${table.type === 'table' ? 'tables' : 'data sections'} must have a name`,
           variant: "destructive"
         });
         return;
@@ -389,8 +631,8 @@ function CustomAPISection({
 
       if (table.fields.length === 0) {
         toast({
-          title: "Empty table",
-          description: `Table "${table.name}" has no fields`,
+          title: "Empty section",
+          description: `${table.type === 'table' ? 'Table' : 'Data section'} "${table.name}" has no fields`,
           variant: "destructive"
         });
         return;
@@ -399,7 +641,7 @@ function CustomAPISection({
       if (!table.fields.some(f => f.isRequired)) {
         toast({
           title: "Missing required field",
-          description: `Table "${table.name}" must have at least one required field`,
+          description: `${table.type === 'table' ? 'Table' : 'Data section'} "${table.name}" must have at least one required field`,
           variant: "destructive"
         });
         return;
@@ -409,7 +651,7 @@ function CustomAPISection({
         if (!field.name.trim()) {
           toast({
             title: "Invalid field name",
-            description: `All fields in table "${table.name}" must have a name`,
+            description: `All fields in "${table.name}" must have a name`,
             variant: "destructive"
           });
           return;
@@ -418,9 +660,10 @@ function CustomAPISection({
     }
 
     const outputFormat = {
-      documentType: documentName || "Custom Document",
+      documentType: documentName || "Document",
       tables: tables.map(table => ({
         name: table.name,
+        type: table.type,
         description: table.description,
         fields: table.fields.map(field => ({
           name: field.name,
@@ -432,11 +675,9 @@ function CustomAPISection({
       }))
     };
 
-    const prompt = `Analyze this document and extract the following information in a structured format:
-
-${tables.map((table, i) => `Table ${i + 1}: ${table.name}
-${table.description ? `Description: ${table.description}\n` : ''}
-Fields:
+    const prompt = `Analyze this document and extract information in a structured format:\n\n${
+      tables.map((table, i) => `${table.type === 'table' ? 'Table' : 'Data Section'} ${i + 1}: ${table.name}
+${table.description ? `Description: ${table.description}\n` : ''}Fields:
 ${table.fields.map(field => 
   `- ${field.name}: ${field.description || ''} (${field.type}${field.isRequired ? ', required' : ''}${field.format ? `, format: ${field.format}` : ''})`
 ).join('\n')}`).join('\n\n')}`;
@@ -447,229 +688,215 @@ ${table.fields.map(field =>
   return (
     <div className="grid h-[calc(100vh-3rem)] grid-cols-[1fr_300px] gap-6">
       {/* Main Configuration Area */}
-      <Card className="flex-1 overflow-hidden">
-        <CardHeader className="border-b py-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 flex-1">
-              <Input
-                value={documentName}
-                onChange={(e) => setDocumentName(e.target.value)}
-                placeholder="Document Type Name"
-                className="max-w-[300px]"
-              />
-              <Button
-                variant="outline"
-                onClick={addTable}
-                className="bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary"
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add Data Table
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <ScrollArea className="flex-1 h-[calc(100%-8rem)]">
-          <div className="p-6">
-            <div className="space-y-8">
-              {tables.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">No Tables Added Yet</h3>
-                  <p className="text-sm max-w-md mx-auto">
-                    Start by adding a data table. Each table can contain multiple fields that you want to extract from your document.
-                  </p>
+      <div className="flex flex-col gap-6">
+        {/* Document Setup Card */}
+        <Card>
+          <CardHeader className="py-3">
+            <div className="">
+              <div className="flex items-center justify-between mb-2">
+                <h1 className="text-2xl font-bold">Document Analysis API</h1>
+                {templateType && documentTemplates[templateType] && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Template:</span>
+                    <span className="font-medium text-foreground">{documentTemplates[templateType].documentName}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <Input
+                  value={documentName}
+                  onChange={(e) => setDocumentName(e.target.value)}
+                  placeholder="Enter document type (Invoice, Receipt)"
+                  className="w-full h-10"
+                />
+                <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
-                    onClick={addTable}
-                    className="mt-4 bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary"
+                    onClick={() => addTable('table')}
+                    className="bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary h-10"
                   >
-                    <Plus className="h-4 w-4 mr-2" /> Add Your First Table
+                    <TableIcon className="h-4 w-4 mr-2" /> Add Line Items
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => addTable('data')}
+                    className="bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary h-10"
+                  >
+                    <ListIcon className="h-4 w-4 mr-2" /> Add Document Info
                   </Button>
                 </div>
-              ) : (
-                tables.map((table, tableIndex) => (
-                  <div key={tableIndex} className="rounded-xl border-2 bg-card">
-                    {/* Table Header */}
-                    <div className="p-6 border-b bg-muted/30">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                          <div className="flex-1">
-                            <Input
-                              value={table.name}
-                              onChange={(e) => updateTable(tableIndex, { name: e.target.value })}
-                              placeholder="Table Name (e.g., Line Items, Customer Details)"
-                              className="text-lg font-medium bg-background"
-                            />
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeTable(tableIndex)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" /> Remove Table
-                          </Button>
-                        </div>
-                        <Input
-                          value={table.description || ''}
-                          onChange={(e) => updateTable(tableIndex, { description: e.target.value })}
-                          placeholder="Table Description (optional)"
-                          className="text-sm bg-background"
-                        />
-                      </div>
-                    </div>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
-                    {/* Fields Section */}
-                    <div className="p-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium text-muted-foreground">Fields</h3>
+        {/* Tables Configuration */}
+        <Card className="flex-1 overflow-hidden">
+          <ScrollArea className="h-[calc(100vh-16rem)]">
+            <div className="p-6">
+              <div className="space-y-6">
+                {tables.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="flex justify-center gap-8 mb-6">
+                      <motion.div 
+                        className="text-center max-w-[200px] p-6 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => addTable('table')}
+                      >
+                        <TableIcon className="h-12 w-12 mx-auto mb-3 text-primary" />
+                        <h4 className="text-base font-medium mb-2">Line Items</h4>
+                        <p className="text-sm text-muted-foreground">For repeating data like products, transactions, or line items</p>
+                      </motion.div>
+                      <motion.div 
+                        className="text-center max-w-[200px] p-6 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => addTable('data')}
+                      >
+                        <ListIcon className="h-12 w-12 mx-auto mb-3 text-primary" />
+                        <h4 className="text-base font-medium mb-2">Document Info</h4>
+                        <p className="text-sm text-muted-foreground">For single-value data like document ID, date, or totals</p>
+                      </motion.div>
+                    </div>
+                  </div>
+                ) : (
+                  tables.map((table, tableIndex) => (
+                    <motion.div
+                      key={tableIndex}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="space-y-4"
+                    >
+                      {/* Table Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {table.type === 'table' ? (
+                            <TableIcon className="h-5 w-5 text-primary" />
+                          ) : (
+                            <ListIcon className="h-5 w-5 text-primary" />
+                          )}
+                          <Input
+                            value={table.name}
+                            onChange={(e) => updateTable(tableIndex, { name: e.target.value })}
+                            placeholder={table.type === 'table' ? "Enter table name..." : "Enter section name..."}
+                            className="w-[200px] h-9 text-sm bg-background border focus:border-primary focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => addField(tableIndex)}
-                            className="bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary"
+                            className="h-9 text-primary hover:text-primary hover:bg-primary/10"
                           >
                             <Plus className="h-4 w-4 mr-2" /> Add Field
                           </Button>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          {table.fields.map((field, fieldIndex) => (
-                            <Card key={fieldIndex} className={cn(
-                              "border transition-colors",
-                              field.isRequired ? "border-primary/50 bg-primary/5" : "hover:bg-muted/50"
-                            )}>
-                              <CardContent className="p-4">
-                                <div className="space-y-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex-1">
-                                      <Input
-                                        value={field.name}
-                                        onChange={(e) => updateField(tableIndex, fieldIndex, { name: e.target.value })}
-                                        placeholder="Field name (e.g., amount, date)"
-                                        className={cn(
-                                          "bg-background",
-                                          field.isRequired && "border-primary/50"
-                                        )}
-                                      />
-                                    </div>
-                                    <Select
-                                      value={field.type}
-                                      onValueChange={(value: any) => updateField(tableIndex, fieldIndex, { type: value })}
-                                    >
-                                      <SelectTrigger className="w-[140px] bg-background">
-                                        <SelectValue placeholder="Type" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="string">Text</SelectItem>
-                                        <SelectItem value="number">Number</SelectItem>
-                                        <SelectItem value="date">Date</SelectItem>
-                                        <SelectItem value="currency">Currency</SelectItem>
-                                        <SelectItem value="percentage">Percentage</SelectItem>
-                                        <SelectItem value="boolean">Yes/No</SelectItem>
-                                        <SelectItem value="array">List</SelectItem>
-                                        <SelectItem value="email">Email</SelectItem>
-                                        <SelectItem value="phone">Phone</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => removeField(tableIndex, fieldIndex)}
-                                      className="h-10 w-10 text-muted-foreground hover:text-destructive"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <Button
-                                      variant={field.isRequired ? "default" : "outline"}
-                                      size="sm"
-                                      className={cn(
-                                        "h-8 px-3 shrink-0",
-                                        field.isRequired && 
-                                        table.fields.filter(f => f.isRequired).length === 1 && 
-                                        "opacity-50 cursor-not-allowed"
-                                      )}
-                                      onClick={() => {
-                                        if (field.isRequired && table.fields.filter(f => f.isRequired).length === 1) {
-                                          toast({
-                                            title: "Cannot change field",
-                                            description: "Each table must have at least one required field",
-                                            variant: "destructive"
-                                          });
-                                          return;
-                                        }
-                                        updateField(tableIndex, fieldIndex, { isRequired: !field.isRequired });
-                                      }}
-                                    >
-                                      {field.isRequired ? (
-                                        <Check className="h-4 w-4 mr-2" />
-                                      ) : (
-                                        <Circle className="h-4 w-4 mr-2" />
-                                      )}
-                                      Required
-                                    </Button>
-                                    <Input
-                                      value={field.description || ''}
-                                      onChange={(e) => updateField(tableIndex, fieldIndex, { description: e.target.value })}
-                                      placeholder="Field description (optional)"
-                                      className="flex-1 bg-background"
-                                    />
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                          {table.fields.length === 0 && (
-                            <div className="text-center py-8 text-muted-foreground bg-muted/30 rounded-lg border-2 border-dashed">
-                              <FileText className="h-8 w-8 mx-auto mb-3 opacity-50" />
-                              <p className="text-sm">No fields added yet. Click "Add Field" to get started.</p>
-                            </div>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeTable(tableIndex)}
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))
-              )}
+
+                      {/* Fields Section */}
+                      <div className="space-y-3">
+                        {table.fields.map((field, fieldIndex) => (
+                          <motion.div
+                            key={fieldIndex}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            className="flex items-center gap-3 py-1"
+                          >
+                            <Input
+                              value={field.name}
+                              onChange={(e) => updateField(tableIndex, fieldIndex, { name: e.target.value })}
+                              placeholder={table.type === 'table' ? "Item name, quantity, price..." : "ID, date, total..."}
+                              className="flex-1 h-9 text-sm"
+                            />
+                            <Select
+                              value={field.type}
+                              onValueChange={(value: any) => updateField(tableIndex, fieldIndex, { type: value })}
+                            >
+                              <SelectTrigger className="w-[130px] h-9 text-sm">
+                                <SelectValue placeholder="Type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="string">Text</SelectItem>
+                                <SelectItem value="number">Number</SelectItem>
+                                <SelectItem value="date">Date</SelectItem>
+                                <SelectItem value="currency">Currency</SelectItem>
+                                <SelectItem value="percentage">Percentage</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="phone">Phone</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeField(tableIndex, fieldIndex)}
+                              className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </motion.div>
+                        ))}
+                      </div>
+                      {tableIndex < tables.length - 1 && <div className="h-6 border-b" />}
+                    </motion.div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        </ScrollArea>
-      </Card>
+          </ScrollArea>
+        </Card>
+      </div>
 
       {/* Right Side Panel */}
       <div className="flex flex-col gap-4">
         {/* Document Upload */}
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-2 border-primary/10">
           <CardHeader className="border-b py-3">
-            <CardTitle className="text-sm font-medium">Document Upload</CardTitle>
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Upload className="h-4 w-4" /> Document Upload
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div
               {...getRootProps()}
               className={cn(
-                "flex flex-col items-center justify-center px-4 py-8 text-center transition-colors",
-                isDragActive ? "bg-primary/5 border-primary" : "hover:bg-muted/50",
-                currentState.file ? "bg-muted/50" : ""
+                "flex flex-col items-center justify-center px-6 py-10 text-center transition-all duration-200",
+                isDragActive ? "bg-primary/10 border-primary scale-[0.99]" : "hover:bg-muted/50",
+                currentState.file ? "bg-muted/50" : "",
+                "group cursor-pointer"
               )}
             >
               <input {...getInputProps()} />
               {currentState.file ? (
-                <div className="space-y-2">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
-                    <FileText className="h-6 w-6" />
+                <motion.div 
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="space-y-3"
+                >
+                  <div className="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                    <FileText className="h-7 w-7" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">{currentState.file.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-medium text-base">{currentState.file.name}</p>
+                    <p className="text-sm text-muted-foreground">
                       {(currentState.file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="text-xs"
+                    className="text-sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       onFileChange(null);
@@ -677,31 +904,34 @@ ${table.fields.map(field =>
                   >
                     Change File
                   </Button>
-                </div>
+                </motion.div>
               ) : (
-                <div className="space-y-2">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
-                    <Upload className="h-6 w-6" />
+                <motion.div 
+                  className="space-y-4"
+                  animate={isDragActive ? { scale: 1.02 } : { scale: 1 }}
+                >
+                  <div className="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-200">
+                    <Upload className="h-7 w-7" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">
-                      {isDragActive ? "Drop file here" : "Upload Document"}
+                    <p className="text-base font-medium">
+                      {isDragActive ? "Drop your file here" : "Upload Document"}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Drag & drop or click to upload
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Drag & drop or click to browse
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-1 justify-center text-xs">
-                    <span className="px-2 py-1 rounded-full bg-muted">PNG</span>
-                    <span className="px-2 py-1 rounded-full bg-muted">JPG</span>
-                    <span className="px-2 py-1 rounded-full bg-muted">PDF</span>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">PNG</span>
+                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">JPG</span>
+                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">PDF</span>
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
             <div className="p-4 border-t">
               <Button
-                className="w-full"
+                className="w-full h-10"
                 disabled={!documentName || tables.length === 0 || !hasRequiredField || !currentState.file || isProcessing}
                 onClick={handleSubmit}
               >
@@ -723,42 +953,52 @@ ${table.fields.map(field =>
 
         {/* Progress */}
         {isProcessing && (
-          <Card>
+          <Card className="border-2 border-primary/10">
             <CardContent className="p-4 space-y-4">
               <Progress value={progress} className="h-2" />
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-sm text-center text-muted-foreground">
                 {progress}% - Analyzing document...
               </p>
             </CardContent>
           </Card>
         )}
 
-        {/* Quick Start Guide */}
-        <Card>
+        {/* Quick Guide */}
+        <Card className="border-2 border-primary/10">
           <CardHeader className="border-b py-3">
-            <CardTitle className="text-sm font-medium">Quick Guide</CardTitle>
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <FileSearch className="h-4 w-4" /> Quick Guide
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="space-y-3 text-sm">
-              <div className="space-y-1">
-                <p className="font-medium">1. Name Your Document Type</p>
-                <p className="text-xs text-muted-foreground">Give your document analysis a name</p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-none">1</div>
+                <div>
+                  <p className="font-medium">Name Your Document</p>
+                  <p className="text-sm text-muted-foreground">Give your document a descriptive name</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="font-medium">2. Create Data Tables</p>
-                <p className="text-xs text-muted-foreground">Add tables to organize related information (e.g., "Line Items", "Customer Details")</p>
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-none">2</div>
+                <div>
+                  <p className="font-medium">Add Document Info</p>
+                  <p className="text-sm text-muted-foreground">Add fields for single-value data</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="font-medium">3. Add Fields to Tables</p>
-                <p className="text-xs text-muted-foreground">Define what data to extract in each table (e.g., "amount", "date")</p>
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-none">3</div>
+                <div>
+                  <p className="font-medium">Add Line Items</p>
+                  <p className="text-sm text-muted-foreground">Add fields for repeating data</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="font-medium">4. Upload Document</p>
-                <p className="text-xs text-muted-foreground">Upload the document you want to analyze</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-medium">5. Process</p>
-                <p className="text-xs text-muted-foreground">Click Analyze to extract your data</p>
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-none">4</div>
+                <div>
+                  <p className="font-medium">Upload & Process</p>
+                  <p className="text-sm text-muted-foreground">Upload your document and analyze it</p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -769,15 +1009,7 @@ ${table.fields.map(field =>
 }
 
 export default function DemoPage() {
-  const [documentStates, setDocumentStates] = useState<DocumentStateMap>({
-    't4': createInitialState(),
-    'bank': createInitialState(),
-    'receipt': createInitialState(),
-    'dental': createInitialState(),
-    'electricity': createInitialState(),
-    'custom': createInitialState(),
-  });
-
+  const [documentState, setDocumentState] = useState<DocumentState>(createInitialState());
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
@@ -797,20 +1029,10 @@ export default function DemoPage() {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
-  const currentState = selectedType && selectedType !== 'history' 
-    ? documentStates[selectedType as ProcessingDocType] 
-    : createInitialState();
-
-  const updateCurrentDocumentState = (updates: Partial<DocumentState>) => {
-    if (!selectedType || selectedType === 'history') return;
-    
-    const docType = selectedType as ProcessingDocType;
-    setDocumentStates((prev: DocumentStateMap) => ({
+  const updateDocumentState = (updates: Partial<DocumentState>) => {
+    setDocumentState(prev => ({
       ...prev,
-      [docType]: {
-        ...prev[docType],
-        ...updates
-      }
+      ...updates
     }));
   };
 
@@ -824,53 +1046,21 @@ export default function DemoPage() {
     } as const;
     
     if (!file) {
-      updateCurrentDocumentState({ error: 'No file selected.' });
+      updateDocumentState({ error: 'No file selected.' });
       return false;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      updateCurrentDocumentState({ error: 'File size exceeds 10MB limit.' });
+      updateDocumentState({ error: 'File size exceeds 10MB limit.' });
       return false;
     }
     
     if (!(file.type in supportedTypes)) {
-      updateCurrentDocumentState({ 
+      updateDocumentState({ 
         error: `Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).` 
       });
       return false;
     }
-    return true;
-  };
-
-  const validateDocumentContent = (result: any): boolean => {
-    if (!result.analysis?.documentType) {
-      updateCurrentDocumentState({ error: 'Unable to determine document type. Please ensure you uploaded the correct document.' });
-      return false;
-    }
-
-    // Skip validation for custom document type
-    if (selectedType === 'custom') {
-      return true;
-    }
-
-    const expectedTypes = {
-      't4': ['T4', 'Tax', 'T4 Tax Slip', 'Tax Form'],
-      'bank': ['Bank Statement', 'Bank Document', 'Account Statement'],
-      'receipt': ['Store Receipt', 'Receipt', 'Sales Receipt', 'Purchase Receipt'],
-      'dental': ['Dental Claim', 'Dental Form', 'Dental Insurance Claim'],
-      'electricity': ['Electricity Bill', 'Utility Bill', 'Electric Bill']
-    };
-
-    const detectedType = result.analysis.documentType;
-    const expectedTypeArray = expectedTypes[selectedType as keyof typeof expectedTypes] || [];
-    
-    if (!expectedTypeArray.some(type => detectedType.toLowerCase().includes(type.toLowerCase()))) {
-      updateCurrentDocumentState({ 
-        error: `This document appears to be a "${detectedType}" which doesn't match the selected document type. Please verify and try again.` 
-      });
-      return false;
-    }
-
     return true;
   };
 
@@ -885,35 +1075,31 @@ export default function DemoPage() {
   };
 
   const handleNewDocument = () => {
-    if (!selectedType) return;
-    setDocumentStates((prev: DocumentStateMap) => ({
-      ...prev,
-      [selectedType]: createInitialState()
-    }));
+    setDocumentState(createInitialState());
   };
 
   const handleSaveDocument = async () => {
-    if (!user || !selectedType || !currentState.selectedDoc?.contentJson || currentState.isSaved) return;
+    if (!user || !documentState.selectedDoc?.contentJson || documentState.isSaved) return;
 
     try {
       setIsProcessing(true);
       const contentWithAnalysis = {
-        ...currentState.selectedDoc.contentJson,
+        ...documentState.selectedDoc.contentJson,
         analysis: {
-          summary: currentState.selectedDoc.summary,
-          keywords: currentState.selectedDoc.keywords,
-          insights: currentState.selectedDoc.rawJson?.analysis?.insights || [],
-          confidenceScore: currentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
-          documentType: currentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
+          summary: documentState.selectedDoc.summary,
+          keywords: documentState.selectedDoc.keywords,
+          insights: documentState.selectedDoc.rawJson?.analysis?.insights || [],
+          confidenceScore: documentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
+          documentType: documentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
         }
       };
 
       const documentData = {
-        title: currentState.file?.name || `${selectedType.toUpperCase()} Document`,
-        type: selectedType,
+        title: documentState.file?.name || `${selectedType || 'Custom'} Document`,
+        type: selectedType || 'custom',
         date: new Date().toISOString(),
-        confidence: currentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 
-          Math.round(currentState.selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
+        confidence: documentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 
+          Math.round(documentState.selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
         contentJson: contentWithAnalysis
       };
 
@@ -931,7 +1117,7 @@ export default function DemoPage() {
         throw new Error(errorData.error || 'Failed to save document');
       }
 
-      updateCurrentDocumentState({ isSaved: true });
+      updateDocumentState({ isSaved: true });
       toast({
         title: "Success",
         description: "Document saved successfully",
@@ -949,12 +1135,12 @@ export default function DemoPage() {
   };
 
   const downloadJson = () => {
-    const jsonString = JSON.stringify(currentState.selectedDoc?.contentJson, null, 2);
+    const jsonString = JSON.stringify(documentState.selectedDoc?.contentJson, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentState.file?.name || 'document'}.json`;
+    a.download = `${documentState.file?.name || 'document'}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -962,12 +1148,12 @@ export default function DemoPage() {
   };
 
   const downloadMarkdown = () => {
-    const markdownContent = generateMarkdown(currentState.selectedDoc?.contentJson);
+    const markdownContent = generateMarkdown(documentState.selectedDoc?.contentJson);
     const blob = new Blob([markdownContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentState.file?.name || 'document'}.md`;
+    a.download = `${documentState.file?.name || 'document'}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -975,7 +1161,7 @@ export default function DemoPage() {
   };
 
   const downloadCsv = () => {
-    const content = currentState.selectedDoc?.contentJson;
+    const content = documentState.selectedDoc?.contentJson;
     let csvContent = '';
     
     if (content.metadata) {
@@ -1014,7 +1200,7 @@ export default function DemoPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentState.file?.name || 'document'}.csv`;
+    a.download = `${documentState.file?.name || 'document'}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1034,7 +1220,7 @@ export default function DemoPage() {
   };
 
   const processDocument = async (customPrompt?: string, outputFormat?: any) => {
-    if (!currentState.file || isProcessing) return;
+    if (!documentState.file || isProcessing) return;
     
     try {
       setIsProcessing(true);
@@ -1095,11 +1281,11 @@ export default function DemoPage() {
       let result;
       try {
         // Validate file size before processing
-        if (currentState.file.size > 10 * 1024 * 1024) {
+        if (documentState.file.size > 10 * 1024 * 1024) {
           throw new Error('File size exceeds 10MB limit');
         }
 
-        let base64Data = await convertFileToBase64(currentState.file);
+        let base64Data = await convertFileToBase64(documentState.file);
         if (!base64Data || typeof base64Data !== 'string') {
           throw new Error('Failed to convert file to base64');
         }
@@ -1107,23 +1293,16 @@ export default function DemoPage() {
 
         const requestData = {
           imageData: base64Data,
-          mimeType: currentState.file.type || 'application/octet-stream'
+          mimeType: documentState.file.type || 'application/octet-stream',
+          customPrompt, 
+          outputFormat
         };
-
-        // Add custom prompt and output format for custom API
-        if (selectedType === 'custom' && customPrompt) {
-          Object.assign(requestData, { 
-            customPrompt, 
-            outputFormat 
-          });
-        }
 
         if (!requestData.imageData) {
           throw new Error('Invalid file data');
         }
 
-        const endpoint = `/api/analyze/${selectedType}`;
-        const response = await fetch(endpoint, {
+        const response = await fetch('/api/analyze/custom', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1163,10 +1342,6 @@ export default function DemoPage() {
         if (!result.analysis) {
           throw new Error('No analysis data received');
         }
-
-        if (!validateDocumentContent(result)) {
-          throw new Error('Invalid document content');
-        }
       } catch (error) {
         throw error;
       }
@@ -1196,13 +1371,13 @@ export default function DemoPage() {
       };
 
       // Update all states at once after showing 100%
-      updateCurrentDocumentState(updates);
+      updateDocumentState(updates);
       
       console.log("Document processed successfully!");
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      updateCurrentDocumentState({ error: errorMessage });
+      updateDocumentState({ error: errorMessage });
       setProgress(0);
     } finally {
       setIsProcessing(false);
@@ -1223,7 +1398,7 @@ export default function DemoPage() {
     );
   }
 
-  if (!currentState.isProcessed) {
+  if (!documentState.isProcessed) {
     return (
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar
@@ -1233,36 +1408,20 @@ export default function DemoPage() {
           selectedType={selectedType}
         />
         <div className="flex-1 overflow-auto p-6">
-          {selectedType === 'custom' ? (
-            <CustomAPISection
-              currentState={currentState}
-              onFileChange={(file) => {
-                updateCurrentDocumentState({
-                  file,
-                  isProcessed: false,
-                  error: null
-                });
-              }}
-              onProcess={(customPrompt, outputFormat) => processDocument(customPrompt, outputFormat)}
-              isProcessing={isProcessing}
-              progress={progress}
-            />
-          ) : (
-            <div className="flex flex-col gap-6 h-full">
-              <DocumentUploader
-                selectedType={selectedType}
-                currentState={currentState}
-                isProcessing={isProcessing}
-                progress={progress}
-                onProcessDocument={processDocument}
-                onFileChange={(file: File | null) => updateCurrentDocumentState({ file, error: null })}
-                onSelectType={(type) => {
-                  setShowHistory(false);
-                  setSelectedType(type);
-                }}
-              />
-            </div>
-          )}
+          <CustomAPISection
+            currentState={documentState}
+            onFileChange={(file) => {
+              updateDocumentState({
+                file,
+                isProcessed: false,
+                error: null
+              });
+            }}
+            onProcess={(customPrompt, outputFormat) => processDocument(customPrompt, outputFormat)}
+            isProcessing={isProcessing}
+            progress={progress}
+            templateType={selectedType}
+          />
         </div>
       </div>
     );
@@ -1281,12 +1440,12 @@ export default function DemoPage() {
         <main className="flex-1 overflow-y-auto md:pt-6 md:pr-6 md:px-0 pt-14 px-4">
           <div className="grid gap-6 pb-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
             <DocumentViewer
-              currentState={currentState}
+              currentState={documentState}
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />
             <DocumentInfo
-              currentState={currentState}
+              currentState={documentState}
               isProcessing={isProcessing}
               user={user}
               onDownloadJson={downloadJson}
