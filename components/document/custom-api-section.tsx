@@ -235,17 +235,8 @@ ${table.fields.map(field =>
       <div className="flex flex-col gap-6">
         {/* Document Setup Card */}
         <Card>
-          <CardHeader className="py-3">
+          <CardHeader className="p-3">
             <div className="">
-              <div className="flex items-center justify-between mb-2">
-                <h1 className="text-2xl font-bold">Document Analysis API</h1>
-                {templateType && documentTemplates[templateType] && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>Template:</span>
-                    <span className="font-medium text-foreground">{documentTemplates[templateType].documentName}</span>
-                  </div>
-                )}
-              </div>
               <div className="flex items-center gap-4">
                 <Input
                   value={documentName}

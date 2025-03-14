@@ -440,7 +440,7 @@ export function CustomSidebar({
       </Sheet>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block p-6 h-screen flex-shrink-0">
+      <div className="hidden md:block pl-6 h-screen flex-shrink-0">
         <motion.div
           initial={false}
           animate={{
