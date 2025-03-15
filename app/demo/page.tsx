@@ -382,8 +382,8 @@ function LoadingSkeleton() {
       <div className="flex-1 min-w-0">
         <Card className="h-full">
           <CardContent className="p-0">
-            <div className="rounded-md border h-full">
-              <Table>
+            <div className="rounded-md border h-full overflow-x-auto bg-background">
+              <Table className="rounded-md overflow-hidden">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Document</TableHead>
@@ -686,7 +686,7 @@ const generateFormattedView = (data: any) => {
                   <h4 className="font-medium capitalize">{key}</h4>
                 </div>
                 <div className="p-4">
-                  <table className="w-full">
+                  <table className="w-full rounded-md overflow-hidden">
                     <tbody>
                       {Object.entries(value).map(([subKey, subValue]) => (
                         <tr key={subKey} className="border-b last:border-0">
@@ -722,7 +722,7 @@ const generateFormattedView = (data: any) => {
                     <h4 className="font-medium capitalize">{tableName}</h4>
                   </div>
                   <div className="p-4">
-                    <table className="w-full">
+                    <table className="w-full rounded-md overflow-hidden">
                       <thead>
                         <tr className="border-b">
                           {fields.map((field) => (

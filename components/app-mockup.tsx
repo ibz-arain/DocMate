@@ -543,7 +543,7 @@ const AppMockup = () => {
                               <h4 className={`font-medium capitalize ${localTheme === 'dark' ? 'text-zinc-100' : 'text-zinc-800'}`}>{key}</h4>
                             </div>
                             <div className={`p-4 ${localTheme === 'dark' ? 'bg-zinc-800/20' : 'bg-zinc-50'}`}>
-                              <table className="w-full">
+                              <table className="w-full rounded-md overflow-hidden">
                                 <tbody>
                                   {Object.entries(value as Record<string, any>).map(([subKey, subValue]) => (
                                     <tr key={subKey} className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'} last:border-0`}>
@@ -573,7 +573,7 @@ const AppMockup = () => {
                             </div>
                             <div className={`p-4 ${localTheme === 'dark' ? 'bg-zinc-800/20' : 'bg-zinc-50'}`}>
                               {Array.isArray(value) ? (
-                                <table className="w-full">
+                                <table className="w-full rounded-md overflow-hidden">
                                   <thead>
                                     <tr className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'}`}>
                                       {Object.keys(value[0] || {}).map((header) => (
@@ -596,7 +596,7 @@ const AppMockup = () => {
                                   </tbody>
                                 </table>
                               ) : (
-                                <table className="w-full">
+                                <table className="w-full rounded-md overflow-hidden">
                                   <tbody>
                                     {Object.entries(value as Record<string, any>).map(([subKey, subValue]) => (
                                       <tr key={subKey} className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'} last:border-0`}>

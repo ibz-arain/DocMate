@@ -112,7 +112,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
                   <h4 className="font-medium capitalize">{key}</h4>
                 </div>
                 <div className="p-4">
-                  <table className="w-full">
+                  <table className="w-full rounded-md overflow-hidden">
                     <tbody>
                       {Object.entries(value).map(([subKey, subValue]) => (
                         <tr key={subKey} className="border-b last:border-0">
@@ -141,7 +141,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
                 </div>
                 <div className="p-4">
                   {Array.isArray(value) ? (
-                    <table className="w-full">
+                    <table className="w-full rounded-md overflow-hidden">
                       <thead>
                         <tr className="border-b">
                           {Object.keys(value[0] || {}).map((header) => (
@@ -164,7 +164,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
                       </tbody>
                     </table>
                   ) : (
-                    <table className="w-full">
+                    <table className="w-full rounded-md overflow-hidden">
                       <tbody>
                         {Object.entries(value).map(([subKey, subValue]: [string, any]) => (
                           <tr key={subKey} className="border-b last:border-0">

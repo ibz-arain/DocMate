@@ -219,7 +219,7 @@ export function HistorySection({ user }: HistorySectionProps) {
           <div className="grid gap-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1 min-h-[calc(100vh-16rem)]">
             <div className="flex-1 min-w-0">
               <div className="rounded-md border h-full overflow-x-auto bg-background">
-                <Table>
+                <Table className="rounded-md overflow-hidden">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Document</TableHead>
