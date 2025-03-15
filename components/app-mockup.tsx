@@ -410,8 +410,8 @@ const AppMockup = () => {
                     className={`flex items-center px-3 py-1.5 w-full rounded text-sm ${
                       selectedDoc.type === doc.type
                         ? localTheme === 'dark' 
-                          ? 'bg-emerald-500/10 text-emerald-500' 
-                          : 'bg-emerald-50 text-emerald-600'
+                          ? 'bg-primary/10 text-primary' 
+                          : 'bg-primary/10 text-primary'
                         : localTheme === 'dark'
                           ? 'text-zinc-400 hover:bg-zinc-800/30'
                           : 'text-zinc-600 hover:bg-zinc-100'
@@ -448,7 +448,7 @@ const AppMockup = () => {
                   size="sm"
                   className={`h-8 rounded px-3 ${
                     activeTab === 'json' 
-                      ? 'bg-emerald-500/10 text-emerald-500' 
+                      ? 'bg-primary/10 text-primary' 
                       : localTheme === 'dark' 
                         ? 'text-zinc-400 hover:text-zinc-100' 
                         : 'text-zinc-600 hover:text-zinc-800'
@@ -463,7 +463,7 @@ const AppMockup = () => {
                   size="sm"
                   className={`h-8 rounded px-3 ${
                     activeTab === 'markdown' 
-                      ? 'bg-emerald-500/10 text-emerald-500' 
+                      ? 'bg-primary/10 text-primary' 
                       : localTheme === 'dark' 
                         ? 'text-zinc-400 hover:text-zinc-100' 
                         : 'text-zinc-600 hover:text-zinc-800'
@@ -478,7 +478,7 @@ const AppMockup = () => {
                   size="sm"
                   className={`h-8 rounded px-3 ${
                     activeTab === 'formatted' 
-                      ? 'bg-emerald-500/10 text-emerald-500' 
+                      ? 'bg-primary/10 text-primary' 
                       : localTheme === 'dark' 
                         ? 'text-zinc-400 hover:text-zinc-100' 
                         : 'text-zinc-600 hover:text-zinc-800'
@@ -536,7 +536,7 @@ const AppMockup = () => {
                     
                     {selectedDoc.contentJson.metadata && (
                       <div className="space-y-6 mb-8">
-                        <h3 className="text-lg font-semibold text-emerald-500 mb-4">Metadata</h3>
+                        <h3 className="text-lg font-semibold text-primary mb-4">Metadata</h3>
                         {Object.entries(selectedDoc.contentJson.metadata).map(([key, value]: [string, any]) => (
                           <div key={key} className={`rounded-lg border ${localTheme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'} overflow-hidden`}>
                             <div className={`px-4 py-2 ${localTheme === 'dark' ? 'bg-zinc-800/50' : 'bg-zinc-100'}`}>
@@ -565,7 +565,7 @@ const AppMockup = () => {
 
                     {selectedDoc.contentJson.content && (
                       <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-emerald-500 mb-4">Content</h3>
+                        <h3 className="text-lg font-semibold text-primary mb-4">Content</h3>
                         {Object.entries(selectedDoc.contentJson.content).map(([key, value]: [string, any]) => (
                           <div key={key} className={`rounded-lg border ${localTheme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'} overflow-hidden`}>
                             <div className={`px-4 py-2 ${localTheme === 'dark' ? 'bg-zinc-800/50' : 'bg-zinc-100'}`}>

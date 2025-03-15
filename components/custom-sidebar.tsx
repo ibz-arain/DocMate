@@ -461,8 +461,7 @@ export function CustomSidebar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
-                  className="font-semibold text-lg text-primary"
-                >
+                  className="font-semibold text-lg text-primary"                >
                   <Image 
                     src="/logo-text.png" 
                     alt="Logo" 
@@ -470,6 +469,8 @@ export function CustomSidebar({
                     height={100} 
                     priority
                     className="select-none"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => router.push('/')}
                   />
                 </motion.div>
               )}

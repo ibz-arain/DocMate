@@ -198,12 +198,12 @@ export default function HomePage() {
     <div className="relative">
       {/* Progress bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-blue-500 z-50"
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/80 via-purple-500/80 to-blue-500/80 z-50"
         style={{ scaleX }}
       />
 
       {/* Turso-style floating header card */}
-      <div className="fixed bg-background/40 backdrop-blur-sm top-6 left-0 right-0 z-40 px-4 pointer-events-none">
+      <div className="fixed top-6 left-0 right-0 z-40 px-4 pointer-events-none">
         <motion.div 
           className="mx-auto max-w-7xl pointer-events-auto"
           initial={{ y: -20, opacity: 0 }}
@@ -223,9 +223,9 @@ export default function HomePage() {
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-purple-500/5 pointer-events-none"></div>
               
               {/* Header content */}
-              <div className="flex items-center justify-between py-3 px-6">
+              <div className="flex items-center justify-between py-3 px-6 bg-background/60 backdrop-blur-sm">
                 <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/80 to-primary/40 flex items-center justify-center shadow-lg shadow-primary/20">
                     <FileText className="h-5 w-5 text-white" />
                   </div>
                   <span className="font-bold text-lg">DocMate</span>
@@ -254,14 +254,14 @@ export default function HomePage() {
                 {/* Actions */}
                 <div className="flex items-center space-x-3">
                   <Link href="/demo">
-                    <Button size="sm" variant="ghost" className="text-sm gap-1 hover:bg-white/5">
+                    <Button size="sm" variant="ghost" className="text-sm gap-1 hover:bg-white/5 text-muted-foreground hover:text-white">
                       Try Demo <ArrowRight className="h-3 w-3" />
                     </Button>
                   </Link>
-                  <Button size="sm" className="text-sm bg-primary hover:bg-primary/90">
+                  <Button size="sm" className="text-sm bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                     Get Started
                   </Button>
-                  <Button size="icon" variant="ghost" className="md:hidden">
+                  <Button size="icon" variant="ghost" className="md:hidden text-muted-foreground hover:text-white hover:bg-white/5">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </div>
@@ -310,7 +310,7 @@ export default function HomePage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 1, delay: 0.5 }}
-                    className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4 backdrop-blur-sm border border-primary/20"
+                    className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium backdrop-blur-sm border border-primary/20"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     <span>AI-Powered Document Analysis</span>
@@ -326,13 +326,13 @@ export default function HomePage() {
                     <GradientText className="h-[1.2em] mt-2 block">
                       <TypeAnimation
                         sequence={[
-                          'Simple',
+                          'Automatic',
                           2000,
                           'Efficient',
                           2000,
                           'Powerful',
                           2000,
-                          'Smart',
+                          'Faster',
                           2000,
                         ]}
                         wrapper="span"
@@ -349,7 +349,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
                   >
-                    Extract, analyze, and organize information from your documents with our AI-powered platform. Support for tax forms, receipts, bank statements, and more.
+                    Automate your workflow by utilizing AI to extract data from documents. 
                   </motion.p>
 
                   <motion.div
@@ -359,19 +359,13 @@ export default function HomePage() {
                     transition={{ duration: 0.8, delay: 0.5 }}
                   >
                     <Link href="/demo">
-                      <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20">
+                      <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                         <span className="relative z-10 flex items-center">
-                          Try Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          Try Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                         </span>
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-blue-500"
-                          initial={{ x: "-100%" }}
-                          whileHover={{ x: 0 }}
-                          transition={{ duration: 0.4 }}
-                        />
                       </Button>
                     </Link>
-                    <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10">
+                    <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
                       Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                     </Button>
                   </motion.div>
@@ -505,7 +499,7 @@ export default function HomePage() {
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Powerful Features</span>
+                  <span>Core Features</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -514,7 +508,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold mb-6"
                 >
-                  Everything You Need for <GradientText>Document Analysis</GradientText>
+                  <GradientText>Powerful</GradientText> Document Analysis
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -523,7 +517,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Our platform combines cutting-edge AI with intuitive design to make document analysis simple and powerful.
+                  Extract, analyze, and organize document data in seconds.
                 </motion.p>
               </motion.div>
 
@@ -532,17 +526,17 @@ export default function HomePage() {
                   {
                     icon: <FileText className="h-10 w-10" />,
                     title: "Smart Extraction",
-                    description: "Automatically extract key information from your documents with precision and accuracy, including dates, amounts, and structured data."
+                    description: "Extract key data points from any document. Dates, amounts, tables, and structured data with high accuracy."
                   },
                   {
                     icon: <Brain className="h-10 w-10" />,
                     title: "AI Analysis",
-                    description: "Get deep insights with our advanced AI analysis that understands document context and extracts meaningful information."
+                    description: "Context-aware AI understands document relationships and extracts meaningful insights automatically."
                   },
                   {
                     icon: <Zap className="h-10 w-10" />,
-                    title: "Multiple Formats",
-                    description: "View and export your analyzed documents in multiple formats including JSON, Markdown, and formatted tables."
+                    title: "Flexible Formats",
+                    description: "Export results as JSON, CSV, Markdown or custom formats. Integrate with your existing workflows."
                   }
                 ].map((feature, index) => (
                   <motion.div
@@ -591,8 +585,8 @@ export default function HomePage() {
                   transition={{ duration: 0.5 }}
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Interactive</span>
+                  <Upload className="h-4 w-4 mr-2" />
+                  <span>Live Demo</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -601,7 +595,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold mb-6"
                 >
-                  See <GradientText>DocMate</GradientText> in Action
+                  <GradientText>Try It</GradientText> Yourself
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -610,7 +604,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Upload your documents and watch as our AI returns different structured data for each document.
+                  Drop any invoice, receipt, or contract. Get structured data in seconds.
                 </motion.p>
               </motion.div>
 
@@ -632,12 +626,12 @@ export default function HomePage() {
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
                 <Link href="/demo">
-                  <Button size="lg" className="gap-2 relative overflow-hidden group">
+                  <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                     <span className="relative z-10 flex items-center">
-                      Try Full Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      Launch Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>
                     <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-blue-500"
+                      className="absolute inset-0 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/10"
                       initial={{ x: "-100%" }}
                       whileHover={{ x: 0 }}
                       transition={{ duration: 0.4 }}
@@ -687,7 +681,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Discover how DocMate transforms document processing workflows in various industries.
+                  How DocMate solves document challenges in key industries.
                 </motion.p>
               </motion.div>
 
@@ -696,25 +690,25 @@ export default function HomePage() {
                   {
                     icon: <ReceiptText className="h-10 w-10" />,
                     title: "Finance & Accounting",
-                    description: "Automate data extraction from invoices, receipts, and financial statements. Reduce manual data entry and accelerate month-end closing processes.",
+                    description: "Extract data from invoices and financial statements in seconds. Cut manual entry by 90% and close books faster.",
                     features: ["Invoice Processing", "Receipt Management", "Financial Statement Analysis"]
                   },
                   {
                     icon: <Stethoscope className="h-10 w-10" />,
                     title: "Healthcare",
-                    description: "Extract patient information from medical records, insurance claims, and lab reports. Ensure accuracy and compliance while reducing administrative burden.",
+                    description: "Process medical records and insurance claims instantly. Maintain HIPAA compliance while reducing paperwork.",
                     features: ["Medical Records Processing", "Insurance Claim Analysis", "Patient Data Management"]
                   },
                   {
                     icon: <BatteryCharging className="h-10 w-10" />,
                     title: "Energy & Utilities",
-                    description: "Process utility bills, meter readings, and regulatory documents. Gain insights from energy consumption data and streamline reporting.",
+                    description: "Analyze utility bills and regulatory documents automatically. Track consumption patterns and simplify reporting.",
                     features: ["Utility Bill Analysis", "Consumption Tracking", "Regulatory Compliance"]
                   },
                   {
                     icon: <Users className="h-10 w-10" />,
                     title: "Human Resources",
-                    description: "Streamline processing of resumes, employee documents, and payroll records. Accelerate onboarding and ensure accurate record-keeping.",
+                    description: "Parse resumes and employee documents instantly. Speed up onboarding and maintain accurate records effortlessly.",
                     features: ["Resume Parsing", "Employee Document Management", "Payroll Processing"]
                   }
                 ].map((useCase, index) => (
@@ -757,7 +751,7 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
-                <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10">
+                <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
                   Explore More Use Cases <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                 </Button>
               </motion.div>
@@ -803,7 +797,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Integrate DocMate's powerful document analysis capabilities directly into your workflows with our upcoming API.
+                  Add document analysis to your apps with a few lines of code.
                 </motion.p>
               </motion.div>
 
@@ -819,23 +813,23 @@ export default function HomePage() {
                     {[
                       {
                         icon: <Cable className="h-6 w-6" />,
-                        title: "Seamless Integration",
-                        description: "Connect DocMate to your existing systems with our RESTful API. Process documents programmatically and retrieve structured data in real-time."
+                        title: "Simple REST API",
+                        description: "One API call to analyze any document. Get structured data back in milliseconds."
                       },
                       {
                         icon: <FileSpreadsheet className="h-6 w-6" />,
-                        title: "Flexible Data Formats",
-                        description: "Get your document data in JSON, CSV, or custom formats to fit your specific needs and existing data pipelines."
+                        title: "Multiple Formats",
+                        description: "Export as JSON, CSV, or custom formats. Fits into any data pipeline."
                       },
                       {
                         icon: <LightbulbIcon className="h-6 w-6" />,
-                        title: "Custom Document Types",
-                        description: "Define your own document schemas and extraction rules to handle specialized document types unique to your business."
+                        title: "Custom Schemas",
+                        description: "Define extraction rules for industry-specific documents. Train on your own data."
                       },
                       {
                         icon: <Plus className="h-6 w-6" />,
                         title: "Batch Processing",
-                        description: "Process thousands of documents in batch mode for efficient handling of large document volumes."
+                        description: "Process thousands of documents in parallel. Scale without limits."
                       }
                     ].map((feature, index) => (
                       <motion.div
@@ -876,23 +870,27 @@ export default function HomePage() {
                           </div>
                           <div className="ml-4 text-sm text-muted-foreground">API Request Example</div>
                         </div>
-                        <pre className="bg-black/50 p-4 rounded-lg overflow-x-auto text-sm text-green-400 font-mono">
-{`// Send document for analysis
-const response = await fetch('https://api.docmate.ai/v1/analyze', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    document_type: 'invoice',
-    file_url: 'https://example.com/invoice.pdf',
-    output_format: 'json'
-  })
+                        <pre className="bg-black/50 p-4 rounded-lg overflow-x-auto text-sm text-primary font-mono">
+{`// Analyze a document
+import { DocMate } from '@docmate/sdk';
+
+// Initialize client
+const client = new DocMate('api_key');
+
+// Process document
+const doc = await client.analyze({
+  file: './invoice.pdf',
+  type: 'invoice'
 });
 
-const result = await response.json();
-console.log(result.extracted_data);`}
+// Access extracted data
+console.log(doc.data);
+// {
+//   date: '2023-05-15',
+//   total: 1250.00,
+//   vendor: 'Acme Corp',
+//   items: [...]
+// }`}
                         </pre>
                       </CardContent>
                     </Card>
@@ -926,7 +924,7 @@ console.log(result.extracted_data);`}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
-                <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10">
+                <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
                   Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                 </Button>
               </motion.div>
@@ -952,7 +950,7 @@ console.log(result.extracted_data);`}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-16 mb-16">
                 <div className="lg:col-span-2 space-y-6">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20 mr-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/80 to-primary/40 flex items-center justify-center shadow-lg shadow-primary/20 mr-3">
                       <FileText className="h-5 w-5 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold">DocMate</h3>
