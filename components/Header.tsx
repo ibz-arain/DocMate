@@ -39,8 +39,10 @@ export default function Header() {
   const { setTheme } = useTheme();
   
   useEffect(() => {
-    // Set the theme to dark when the component mounts
-    setTheme("dark");
+    // Only set theme on the client side to avoid hydration mismatches
+    if (typeof window !== 'undefined') {
+      setTheme("dark");
+    }
   }, [setTheme]);
 
   return (
@@ -53,11 +55,8 @@ export default function Header() {
 
       {/* Turso-style floating header card */}
       <div className="fixed top-6 left-0 right-0 z-40 px-4 pointer-events-none">
-        <motion.div 
+        <div
           className="mx-auto max-w-7xl pointer-events-auto"
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5 }}
         >
           <motion.div 
             className="rounded-2xl overflow-hidden border border-white/10"
@@ -110,7 +109,7 @@ export default function Header() {
               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       </div>
     </>
   );

@@ -5,7 +5,7 @@ import { FileText } from "lucide-react";
 import Image from "next/image";
 export default function Footer() {
   return (
-    <footer className="relative pt-24 pb-16 px-6 overflow-hidden">
+    <footer className="relative pt-24 pb-16 px-6 overflow-hidden bg-black">
       {/* Background elements */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
       

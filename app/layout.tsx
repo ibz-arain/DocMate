@@ -22,7 +22,7 @@ export default function RootLayout({
       <head>
         <meta name="apple-mobile-web-app-title" content="DocMate" />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers attribute="class" defaultTheme="system" enableSystem>
           {children}
           <Toaster />

@@ -233,21 +233,36 @@ const AppMockup = () => {
 
   // Initialize local theme when component mounts
   useEffect(() => {
-    if (localTheme === undefined) {
+    // Only set theme on the client side to avoid hydration mismatches
+    if (typeof window !== 'undefined' && localTheme === undefined) {
       setLocalTheme(theme);
     }
   }, [theme, localTheme]);
 
   // Use local theme to toggle, which prevents the page's forced theme from affecting this component
   const toggleTheme = () => {
-    const newTheme = localTheme === 'dark' ? 'light' : 'dark';
-    setLocalTheme(newTheme);
-    setTheme(newTheme);
+    if (typeof window !== 'undefined') {
+      const newTheme = localTheme === 'dark' ? 'light' : 'dark';
+      setLocalTheme(newTheme);
+      setTheme(newTheme);
+    }
   };
 
-  // Render component only after localTheme is initialized
-  if (localTheme === undefined) {
-    return null;
+  // Render component with a fallback during server-side rendering
+  // This helps prevent hydration mismatches
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+  // During SSR or before hydration, render a simple placeholder
+  if (!isMounted) {
+    return (
+      <div className="w-full h-[600px] bg-background border border-border rounded-lg flex items-center justify-center">
+        <div className="animate-pulse">Loading application preview...</div>
+      </div>
+    );
   }
 
   // Function to generate markdown from JSON

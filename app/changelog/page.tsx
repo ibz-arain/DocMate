@@ -1,9 +1,9 @@
 "use client";
 
-import { motion, useScroll, useSpring, useTransform, MotionValue } from "framer-motion";
+import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Users, Wand2, Sparkles, Star, Zap } from "lucide-react";
+import { FileText, Users, Wand2, Sparkles, Star, Zap, ArrowRight, Clock, CheckCircle, ChevronRight, ArrowUpRight, Code } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -19,70 +19,70 @@ const GradientText = ({ children, className = "" }: { children: React.ReactNode;
   );
 };
 
-// Enhanced floating particles component
-const ParticleBackground = () => {
+// Subtle background noise
+const BackgroundNoise = () => {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 80 }).map((_, i) => {
-        const size = Math.random() * 3 + (i % 5 === 0 ? 2 : 1);
-        const opacity = Math.random() * 0.3 + 0.1;
-        return (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: size,
-              height: size,
-              backgroundColor: i % 8 === 0 ? `rgba(var(--primary-rgb), ${opacity})` : 
-                              i % 5 === 0 ? `rgba(147, 51, 234, ${opacity})` : 
-                              `rgba(255, 255, 255, ${opacity})`,
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              filter: i % 8 === 0 ? 'blur(1px)' : 'none',
-            }}
-            animate={{
-              y: [0, Math.random() * -150 - 50],
-              opacity: [0, opacity, 0],
-            }}
-            transition={{
-              duration: Math.random() * 15 + 10,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-              ease: "easeInOut",
-            }}
-          />
-        );
-      })}
+    <div 
+      className="fixed inset-0 pointer-events-none opacity-15"
+      style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+        backgroundSize: '200px',
+      }}
+    />
+  );
+};
+
+// Mac window style component
+const MacWindow = ({ 
+  children, 
+  title = "DocMate", 
+  variant = "default",
+  className = ""
+}: { 
+  children: React.ReactNode; 
+  title?: string;
+  variant?: "default" | "future";
+  className?: string;
+}) => {
+  return (
+    <div className={`overflow-hidden rounded-lg border border-white/30 bg-gradient-to-b from-gray-800 to-black backdrop-blur-md shadow-[0_0_25px_rgba(var(--primary-rgb),0.2)] ${className}`}>
+      {/* Window header */}
+      <div className="flex items-center px-4 py-2 border-b border-white/20 bg-gradient-to-r from-gray-800 via-black to-gray-800">
+        <div className="flex space-x-2 mr-4">
+          <div className="w-3 h-3 rounded-full bg-red-500" />
+          <div className="w-3 h-3 rounded-full bg-yellow-500" />
+          <div className="w-3 h-3 rounded-full bg-green-500" />
+        </div>
+        <div className="text-xs font-medium text-white flex-1 text-center">{title}</div>
+        <div className="w-10"></div> {/* Spacer for balance */}
+      </div>
+      
+      {/* Window content */}
+      <div className="p-6 relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 pointer-events-none"></div>
+        <div className="relative">
+          {children}
+        </div>
+      </div>
     </div>
   );
 };
 
-// Animated badge component
-const AnimatedBadge = ({ children }: { children: React.ReactNode }) => {
+// Version badge component
+const VersionBadge = ({ version }: { version: string }) => {
   return (
-    <div className="relative inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20 overflow-hidden">
-      <motion.div 
-        className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0"
-        animate={{
-          x: ['-100%', '100%'],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
-      {children}
+    <div className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/20 text-primary text-xs font-bold border border-primary/30 shadow-[0_0_10px_rgba(var(--primary-rgb),0.2)]">
+      <Star className="h-3.5 w-3.5 mr-1.5" />
+      <span>v{version}</span>
     </div>
   );
 };
 
-// Timeline item component with enhanced animations
+// Timeline item component with terminal style
 const TimelineItem = ({ 
   version, 
   date, 
   title, 
-  description, 
   features,
   icon: Icon,
   index
@@ -90,7 +90,6 @@ const TimelineItem = ({
   version: string;
   date: string;
   title: string;
-  description: string;
   features: string[];
   icon: any;
   index: number;
@@ -101,133 +100,160 @@ const TimelineItem = ({
     offset: ["start end", "end start"]
   });
   
-  // Adjusted to ensure older versions aren't dimmed
-  const scale = useTransform(scrollYProgress, [0, 0.5], [0.98, 1]);
-  const y = useTransform(scrollYProgress, [0, 0.3], [40, 0]);
-  
-  // Parallax effect for the icon
-  const iconY = useTransform(scrollYProgress, [0, 1], [0, -20]);
-  
-  // Removed rotation effect for the icon on hover
-  const [isHovering, setIsHovering] = useState(false);
+  const y = useTransform(scrollYProgress, [0, 0.3], [20, 0]);
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [0.9, 1]);
   
   return (
     <motion.div
       ref={itemRef}
-      style={{ 
-        scale,
-        y
-      }}
-      className="relative pl-12 pb-24 last:pb-0"
+      style={{ y, opacity }}
+      className="relative pl-8 pb-16 last:pb-0"
     >
-      {/* Timeline line with enhanced glow effect */}
-      <div className="absolute left-[11px] top-2 bottom-0 w-px bg-gradient-to-b from-primary via-primary/30 to-transparent">
-        <motion.div 
-          className="absolute inset-0 bg-primary/50"
-          animate={{
-            opacity: [0.3, 0.8, 0.3],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "easeInOut",
-            delay: index * 0.5
-          }}
-        />
-      </div>
+      {/* Timeline line */}
+      <div className="absolute left-[7px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20" />
       
-      {/* Animated timeline dot with pulse effect */}
-      <motion.div 
-        className="absolute left-0 top-2 w-6 h-6 rounded-full bg-black border-2 border-primary flex items-center justify-center z-10"
-        animate={{ 
-          boxShadow: ['0 0 0px rgba(var(--primary-rgb), 0.3)', '0 0 12px rgba(var(--primary-rgb), 0.8)', '0 0 0px rgba(var(--primary-rgb), 0.3)']
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          repeatType: "reverse",
-          ease: "easeInOut",
-          delay: index * 0.5
-        }}
-      >
-        <motion.div 
-          className="w-2 h-2 rounded-full bg-primary"
-          animate={{
-            scale: [1, 1.5, 1],
-          }}
-          transition={{
-            duration: 2,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "easeInOut",
-            delay: index * 0.5
-          }}
-        />
-      </motion.div>
+      {/* Timeline dot */}
+      <div className="absolute left-0 top-2 w-4 h-4 rounded-full bg-primary/50 border-2 border-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)] flex items-center justify-center z-10" />
       
-      {/* Enhanced card with hover effect */}
-      <motion.div
-        whileHover={{ scale: 1.03 }}
-        transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        onHoverStart={() => setIsHovering(true)}
-        onHoverEnd={() => setIsHovering(false)}
-      >
-        <Card className="bg-black/80 backdrop-blur-sm border border-white/10 overflow-hidden shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]">
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 pointer-events-none"></div>
+      {/* Terminal-style window */}
+      <div className="overflow-hidden rounded-lg border border-white/30 bg-gradient-to-b from-gray-900 to-black shadow-[0_0_25px_rgba(var(--primary-rgb),0.2)]">
+        {/* Terminal header */}
+        <div className="flex items-center px-4 py-2 border-b border-white/20 bg-black">
+          <div className="flex space-x-2 mr-4">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500" />
+            <div className="w-3 h-3 rounded-full bg-green-500" />
+          </div>
+          <div className="text-xs font-medium text-white/90 flex-1 flex items-center">
+            <span className="text-primary font-bold">docmate</span>
+            <span className="mx-1 text-white/60">:</span>
+            <span className="text-blue-400">~/releases</span>
+            <span className="ml-1 text-white/60">$</span>
+          </div>
+        </div>
+        
+        {/* Terminal content */}
+        <div className="p-5 font-mono text-sm bg-gradient-to-b from-black to-gray-900/80">
+          {/* Simple command */}
+          <div className="flex items-center text-white/90 mb-3">
+            <span className="text-green-400 mr-2">$</span>
+            <span className="text-primary mr-1">show</span>
+            <span className="text-white/90">v{version}</span>
+          </div>
           
-          <CardContent className="p-8 relative">
-            {/* Version badge */}
-            <div className="absolute top-4 right-4">
-              <AnimatedBadge>
-                <Star className="h-3.5 w-3.5 mr-1.5" />
-                <span>v{version}</span>
-              </AnimatedBadge>
-            </div>
-            
-            <div className="flex items-center gap-5 mb-6">
-              <motion.div 
-                className="w-14 h-14 rounded-xl bg-black border border-primary/30 flex items-center justify-center relative overflow-hidden"
-                style={{ y: iconY }}
-                // Removed spinning animation
-              >
-                {/* Icon background glow */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent"></div>
-                <Icon className="w-7 h-7 text-primary relative z-10" />
-              </motion.div>
+          {/* Release info - simplified */}
+          <div className="bg-black/30 rounded-md border border-white/10 p-4 mb-3">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                <Icon className="w-5 h-5 text-primary" />
+              </div>
               
-              <div>
-                <div className="text-sm text-white mb-1 flex items-center font-medium">
-                  <Zap className="h-3.5 w-3.5 mr-1.5 text-primary" />
-                  {date}
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white font-bold text-lg">{title}</h3>
+                  <div className="px-2 py-0.5 rounded bg-primary/15 text-primary text-xs font-bold border border-primary/20">
+                    v{version}
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold">
-                  <GradientText>{title}</GradientText>
-                </h3>
+                
+                <div className="text-primary font-medium text-sm mt-1">
+                  Released: {date}
+                </div>
               </div>
             </div>
-            
-            <p className="text-muted-foreground mb-6 text-lg">{description}</p>
-            
-            <div className="space-y-3.5">
-              {features.map((feature, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: idx * 0.1 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                  <span className="text-white/90">{feature}</span>
-                </motion.div>
-              ))}
+          </div>
+          
+          {/* Features - compact */}
+          <div className="flex items-start">
+            <div className="flex-1">
+              <div className="text-xs text-primary mb-2">Features:</div>
+              <div className="grid grid-cols-1 gap-1 pl-2 border-l border-primary/30">
+                {features.map((feature, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -5 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.2, delay: idx * 0.05 }}
+                    className="flex items-start gap-1.5 text-xs"
+                  >
+                    <span className="text-green-400 font-bold mt-0.5">✓</span>
+                    <span className="text-white/80">{feature}</span>
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Future roadmap item component with terminal style
+const FutureItem = ({ 
+  title, 
+  description, 
+  timeline,
+  icon: Icon,
+  index
+}: { 
+  title: string;
+  description: string;
+  timeline: string;
+  icon: any;
+  index: number;
+}) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay: index * 0.1 }}
+      className="mb-8 last:mb-0"
+    >
+      {/* Terminal-style window */}
+      <div className="overflow-hidden rounded-lg border border-white/30 bg-gradient-to-b from-gray-900 to-black shadow-[0_0_25px_rgba(var(--primary-rgb),0.2)]">
+        {/* Terminal header */}
+        <div className="flex items-center px-4 py-2 border-b border-white/20 bg-black">
+          <div className="flex space-x-2 mr-4">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500" />
+            <div className="w-3 h-3 rounded-full bg-green-500" />
+          </div>
+          <div className="text-xs font-medium text-white/90 flex-1 flex items-center">
+            <span className="text-primary font-bold">docmate</span>
+            <span className="mx-1 text-white/60">:</span>
+            <span className="text-blue-400">~/roadmap</span>
+            <span className="ml-1 text-white/60">$</span>
+          </div>
+        </div>
+        
+        {/* Terminal content */}
+        <div className="p-5 font-mono text-sm bg-gradient-to-b from-black to-gray-900/80">
+          {/* Simple command */}
+          <div className="flex items-center text-white/90 mb-3">
+            <span className="text-green-400 mr-2">$</span>
+            <span className="text-primary mr-1">view</span>
+            <span className="text-white/90">roadmap</span>
+            <span className="ml-2 animate-pulse text-white/90">▌</span>
+          </div>
+          
+          {/* Feature output - simplified */}
+          <div className="bg-black/30 rounded-md border border-white/10 p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="text-white font-bold text-lg">{title}</div>
+                <div className="text-primary text-sm font-medium">{timeline}</div>
+              </div>
+            </div>
+            <p className="text-white/90 text-sm leading-relaxed">{description}</p>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 };
@@ -246,135 +272,138 @@ export default function ChangelogPage() {
     setTheme("dark");
   }, [setTheme]);
 
-  // Noise texture effect
-  const [noiseTexture, setNoiseTexture] = useState<string>("");
-  
-  useEffect(() => {
-    // Create a subtle noise texture for background
-    const canvas = document.createElement("canvas");
-    canvas.width = 100;
-    canvas.height = 100;
-    const ctx = canvas.getContext("2d");
-    
-    if (ctx) {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, 100, 100);
-      
-      for (let i = 0; i < 100; i++) {
-        for (let j = 0; j < 100; j++) {
-          const value = Math.floor(Math.random() * 50);
-          ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 0.02)`;
-          ctx.fillRect(i, j, 1, 1);
-        }
-      }
-      
-      setNoiseTexture(`url(${canvas.toDataURL()})`);
-    }
-  }, []);
-
   const releases = [
     {
       version: "1.2",
       date: "March 8, 2024",
-      title: "Dynamic Document Analysis",
-      description: "Complete remake with customizable output formats and analysis parameters.",
+      title: "Custom Document Types",
       icon: Wand2,
       features: [
-        "Customizable output formats",
-        "Dynamic field extraction",
-        "Enhanced analysis accuracy",
-        "Improved UI/UX",
-        "Real-time extraction preview"
+        "Make your own document types",
+        "Customize the output with your own variables",
+        "Updated User Interface (Sooo clean)",
       ]
     },
     {
       version: "1.1",
       date: "February 22, 2024",
-      title: "User Accounts & History",
-      description: "Added user accounts and document history tracking.",
+      title: "User Accounts & Document History",
       icon: Users,
       features: [
-        "User account system",
-        "Document history storage",
-        "Quick access to past documents",
-        "Document organization",
-        "Enhanced privacy controls"
+        "User accounts and session management",
+        "Store processed documents in your account",
+        "A clean history page to manage your documents",
+        "Security features to protect your account and data"
       ]
     },
     {
       version: "1.0",
       date: "February 16, 2024",
       title: "Initial Release",
-      description: "Limited demo with five document types support.",
       icon: FileText,
       features: [
-        "Bank statement analysis",
-        "Tax form processing",
-        "Electric bill extraction",
-        "Store receipt scanning",
-        "Dental claim processing"
+        "Limited to 5 document types",
+        "Limited to only PDF files",
+        "Basic user interface"
       ]
+    }
+  ];
+
+  const futureUpdates = [
+    {
+      title: "Our very own API",
+      description: "Building an API to allow seamless integration with your existing systems and workflows for automated document processing.",
+      timeline: "Estimated Release: April, 2025",
+      icon: Code
+    },
+    {
+      title: "Automatic Document Type Styling",
+      description: "Using AI to automatically detect and apply appropriate styling for data extraction.",
+      timeline: "Estimated Release: April, 2025",
+      icon: Wand2
     }
   ];
 
   return (
     <div className="relative min-h-screen bg-black">
+      <BackgroundNoise />
+      
+      {/* Progress bar */}
+      <motion.div 
+        className="fixed top-0 left-0 right-0 h-0.5 bg-primary/70 z-50 origin-left"
+        style={{ scaleX }}
+      />
+      
       <Header />
       <ScrollArea className="h-screen">
-        <div className="container max-w-4xl mx-auto px-6 py-24">
-          {/* Header with enhanced animations */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-28"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4 border border-primary/20"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              <span>Release History</span>
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-4xl md:text-6xl font-bold mb-6"
-            >
-              <GradientText>Changelog</GradientText>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="text-xl text-white/90 max-w-2xl mx-auto"
-            >
-              Our journey of continuous improvement
-            </motion.p>
-          </motion.div>
+        <div className="relative">
+          {/* Main Content Section */}
+          <section className="relative pt-36 pb-20 px-6 overflow-hidden">
+            {/* Background elements */}
+            <div className="absolute inset-0 bg-black">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/15 via-transparent to-purple-500/15 opacity-20" />
+              <div className="absolute inset-0" style={{
+                backgroundImage: "radial-gradient(circle at 50% 30%, rgba(var(--primary-rgb), 0.15) 0%, transparent 70%)",
+              }} />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+            </div>
+            
+            <div className="container max-w-3xl mx-auto relative z-10">
+              {/* Header */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="text-center max-w-3xl mx-auto mb-16"
+              >
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  <span>Development & History</span>
+                </div>
+                <h1 className="text-5xl md:text-6xl font-bold mb-6">
+                  <GradientText>Changelog</GradientText>
+                </h1>
+                <p className="text-xl text-white/80 max-w-2xl mx-auto">
+                  Our journey as we go from better to best
+                </p>
+              </motion.div>
 
-          {/* Timeline with enhanced scroll effects */}
-          <div className="relative">
-            {releases.map((release, index) => (
-              <TimelineItem key={index} {...release} index={index} />
-            ))}
-          </div>
-          
-          {/* Future updates teaser with enhanced animation */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="mt-16 text-center"
-          >
-          </motion.div>
+              {/* Future updates section */}
+              <div className="mb-16">
+                <div className="flex items-center mb-16">
+                  <div className="h-px bg-white/10 flex-grow"></div>
+                  <h2 className="text-white/80 text-sm font-medium px-4 uppercase tracking-wider">Roadmap</h2>
+                  <div className="h-px bg-white/10 flex-grow"></div>
+                </div>
+                
+                <div className="max-w-2xl mx-auto">
+                  {futureUpdates.map((update, index) => (
+                    <FutureItem key={index} {...update} index={index} />
+                  ))}
+                </div>
+              </div>
+              
+              {/* Release history section */}
+              <div className="mb-16">
+                <div className="flex items-center mb-10">
+                  <div className="h-px bg-white/10 flex-grow"></div>
+                  <h2 className="text-white/80 text-sm font-medium px-4 uppercase tracking-wider">Version History</h2>
+                  <div className="h-px bg-white/10 flex-grow"></div>
+                </div>
+                
+                <div className="relative">
+                  {releases.map((release, index) => (
+                    <TimelineItem key={index} {...release} index={index} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
         <Footer />
       </ScrollArea>
     </div>
   );
 } 
+ 

@@ -69,6 +69,17 @@ const Card3D = ({ children, className = "" }: { children: React.ReactNode; class
 
 // Enhanced Particle background component with more varied particles
 const ParticleBackground = () => {
+  // Use state to track if component is mounted (client-side only)
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // Only run on client-side to prevent hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+  // Don't render anything during SSR
+  if (!isMounted) return null;
+  
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {Array.from({ length: 150 }).map((_, i) => {
@@ -115,8 +126,10 @@ export default function HomePage() {
   const { setTheme } = useTheme();
   
   useEffect(() => {
-    // Set the theme to dark when the component mounts
-    setTheme("dark");
+    // Only set theme on the client side to avoid hydration mismatches
+    if (typeof window !== 'undefined') {
+      setTheme("dark");
+    }
     
     // Store the original theme implementation for later cleanup
     return () => {
@@ -172,8 +185,12 @@ export default function HomePage() {
 
   // Add noise texture effect for more Vercel-like appearance
   const [noiseTexture, setNoiseTexture] = useState<string>("");
+  const [isHydrated, setIsHydrated] = useState(false);
   
   useEffect(() => {
+    // Mark as hydrated
+    setIsHydrated(true);
+    
     // Create a subtle noise texture for background
     const canvas = document.createElement("canvas");
     canvas.width = 100;
@@ -202,7 +219,7 @@ export default function HomePage() {
       <ScrollArea className="h-screen w-full">
         <div 
           className="min-h-screen bg-background relative"
-          style={{ backgroundImage: noiseTexture }}
+          style={isHydrated ? { backgroundImage: noiseTexture } : {}}
         >
           {/* Animated background */}
           <motion.div
@@ -241,7 +258,7 @@ export default function HomePage() {
                     className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium backdrop-blur-sm border border-primary/20"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
-                    <span>AI-Powered Document Analysis</span>
+                    <span>AI-Powered</span>
                   </motion.div>
 
                   <motion.h1
@@ -302,9 +319,9 @@ export default function HomePage() {
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 1, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
+                  transition={{ duration: 0.5, delay: 0 }}
                   className="relative"
                 >
                   {/* 3D Document Visualization - improved positioning and animation */}
