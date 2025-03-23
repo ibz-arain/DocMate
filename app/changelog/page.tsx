@@ -328,12 +328,6 @@ export default function ChangelogPage() {
     <div className="relative min-h-screen bg-black">
       <BackgroundNoise />
       
-      {/* Progress bar */}
-      <motion.div 
-        className="fixed top-0 left-0 right-0 h-0.5 bg-primary/70 z-50 origin-left"
-        style={{ scaleX }}
-      />
-      
       <Header />
       <ScrollArea className="h-screen">
         <div className="relative">

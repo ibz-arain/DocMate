@@ -16,34 +16,9 @@ export default function Header() {
     restDelta: 0.001
   });
 
-  // Header blur effect based on scroll
-  const headerBlur = useTransform(
-    scrollYProgress,
-    [0, 0.1],
-    [0, 8]
-  );
-  
-  const headerOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.1],
-    [0, 1]
-  );
-
-  const shadowOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.1],
-    [0, 0.5]
-  );
-
   // Force dark theme
   const { setTheme } = useTheme();
-  
-  useEffect(() => {
-    // Only set theme on the client side to avoid hydration mismatches
-    if (typeof window !== 'undefined') {
-      setTheme("dark");
-    }
-  }, [setTheme]);
+
 
   return (
     <>
@@ -58,31 +33,26 @@ export default function Header() {
         <div
           className="mx-auto max-w-7xl pointer-events-auto"
         >
-          <motion.div 
+          <div
             className="rounded-2xl overflow-hidden border border-white/10"
-            style={{
-              backdropFilter: `blur(${headerBlur}px)`,
-              backgroundColor: `rgba(10, 10, 15, ${headerOpacity})`,
-              boxShadow: `0 10px 30px -10px rgba(0, 0, 0, ${shadowOpacity})`,
-            }}
           >
             <div className="relative">
               {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-purple-500/5 pointer-events-none"></div>
               
               {/* Header content */}
               <div className="flex items-center justify-between py-3 pr-4 pl-2 bg-background/60 backdrop-blur-sm">
                 <Link href="/">
-                  <Image src="/logo-text.png" alt="DocMate" width={130} height={1000} />
+                  <Image src="/logo-text.png" alt="DocMate" width={130} height={27} />
                 </Link>
                 
                 {/* Navigation */}
                 <div className="hidden md:flex items-center space-x-6">
                   {[
-                    { label: 'Read Docs', href: '/docs' },
+                    //{ label: 'Read Docs', href: '/docs' },
                     { label: 'Use Cases', href: '/use-cases' },
                     { label: 'Changelog', href: '/changelog' },
-                    { label: 'Learn More', href: '/learn-more' },
+                    { label: 'About Us', href: '/about' },
+                    //{ label: 'Learn More', href: '/learn-more' },
                   ].map((item) => (
                     <a 
                       key={item.label}
@@ -108,7 +78,7 @@ export default function Header() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </>
