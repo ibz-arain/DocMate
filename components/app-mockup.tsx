@@ -233,21 +233,36 @@ const AppMockup = () => {
 
   // Initialize local theme when component mounts
   useEffect(() => {
-    if (localTheme === undefined) {
+    // Only set theme on the client side to avoid hydration mismatches
+    if (typeof window !== 'undefined' && localTheme === undefined) {
       setLocalTheme(theme);
     }
   }, [theme, localTheme]);
 
   // Use local theme to toggle, which prevents the page's forced theme from affecting this component
   const toggleTheme = () => {
-    const newTheme = localTheme === 'dark' ? 'light' : 'dark';
-    setLocalTheme(newTheme);
-    setTheme(newTheme);
+    if (typeof window !== 'undefined') {
+      const newTheme = localTheme === 'dark' ? 'light' : 'dark';
+      setLocalTheme(newTheme);
+      setTheme(newTheme);
+    }
   };
 
-  // Render component only after localTheme is initialized
-  if (localTheme === undefined) {
-    return null;
+  // Render component with a fallback during server-side rendering
+  // This helps prevent hydration mismatches
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+  // During SSR or before hydration, render a simple placeholder
+  if (!isMounted) {
+    return (
+      <div className="w-full h-[600px] bg-background border border-border rounded-lg flex items-center justify-center">
+        <div className="animate-pulse">Loading application preview...</div>
+      </div>
+    );
   }
 
   // Function to generate markdown from JSON
@@ -410,8 +425,8 @@ const AppMockup = () => {
                     className={`flex items-center px-3 py-1.5 w-full rounded text-sm ${
                       selectedDoc.type === doc.type
                         ? localTheme === 'dark' 
-                          ? 'bg-emerald-500/10 text-emerald-500' 
-                          : 'bg-emerald-50 text-emerald-600'
+                          ? 'bg-primary/10 text-primary' 
+                          : 'bg-primary/10 text-primary'
                         : localTheme === 'dark'
                           ? 'text-zinc-400 hover:bg-zinc-800/30'
                           : 'text-zinc-600 hover:bg-zinc-100'
@@ -448,7 +463,7 @@ const AppMockup = () => {
                   size="sm"
                   className={`h-8 rounded px-3 ${
                     activeTab === 'json' 
-                      ? 'bg-emerald-500/10 text-emerald-500' 
+                      ? 'bg-primary/10 text-primary' 
                       : localTheme === 'dark' 
                         ? 'text-zinc-400 hover:text-zinc-100' 
                         : 'text-zinc-600 hover:text-zinc-800'
@@ -463,7 +478,7 @@ const AppMockup = () => {
                   size="sm"
                   className={`h-8 rounded px-3 ${
                     activeTab === 'markdown' 
-                      ? 'bg-emerald-500/10 text-emerald-500' 
+                      ? 'bg-primary/10 text-primary' 
                       : localTheme === 'dark' 
                         ? 'text-zinc-400 hover:text-zinc-100' 
                         : 'text-zinc-600 hover:text-zinc-800'
@@ -478,7 +493,7 @@ const AppMockup = () => {
                   size="sm"
                   className={`h-8 rounded px-3 ${
                     activeTab === 'formatted' 
-                      ? 'bg-emerald-500/10 text-emerald-500' 
+                      ? 'bg-primary/10 text-primary' 
                       : localTheme === 'dark' 
                         ? 'text-zinc-400 hover:text-zinc-100' 
                         : 'text-zinc-600 hover:text-zinc-800'
@@ -536,14 +551,14 @@ const AppMockup = () => {
                     
                     {selectedDoc.contentJson.metadata && (
                       <div className="space-y-6 mb-8">
-                        <h3 className="text-lg font-semibold text-emerald-500 mb-4">Metadata</h3>
+                        <h3 className="text-lg font-semibold text-primary mb-4">Metadata</h3>
                         {Object.entries(selectedDoc.contentJson.metadata).map(([key, value]: [string, any]) => (
                           <div key={key} className={`rounded-lg border ${localTheme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'} overflow-hidden`}>
                             <div className={`px-4 py-2 ${localTheme === 'dark' ? 'bg-zinc-800/50' : 'bg-zinc-100'}`}>
                               <h4 className={`font-medium capitalize ${localTheme === 'dark' ? 'text-zinc-100' : 'text-zinc-800'}`}>{key}</h4>
                             </div>
                             <div className={`p-4 ${localTheme === 'dark' ? 'bg-zinc-800/20' : 'bg-zinc-50'}`}>
-                              <table className="w-full">
+                              <table className="w-full rounded-md overflow-hidden">
                                 <tbody>
                                   {Object.entries(value as Record<string, any>).map(([subKey, subValue]) => (
                                     <tr key={subKey} className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'} last:border-0`}>
@@ -565,7 +580,7 @@ const AppMockup = () => {
 
                     {selectedDoc.contentJson.content && (
                       <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-emerald-500 mb-4">Content</h3>
+                        <h3 className="text-lg font-semibold text-primary mb-4">Content</h3>
                         {Object.entries(selectedDoc.contentJson.content).map(([key, value]: [string, any]) => (
                           <div key={key} className={`rounded-lg border ${localTheme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'} overflow-hidden`}>
                             <div className={`px-4 py-2 ${localTheme === 'dark' ? 'bg-zinc-800/50' : 'bg-zinc-100'}`}>
@@ -573,7 +588,7 @@ const AppMockup = () => {
                             </div>
                             <div className={`p-4 ${localTheme === 'dark' ? 'bg-zinc-800/20' : 'bg-zinc-50'}`}>
                               {Array.isArray(value) ? (
-                                <table className="w-full">
+                                <table className="w-full rounded-md overflow-hidden">
                                   <thead>
                                     <tr className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'}`}>
                                       {Object.keys(value[0] || {}).map((header) => (
@@ -596,7 +611,7 @@ const AppMockup = () => {
                                   </tbody>
                                 </table>
                               ) : (
-                                <table className="w-full">
+                                <table className="w-full rounded-md overflow-hidden">
                                   <tbody>
                                     {Object.entries(value as Record<string, any>).map(([subKey, subValue]) => (
                                       <tr key={subKey} className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'} last:border-0`}>

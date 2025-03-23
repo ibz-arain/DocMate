@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging, LogOut, User, Settings, Sun, Moon, History, Menu } from "lucide-react";
+import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging, LogOut, User, Settings, Sun, Moon, History, Menu, Code } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -440,7 +440,7 @@ export function CustomSidebar({
       </Sheet>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block p-6 h-screen flex-shrink-0">
+      <div className="hidden md:block pl-6 h-screen flex-shrink-0">
         <motion.div
           initial={false}
           animate={{
@@ -461,8 +461,7 @@ export function CustomSidebar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
-                  className="font-semibold text-lg text-primary"
-                >
+                  className="font-semibold text-lg text-primary"                >
                   <Image 
                     src="/logo-text.png" 
                     alt="Logo" 
@@ -470,6 +469,8 @@ export function CustomSidebar({
                     height={100} 
                     priority
                     className="select-none"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => router.push('/')}
                   />
                 </motion.div>
               )}

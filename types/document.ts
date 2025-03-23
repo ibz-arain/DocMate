@@ -1,4 +1,4 @@
-export type DocumentType = 't4' | 'bank' | 'receipt' | 'dental' | 'electricity' | 'history' | null;
+export type DocumentType = 't4' | 'bank' | 'receipt' | 'dental' | 'electricity' | 'custom' | 'history' | null;
 
 export type ProcessingDocType = Exclude<DocumentType, 'history' | null>;
 
@@ -46,6 +46,10 @@ export const documentTypeLabels: Record<string, { title: string, description: st
   'electricity': {
     title: 'Electricity Bill',
     description: 'Upload your electricity bill for analysis'
+  },
+  'custom': {
+    title: 'Custom API',
+    description: 'Create and test your own custom document analysis API'
   },
   'history': {
     title: 'Document History',

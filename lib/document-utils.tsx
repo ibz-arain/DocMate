@@ -81,7 +81,6 @@ export const generateMarkdown = (data: any): string => {
   }
 
   if (data.content) {
-    markdown += '## Content\n\n';
     Object.entries(data.content).forEach(([key, value]: [string, any]) => {
       markdown += `### ${key}\n\n`;
       if (Array.isArray(value) && value.length > 0) {
@@ -113,7 +112,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
                   <h4 className="font-medium capitalize">{key}</h4>
                 </div>
                 <div className="p-4">
-                  <table className="w-full">
+                  <table className="w-full rounded-md overflow-hidden">
                     <tbody>
                       {Object.entries(value).map(([subKey, subValue]) => (
                         <tr key={subKey} className="border-b last:border-0">
@@ -134,8 +133,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
         )}
 
         {data.content && (
-          <div className="space-y-6 mt-8">
-            <h3 className="text-xl font-semibold">Content</h3>
+          <div className="space-y-6">
             {Object.entries(data.content).map(([key, value]: [string, any]) => (
               <div key={key} className="rounded-lg border">
                 <div className="px-4 py-3 border-b bg-muted">
@@ -143,7 +141,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
                 </div>
                 <div className="p-4">
                   {Array.isArray(value) ? (
-                    <table className="w-full">
+                    <table className="w-full rounded-md overflow-hidden">
                       <thead>
                         <tr className="border-b">
                           {Object.keys(value[0] || {}).map((header) => (
@@ -166,7 +164,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
                       </tbody>
                     </table>
                   ) : (
-                    <table className="w-full">
+                    <table className="w-full rounded-md overflow-hidden">
                       <tbody>
                         {Object.entries(value).map(([subKey, subValue]: [string, any]) => (
                           <tr key={subKey} className="border-b last:border-0">

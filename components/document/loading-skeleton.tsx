@@ -12,8 +12,8 @@ export function LoadingSkeleton() {
     <div className="grid gap-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
       {/* Main Table Loading Skeleton */}
       <div className="flex-1 min-w-0">
-        <div className="rounded-md border h-full bg-background">
-          <Table>
+        <div className="rounded-md border h-full overflow-x-auto bg-background">
+          <Table className="rounded-md overflow-hidden">
             <TableHeader>
               <TableRow>
                 <TableHead>Document</TableHead>

@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, useScroll, useSpring, useTransform, useMotionValue, useMotionTemplate } from "framer-motion";
-import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileCheck, LightbulbIcon, Cable, FileSpreadsheet, ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileCheck, LightbulbIcon, Cable, FileSpreadsheet, ArrowUpRight, Sparkles, Building2, ReceiptText, Stethoscope, BatteryCharging, Code, Plus, Users, History, Upload, Menu } from "lucide-react";
 import Link from "next/link";
 import { TypeAnimation } from 'react-type-animation';
 import { useRef, useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import AppMockup from "@/components/app-mockup";
 import { useTheme } from "next-themes";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 // Gradient text component
 const GradientText = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
@@ -35,12 +37,12 @@ const Card3D = ({ children, className = "" }: { children: React.ReactNode; class
     const y = e.clientY - rect.top;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
-    const rotateXVal = (y - centerY) / 20;
-    const rotateYVal = (centerX - x) / 20;
+    const rotateXVal = (y - centerY) / 30;
+    const rotateYVal = (centerX - x) / 30;
     
     setRotateX(rotateXVal);
     setRotateY(rotateYVal);
-    setScale(1.05);
+    setScale(1.03);
   };
 
   const handleMouseLeave = () => {
@@ -52,7 +54,7 @@ const Card3D = ({ children, className = "" }: { children: React.ReactNode; class
   return (
     <div
       ref={cardRef}
-      className={`transform-gpu transition-all duration-200 ${className}`}
+      className={`transform-gpu transition-all duration-300 ease-out ${className}`}
       style={{
         transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
         transformStyle: "preserve-3d",
@@ -65,31 +67,49 @@ const Card3D = ({ children, className = "" }: { children: React.ReactNode; class
   );
 };
 
-// Particle background component
+// Enhanced Particle background component with more varied particles
 const ParticleBackground = () => {
+  // Use state to track if component is mounted (client-side only)
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // Only run on client-side to prevent hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+  // Don't render anything during SSR
+  if (!isMounted) return null;
+  
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      {Array.from({ length: 100 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full bg-primary/10"
-          style={{
-            width: Math.random() * 6 + 2,
-            height: Math.random() * 6 + 2,
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-          }}
-          animate={{
-            y: [0, Math.random() * -100 - 50],
-            opacity: [0, 0.5, 0],
-          }}
-          transition={{
-            duration: Math.random() * 10 + 10,
-            repeat: Infinity,
-            delay: Math.random() * 5,
-          }}
-        />
-      ))}
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {Array.from({ length: 150 }).map((_, i) => {
+        const size = Math.random() * 6 + (i % 5 === 0 ? 4 : 1);
+        const opacity = Math.random() * 0.3 + 0.1;
+        return (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              width: size,
+              height: size,
+              backgroundColor: `rgba(var(--primary-rgb), ${opacity})`,
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              filter: i % 8 === 0 ? 'blur(1px)' : 'none',
+            }}
+            animate={{
+              y: [0, Math.random() * -150 - 50],
+              opacity: [0, opacity, 0],
+            }}
+            transition={{
+              duration: Math.random() * 15 + 10,
+              repeat: Infinity,
+              delay: Math.random() * 5,
+              ease: "easeInOut",
+            }}
+          />
+        );
+      })}
     </div>
   );
 };
@@ -106,8 +126,10 @@ export default function HomePage() {
   const { setTheme } = useTheme();
   
   useEffect(() => {
-    // Set the theme to dark when the component mounts
-    setTheme("dark");
+    // Only set theme on the client side to avoid hydration mismatches
+    if (typeof window !== 'undefined') {
+      setTheme("dark");
+    }
     
     // Store the original theme implementation for later cleanup
     return () => {
@@ -126,6 +148,31 @@ export default function HomePage() {
     rgba(0, 0, 0, 0) 60%
   )`;
 
+  // Header blur effect based on scroll
+  const headerBlur = useTransform(
+    scrollYProgress,
+    [0, 0.1],
+    [0, 8]
+  );
+  
+  const headerOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.1],
+    [0, 1]
+  );
+
+  const borderOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.1],
+    [0, 0.1]
+  );
+
+  const shadowOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.1],
+    [0, 0.5]
+  );
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       backgroundX.set(e.clientX);
@@ -136,29 +183,57 @@ export default function HomePage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [backgroundX, backgroundY]);
 
+  // Add noise texture effect for more Vercel-like appearance
+  const [noiseTexture, setNoiseTexture] = useState<string>("");
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  useEffect(() => {
+    // Mark as hydrated
+    setIsHydrated(true);
+    
+    // Create a subtle noise texture for background
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext("2d");
+    
+    if (ctx) {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, 100, 100);
+      
+      for (let i = 0; i < 100; i++) {
+        for (let j = 0; j < 100; j++) {
+          const value = Math.floor(Math.random() * 50);
+          ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 0.015)`;
+          ctx.fillRect(i, j, 1, 1);
+        }
+      }
+      
+      setNoiseTexture(`url(${canvas.toDataURL()})`);
+    }
+  }, []);
+
   return (
     <div className="relative">
-      {/* Progress bar */}
-      <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-blue-500 z-50"
-        style={{ scaleX }}
-      />
-
+      <Header />
       <ScrollArea className="h-screen w-full">
-        <div className="min-h-screen bg-background relative">
+        <div 
+          className="min-h-screen bg-background relative"
+          style={isHydrated ? { backgroundImage: noiseTexture } : {}}
+        >
           {/* Animated background */}
           <motion.div
             className="fixed inset-0 z-0"
             style={{ background }}
           />
 
-          {/* Grid background */}
-          <div className="fixed inset-0 z-0 opacity-20">
+          {/* Grid background - improved with more subtle grid */}
+          <div className="fixed inset-0 z-0 opacity-10">
             <div 
               className="h-full w-full"
               style={{
-                backgroundImage: "linear-gradient(to right, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px)",
-                backgroundSize: "50px 50px",
+                backgroundImage: "linear-gradient(to right, rgba(var(--primary-rgb), 0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(var(--primary-rgb), 0.07) 1px, transparent 1px)",
+                backgroundSize: "70px 70px",
               }}
             />
           </div>
@@ -180,29 +255,29 @@ export default function HomePage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 1, delay: 0.5 }}
-                    className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
+                    className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium backdrop-blur-sm border border-primary/20"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
-                    <span>AI-Powered Document Analysis</span>
+                    <span>AI-Powered</span>
                   </motion.div>
 
                   <motion.h1
-                    className="text-5xl md:text-7xl font-bold tracking-tight leading-tight"
+                    className="text-5xl md:text-7xl font-bold tracking-tight leading-tight flex flex-col"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.3 }}
                   >
-                    Document Analysis Made{" "}
-                    <GradientText>
+                    <span>Document Processing Made</span>
+                    <GradientText className="h-[1.2em] mt-2 block">
                       <TypeAnimation
                         sequence={[
-                          'Simple',
+                          'Automatic',
                           2000,
                           'Efficient',
                           2000,
                           'Powerful',
                           2000,
-                          'Smart',
+                          'Faster',
                           2000,
                         ]}
                         wrapper="span"
@@ -219,7 +294,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
                   >
-                    Transform your documents into actionable insights with our advanced AI-powered analysis platform.
+                    Automate your workflow by utilizing AI to extract data from documents. 
                   </motion.p>
 
                   <motion.div
@@ -229,80 +304,91 @@ export default function HomePage() {
                     transition={{ duration: 0.8, delay: 0.5 }}
                   >
                     <Link href="/demo">
-                      <Button size="lg" className="gap-2 relative overflow-hidden group">
+                      <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                         <span className="relative z-10 flex items-center">
-                          Try Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          Try Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                         </span>
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-blue-500"
-                          initial={{ x: "-100%" }}
-                          whileHover={{ x: 0 }}
-                          transition={{ duration: 0.4 }}
-                        />
                       </Button>
                     </Link>
-                    <Button variant="outline" size="lg" className="gap-2 group">
-                      Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
-                    </Button>
+                    <Link href="/learn-more">
+                      <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
+                        Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+                      </Button>
+                    </Link>
                   </motion.div>
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 1, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
+                  transition={{ duration: 0.5, delay: 0 }}
                   className="relative"
                 >
-                  {/* 3D Document Visualization */}
-                  <div className="relative h-[500px] w-full">
-                    {/* Floating documents */}
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute"
-                        style={{
-                          top: `${20 + i * 10}%`,
-                          left: `${10 + i * 10}%`,
-                          zIndex: 10 - i,
-                        }}
-                        animate={{
-                          y: [0, -10, 0],
-                          rotate: [0, i % 2 === 0 ? 5 : -5, 0],
-                        }}
-                        transition={{
-                          duration: 4 + i,
-                          repeat: Infinity,
-                          repeatType: "reverse",
-                          delay: i * 0.5,
-                        }}
-                      >
-                        <Card3D className="w-[200px] h-[280px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm border border-white/20 rounded-lg shadow-xl">
-                          <CardContent className="p-4 h-full flex flex-col">
-                            <div className="w-full h-4 bg-primary/20 rounded mb-3"></div>
-                            <div className="w-3/4 h-3 bg-primary/10 rounded mb-2"></div>
-                            <div className="w-5/6 h-3 bg-primary/10 rounded mb-2"></div>
-                            <div className="w-2/3 h-3 bg-primary/10 rounded mb-6"></div>
-                            <div className="flex-1 grid grid-cols-2 gap-2">
-                              {Array.from({ length: 6 }).map((_, j) => (
-                                <div key={j} className="h-8 bg-primary/5 rounded"></div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card3D>
-                      </motion.div>
-                    ))}
+                  {/* 3D Document Visualization - improved positioning and animation */}
+                  <div className="relative h-[500px] w-full perspective-[1200px]">
+                    {/* Floating documents with improved positioning and animation */}
+                    {Array.from({ length: 5 }).map((_, i) => {
+                      // Calculate better positions for the documents
+                      const topPos = 15 + i * 12;
+                      const leftPos = i % 2 === 0 ? 10 + i * 8 : 30 + i * 6;
+                      const zIndex = 10 - i;
+                      const rotateStart = i % 2 === 0 ? -5 : 5;
+                      
+                      return (
+                        <motion.div
+                          key={i}
+                          className="absolute"
+                          style={{
+                            top: `${topPos}%`,
+                            left: `${leftPos}%`,
+                            zIndex,
+                            transformStyle: "preserve-3d",
+                            transform: `translateZ(${i * -10}px) rotate(${rotateStart}deg)`,
+                          }}
+                          animate={{
+                            y: [0, -8, 0],
+                            rotate: [rotateStart, rotateStart + (i % 2 === 0 ? 2 : -2), rotateStart],
+                          }}
+                          transition={{
+                            duration: 5 + i * 0.5,
+                            repeat: Infinity,
+                            repeatType: "reverse",
+                            ease: "easeInOut",
+                          }}
+                        >
+                          <Card3D className="w-[200px] h-[280px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm border border-white/20 rounded-lg shadow-xl">
+                            <CardContent className="p-4 h-full flex flex-col">
+                              <div className="w-full h-4 bg-primary/20 rounded mb-3"></div>
+                              <div className="w-3/4 h-3 bg-primary/10 rounded mb-2"></div>
+                              <div className="w-5/6 h-3 bg-primary/10 rounded mb-2"></div>
+                              <div className="w-2/3 h-3 bg-primary/10 rounded mb-6"></div>
+                              <div className="flex-1 grid grid-cols-2 gap-2">
+                                {Array.from({ length: 6 }).map((_, j) => (
+                                  <div key={j} className="h-8 bg-primary/5 rounded"></div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card3D>
+                        </motion.div>
+                      );
+                    })}
 
-                    {/* Glowing orb */}
+                    {/* Enhanced glowing orb with pulsing effect */}
                     <motion.div
-                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-gradient-to-r from-primary/30 to-purple-500/30 blur-xl"
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full"
+                      style={{
+                        background: "radial-gradient(circle, rgba(var(--primary-rgb), 0.4) 0%, rgba(var(--primary-rgb), 0.1) 70%, transparent 100%)",
+                        filter: "blur(20px)",
+                      }}
                       animate={{
                         scale: [1, 1.2, 1],
-                        opacity: [0.5, 0.8, 0.5],
+                        opacity: [0.5, 0.7, 0.5],
                       }}
                       transition={{
                         duration: 4,
                         repeat: Infinity,
                         repeatType: "reverse",
+                        ease: "easeInOut",
                       }}
                     />
                   </div>
@@ -310,7 +396,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Scroll indicator */}
+            {/* Scroll indicator - enhanced with better animation */}
             <motion.div
               className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center"
               animate={{
@@ -319,10 +405,11 @@ export default function HomePage() {
               transition={{
                 duration: 2,
                 repeat: Infinity,
+                ease: "easeInOut",
               }}
             >
-              <div className="text-muted-foreground text-sm mb-2">Scroll to explore</div>
-              <div className="w-6 h-10 border-2 border-muted-foreground rounded-full flex justify-center">
+              <div className="text-muted-foreground text-sm mb-2 opacity-80">Scroll to explore</div>
+              <div className="w-6 h-10 border-2 border-muted-foreground/50 rounded-full flex justify-center">
                 <motion.div
                   className="w-1.5 h-1.5 bg-primary rounded-full mt-2"
                   animate={{
@@ -331,6 +418,7 @@ export default function HomePage() {
                   transition={{
                     duration: 2,
                     repeat: Infinity,
+                    ease: "easeInOut",
                   }}
                 />
               </div>
@@ -339,8 +427,8 @@ export default function HomePage() {
 
           {/* Features Section with 3D cards */}
           <section className="py-32 px-6 relative">
-            {/* Diagonal divider */}
-            <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-br from-background via-primary/5 to-background transform -skew-y-2" />
+            {/* Diagonal divider - enhanced with gradient */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
             
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
@@ -358,7 +446,7 @@ export default function HomePage() {
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Powerful Features</span>
+                  <span>Core Features</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -367,7 +455,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold mb-6"
                 >
-                  Everything You Need for <GradientText>Document Analysis</GradientText>
+                  <GradientText>Powerful</GradientText> Document Analysis
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -376,7 +464,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Our platform combines cutting-edge AI with intuitive design to make document analysis simple and powerful.
+                  Extract, analyze, and organize document data in seconds.
                 </motion.p>
               </motion.div>
 
@@ -385,17 +473,17 @@ export default function HomePage() {
                   {
                     icon: <FileText className="h-10 w-10" />,
                     title: "Smart Extraction",
-                    description: "Automatically extract and organize key information from your documents with precision and accuracy."
+                    description: "Extract key data points from any document. Dates, amounts, tables, and structured data with high accuracy."
                   },
                   {
                     icon: <Brain className="h-10 w-10" />,
                     title: "AI Analysis",
-                    description: "Get deep insights and understanding with our advanced AI analysis that learns from your documents."
+                    description: "Context-aware AI understands document relationships and extracts meaningful insights automatically."
                   },
                   {
                     icon: <Zap className="h-10 w-10" />,
-                    title: "Fast Processing",
-                    description: "Process documents quickly and efficiently with real-time results and minimal waiting time."
+                    title: "Flexible Formats",
+                    description: "Export results as JSON, CSV, Markdown or custom formats. Integrate with your existing workflows."
                   }
                 ].map((feature, index) => (
                   <motion.div
@@ -426,8 +514,8 @@ export default function HomePage() {
 
           {/* Interactive Demo Section */}
           <section className="py-32 px-6 relative">
-            {/* Diagonal divider */}
-            <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-br from-background via-primary/5 to-background transform -skew-y-2" />
+            {/* Diagonal divider - enhanced with gradient */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
             
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
@@ -444,8 +532,8 @@ export default function HomePage() {
                   transition={{ duration: 0.5 }}
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Interactive</span>
+                  <Upload className="h-4 w-4 mr-2" />
+                  <span>Live Demo</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -454,7 +542,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold mb-6"
                 >
-                  See <GradientText>DocMate</GradientText> in Action
+                  <GradientText>Try It</GradientText> Yourself
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -463,7 +551,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Explore different document types and see how our AI extracts and structures information
+                  Drop any invoice, receipt, or contract. Get structured data in seconds.
                 </motion.p>
               </motion.div>
 
@@ -485,12 +573,12 @@ export default function HomePage() {
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
                 <Link href="/demo">
-                  <Button size="lg" className="gap-2 relative overflow-hidden group">
+                  <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                     <span className="relative z-10 flex items-center">
-                      Try Full Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      Launch Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                     </span>
                     <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-blue-500"
+                      className="absolute inset-0 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/10"
                       initial={{ x: "-100%" }}
                       whileHover={{ x: 0 }}
                       transition={{ duration: 0.4 }}
@@ -501,10 +589,10 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Document Types Section with interactive cards */}
-          <section className="py-32 px-6 relative bg-gradient-to-b from-background via-primary/5 to-background">
-            {/* Diagonal divider */}
-            <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-br from-background via-primary/5 to-background transform skew-y-2" />
+          {/* Use Cases Section */}
+          <section className="py-32 px-6 relative">
+            {/* Diagonal divider - enhanced with gradient */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
             
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
@@ -521,8 +609,8 @@ export default function HomePage() {
                   transition={{ duration: 0.5 }}
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Versatile Support</span>
+                  <Building2 className="h-4 w-4 mr-2" />
+                  <span>Industry Solutions</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -531,7 +619,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold mb-6"
                 >
-                  Document Types We <GradientText>Support</GradientText>
+                  <GradientText>Use Cases</GradientText> Across Industries
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -540,149 +628,259 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Specialized analysis for different types of documents to meet your specific needs.
+                  How DocMate solves document challenges in key industries.
                 </motion.p>
               </motion.div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {[
                   {
-                    icon: <Receipt className="h-10 w-10" />,
-                    title: "Receipts",
-                    description: "Extract date, items, totals, and tax information from retail and service receipts."
+                    icon: <ReceiptText className="h-10 w-10" />,
+                    title: "Finance & Accounting",
+                    description: "Extract data from invoices and financial statements in seconds. Cut manual entry by 90% and close books faster.",
+                    features: ["Invoice Processing", "Receipt Management", "Financial Statement Analysis"]
                   },
                   {
-                    icon: <Receipt className="h-10 w-10" />,
-                    title: "T4 Tax Forms",
-                    description: "Automatically process employment income, tax deductions, and CPP/EI contributions."
+                    icon: <Stethoscope className="h-10 w-10" />,
+                    title: "Healthcare",
+                    description: "Process medical records and insurance claims instantly. Maintain HIPAA compliance while reducing paperwork.",
+                    features: ["Medical Records Processing", "Insurance Claim Analysis", "Patient Data Management"]
                   },
                   {
-                    icon: <FileSpreadsheet className="h-10 w-10" />,
-                    title: "Bank Statements",
-                    description: "Analyze transactions, calculate totals, and categorize spending patterns."
+                    icon: <BatteryCharging className="h-10 w-10" />,
+                    title: "Energy & Utilities",
+                    description: "Analyze utility bills and regulatory documents automatically. Track consumption patterns and simplify reporting.",
+                    features: ["Utility Bill Analysis", "Consumption Tracking", "Regulatory Compliance"]
                   },
                   {
-                    icon: <FileCheck className="h-10 w-10" />,
-                    title: "Dental Claims",
-                    description: "Process procedure codes, dates of service, and insurance claim details."
-                  },
-                  {
-                    icon: <Cable className="h-10 w-10" />,
-                    title: "Utility Bills",
-                    description: "Extract usage data, billing periods, and payment information."
-                  },
-                  {
-                    icon: <LightbulbIcon className="h-10 w-10" />,
-                    title: "More Coming Soon",
-                    description: "Stay tuned for more document types and features!"
+                    icon: <Users className="h-10 w-10" />,
+                    title: "Human Resources",
+                    description: "Parse resumes and employee documents instantly. Speed up onboarding and maintain accurate records effortlessly.",
+                    features: ["Resume Parsing", "Employee Document Management", "Payroll Processing"]
                   }
-                ].map((docType, index) => (
+                ].map((useCase, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: 0.1 * index }}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
                   >
-                    <Card className="h-full bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden group">
-                      <CardContent className="p-8 h-full flex flex-col relative">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="text-primary mb-6 relative z-10">
-                          {docType.icon}
-                        </div>
-                        <h3 className="text-2xl font-semibold mb-4 relative z-10">{docType.title}</h3>
-                        <p className="text-muted-foreground relative z-10">
-                          {docType.description}
-                        </p>
-                        <div className="mt-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 relative z-10">
-                          <Button variant="ghost" size="sm" className="gap-2">
-                            Learn more <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <Card3D className="h-full">
+                      <Card className="h-full bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-white/10">
+                        <CardContent className="p-8">
+                          <div className="text-primary mb-6">
+                            {useCase.icon}
+                          </div>
+                          <h3 className="text-2xl font-semibold mb-4">{useCase.title}</h3>
+                          <p className="text-muted-foreground mb-6">
+                            {useCase.description}
+                          </p>
+                          <div className="space-y-2">
+                            {useCase.features.map((feature, i) => (
+                              <div key={i} className="flex items-center">
+                                <ChevronRight className="h-4 w-4 text-primary mr-2" />
+                                <span className="text-sm">{feature}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Card3D>
                   </motion.div>
                 ))}
               </div>
-            </div>
-          </section>
 
-          {/* CTA Section with attention-grabbing animation */}
-          <section className="py-32 px-6 relative">
-            <div className="container mx-auto max-w-7xl relative z-10">
-              <motion.div
+              <motion.div 
+                className="flex justify-center mt-16"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="relative overflow-hidden rounded-3xl"
+                transition={{ duration: 0.5, delay: 0.5 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-purple-500/20 to-blue-500/20 backdrop-blur-sm" />
-                
-                {/* Animated background elements */}
-                <motion.div
-                  className="absolute inset-0 opacity-30"
-                  animate={{
-                    backgroundPosition: ["0% 0%", "100% 100%"],
-                  }}
-                  transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    repeatType: "reverse"
-                  }}
-                  style={{
-                    backgroundImage: "radial-gradient(circle, rgba(var(--primary-rgb), 0.4) 1px, transparent 1px)",
-                    backgroundSize: "30px 30px"
-                  }}
-                />
-                
-                <div className="relative p-16 md:p-20 text-center">
-                  <motion.h2
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5 }}
-                    className="text-4xl md:text-6xl font-bold mb-6"
-                  >
-                    Ready to <GradientText>Transform</GradientText> Your Documents?
-                  </motion.h2>
-                  
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    className="text-xl text-muted-foreground max-w-3xl mx-auto mb-10"
-                  >
-                    Experience the power of AI-driven document analysis. Try our demo today and see how we can help you extract valuable insights from your documents.
-                  </motion.p>
-                  
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                  >
-                    <Link href="/demo">
-                      <Button size="lg" className="gap-2 relative overflow-hidden group px-8 py-6 text-lg">
-                        <span className="relative z-10 flex items-center">
-                          Try Demo Now <ArrowRight className="h-5 w-5 ml-2 transition-transform group-hover:translate-x-1" />
-                        </span>
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-blue-500"
-                          initial={{ x: "-100%" }}
-                          whileHover={{ x: 0 }}
-                          transition={{ duration: 0.4 }}
-                        />
-                      </Button>
-                    </Link>
-                  </motion.div>
-                </div>
+                <Link href="/use-cases">
+                  <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
+                    Explore More Use Cases <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+                  </Button>
+                </Link>
               </motion.div>
             </div>
           </section>
+
+          {/* API & Integration Section */}
+          <section className="py-32 px-6 relative">
+            {/* Diagonal divider - enhanced with gradient */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
+            
+            <div className="container mx-auto max-w-7xl relative z-10">
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8 }}
+                className="text-center mb-20"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                  className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  <span>Coming Soon</span>
+                </motion.div>
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="text-4xl md:text-5xl font-bold mb-6"
+                >
+                  <GradientText>API</GradientText> & Integration
+                </motion.h2>
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-xl text-muted-foreground max-w-3xl mx-auto"
+                >
+                  Add document analysis to your apps with a few lines of code.
+                </motion.p>
+              </motion.div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                  className="space-y-8"
+                >
+                  <div className="space-y-6">
+                    {[
+                      {
+                        icon: <Cable className="h-6 w-6" />,
+                        title: "Simple REST API",
+                        description: "One API call to analyze any document. Get structured data back in milliseconds."
+                      },
+                      {
+                        icon: <FileSpreadsheet className="h-6 w-6" />,
+                        title: "Multiple Formats",
+                        description: "Export as JSON, CSV, or custom formats. Fits into any data pipeline."
+                      },
+                      {
+                        icon: <LightbulbIcon className="h-6 w-6" />,
+                        title: "Custom Schemas",
+                        description: "Define extraction rules for industry-specific documents. Train on your own data."
+                      },
+                      {
+                        icon: <Plus className="h-6 w-6" />,
+                        title: "Batch Processing",
+                        description: "Process thousands of documents in parallel. Scale without limits."
+                      }
+                    ].map((feature, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.1 * index }}
+                        className="flex gap-4"
+                      >
+                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          {feature.icon}
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                          <p className="text-muted-foreground">{feature.description}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="relative"
+                >
+                  <Card3D className="w-full">
+                    <Card className="bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden">
+                      <CardContent className="p-6">
+                        <div className="flex items-center mb-4">
+                          <div className="flex space-x-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                          </div>
+                          <div className="ml-4 text-sm text-muted-foreground">API Request Example</div>
+                        </div>
+                        <pre className="bg-black/50 p-4 rounded-lg overflow-x-auto text-sm text-primary font-mono">
+{`// Analyze a document
+import { DocMate } from '@docmate/sdk';
+
+// Initialize client
+const client = new DocMate('api_key');
+
+// Process document
+const doc = await client.analyze({
+  file: './invoice.pdf',
+  type: 'invoice'
+});
+
+// Access extracted data
+console.log(doc.data);
+// {
+//   date: '2023-05-15',
+//   total: 1250.00,
+//   vendor: 'Acme Corp',
+//   items: [...]
+// }`}
+                        </pre>
+                      </CardContent>
+                    </Card>
+                  </Card3D>
+
+                  {/* Decorative elements */}
+                  <motion.div
+                    className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full"
+                    style={{
+                      background: "radial-gradient(circle, rgba(var(--primary-rgb), 0.3) 0%, rgba(var(--primary-rgb), 0.1) 50%, transparent 70%)",
+                      filter: "blur(40px)",
+                    }}
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.5, 0.7, 0.5],
+                    }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      repeatType: "reverse",
+                      ease: "easeInOut",
+                    }}
+                  />
+                </motion.div>
+              </div>
+
+              <motion.div 
+                className="flex justify-center mt-16"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
+                <Button variant="outline" size="lg"className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
+                  Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+                </Button>
+              </motion.div>
+            </div>
+          </section>
+
+          <Footer />
         </div>
       </ScrollArea>
     </div>

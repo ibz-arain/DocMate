@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging, Table as TableIcon, History, Eye, Filter, Search, Trash2, Save, X } from "lucide-react";
+import { Menu, Upload, FileText, PanelRightOpen, Zap, FileSearch, Brain, ChevronRight, Code, RefreshCcw, Download, Copy, FileStack, Building2, ReceiptText, Stethoscope, BatteryCharging, Table as TableIcon, History, Eye, Filter, Search, Trash2, Save, X, Plus, Minus, Check, Circle, User, ListIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import { cn } from "@/lib/utils";
@@ -47,27 +47,316 @@ import { DocumentViewer } from "@/components/document/document-viewer";
 import { DocumentInfo } from "@/components/document/document-info";
 import { HistorySection } from "@/components/document/history-section";
 import { generateMarkdown } from "@/lib/document-utils";
+import { Textarea } from "@/components/ui/textarea";
+import { CustomAPISection } from "@/components/document/custom-api-section";
+import { createInitialState, validateFileType, downloadJson, downloadMarkdown, downloadCsv } from "@/components/document/document-utils";
+import { processDocument } from "@/components/document/document-processor";
+
+interface FieldConfig {
+  name: string;
+  type: 'string' | 'number' | 'date' | 'array' | 'boolean' | 'object' | 'currency' | 'percentage' | 'email' | 'phone';
+  description?: string;
+  isRequired?: boolean;
+  format?: string;
+}
+
+interface DataTypeTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  defaultFields: FieldConfig[];
+}
+
+const dataTypeTemplates: DataTypeTemplate[] = [
+  {
+    id: 'financial',
+    name: 'Financial Document',
+    description: 'Extract financial data like transactions, amounts, and account details',
+    icon: <FileText className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'amount', type: 'currency', description: 'Transaction amount', isRequired: true },
+      { name: 'date', type: 'date', description: 'Transaction date', isRequired: true },
+      { name: 'description', type: 'string', description: 'Transaction description' },
+      { name: 'category', type: 'string', description: 'Transaction category' },
+      { name: 'accountNumber', type: 'string', description: 'Account number', format: 'XXXX-XXXX-XXXX' }
+    ]
+  },
+  {
+    id: 'identity',
+    name: 'Identity Document',
+    description: 'Extract personal information from ID cards, passports, etc.',
+    icon: <User className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'fullName', type: 'string', description: 'Full legal name', isRequired: true },
+      { name: 'dateOfBirth', type: 'date', description: 'Date of birth', isRequired: true },
+      { name: 'documentNumber', type: 'string', description: 'ID/Passport number', isRequired: true },
+      { name: 'nationality', type: 'string', description: 'Nationality' },
+      { name: 'expiryDate', type: 'date', description: 'Document expiry date' }
+    ]
+  },
+  {
+    id: 'invoice',
+    name: 'Invoice/Receipt',
+    description: 'Extract line items, totals, and payment details from invoices',
+    icon: <ReceiptText className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'invoiceNumber', type: 'string', description: 'Invoice number', isRequired: true },
+      { name: 'issueDate', type: 'date', description: 'Invoice date', isRequired: true },
+      { name: 'totalAmount', type: 'currency', description: 'Total amount', isRequired: true },
+      { name: 'items', type: 'array', description: 'Line items' },
+      { name: 'tax', type: 'percentage', description: 'Tax rate' }
+    ]
+  },
+  {
+    id: 'contract',
+    name: 'Contract/Agreement',
+    description: 'Extract key terms, dates, and parties from legal documents',
+    icon: <FileStack className="h-5 w-5" />,
+    defaultFields: [
+      { name: 'parties', type: 'array', description: 'Contract parties', isRequired: true },
+      { name: 'startDate', type: 'date', description: 'Contract start date', isRequired: true },
+      { name: 'endDate', type: 'date', description: 'Contract end date' },
+      { name: 'value', type: 'currency', description: 'Contract value' },
+      { name: 'terms', type: 'array', description: 'Key terms and conditions' }
+    ]
+  }
+];
+
+// Document templates for each document type
+interface TableTemplate {
+  name: string;
+  description?: string;
+  type: 'table' | 'data';
+  fields: FieldConfig[];
+}
+
+interface DocumentTemplate {
+  documentName: string;
+  tables: TableTemplate[];
+}
+
+const documentTemplates: Record<string, DocumentTemplate> = {
+  't4': {
+    documentName: 'T4 Tax Form',
+    tables: [
+      {
+        name: 'Employee Information',
+        type: 'data',
+        fields: [
+          { name: 'employeeName', type: 'string', description: 'Full name of employee', isRequired: true },
+          { name: 'socialInsuranceNumber', type: 'string', description: 'Social Insurance Number (SIN)', isRequired: true, format: '999-999-999' },
+          { name: 'employerName', type: 'string', description: 'Name of employer', isRequired: true },
+          { name: 'taxYear', type: 'string', description: 'Tax year', isRequired: true }
+        ]
+      },
+      {
+        name: 'Income Details',
+        type: 'data',
+        fields: [
+          { name: 'employmentIncome', type: 'currency', description: 'Employment income (Box 14)', isRequired: true },
+          { name: 'incomeTaxDeducted', type: 'currency', description: 'Income tax deducted (Box 22)', isRequired: true },
+          { name: 'cppContributions', type: 'currency', description: 'CPP contributions (Box 16)', isRequired: true },
+          { name: 'eiPremiums', type: 'currency', description: 'EI premiums (Box 18)', isRequired: true },
+          { name: 'pensionAdjustment', type: 'currency', description: 'Pension adjustment (Box 52)', isRequired: false }
+        ]
+      },
+      {
+        name: 'Additional Boxes',
+        type: 'table',
+        fields: [
+          { name: 'boxNumber', type: 'string', description: 'Box number', isRequired: true },
+          { name: 'boxCode', type: 'string', description: 'Box code', isRequired: false },
+          { name: 'amount', type: 'currency', description: 'Amount', isRequired: true }
+        ]
+      }
+    ]
+  },
+  'bank': {
+    documentName: 'Bank Statement',
+    tables: [
+      {
+        name: 'Account Information',
+        type: 'data',
+        fields: [
+          { name: 'accountHolder', type: 'string', description: 'Name of account holder', isRequired: true },
+          { name: 'accountNumber', type: 'string', description: 'Account number', isRequired: true, format: 'XXXX-XXXX-XXXX-XXXX' },
+          { name: 'statementPeriod', type: 'string', description: 'Statement period', isRequired: true },
+          { name: 'bankName', type: 'string', description: 'Bank name', isRequired: true }
+        ]
+      },
+      {
+        name: 'Balance Summary',
+        type: 'data',
+        fields: [
+          { name: 'openingBalance', type: 'currency', description: 'Opening balance', isRequired: true },
+          { name: 'closingBalance', type: 'currency', description: 'Closing balance', isRequired: true },
+          { name: 'totalDeposits', type: 'currency', description: 'Total deposits', isRequired: true },
+          { name: 'totalWithdrawals', type: 'currency', description: 'Total withdrawals', isRequired: true }
+        ]
+      },
+      {
+        name: 'Transactions',
+        type: 'table',
+        fields: [
+          { name: 'date', type: 'date', description: 'Transaction date', isRequired: true },
+          { name: 'description', type: 'string', description: 'Transaction description', isRequired: true },
+          { name: 'amount', type: 'currency', description: 'Transaction amount', isRequired: true },
+          { name: 'type', type: 'string', description: 'Transaction type (debit/credit)', isRequired: true },
+          { name: 'balance', type: 'currency', description: 'Balance after transaction', isRequired: false }
+        ]
+      }
+    ]
+  },
+  'receipt': {
+    documentName: 'Store Receipt',
+    tables: [
+      {
+        name: 'Merchant Information',
+        type: 'data',
+        fields: [
+          { name: 'merchantName', type: 'string', description: 'Name of merchant/store', isRequired: true },
+          { name: 'address', type: 'string', description: 'Store address', isRequired: false },
+          { name: 'phoneNumber', type: 'phone', description: 'Store phone number', isRequired: false },
+          { name: 'receiptNumber', type: 'string', description: 'Receipt/transaction number', isRequired: true }
+        ]
+      },
+      {
+        name: 'Transaction Details',
+        type: 'data',
+        fields: [
+          { name: 'date', type: 'date', description: 'Purchase date', isRequired: true },
+          { name: 'time', type: 'string', description: 'Purchase time', isRequired: false },
+          { name: 'subtotal', type: 'currency', description: 'Subtotal amount', isRequired: true },
+          { name: 'taxAmount', type: 'currency', description: 'Tax amount', isRequired: true },
+          { name: 'totalAmount', type: 'currency', description: 'Total amount', isRequired: true },
+          { name: 'paymentMethod', type: 'string', description: 'Payment method', isRequired: false }
+        ]
+      },
+      {
+        name: 'Items',
+        type: 'table',
+        fields: [
+          { name: 'itemName', type: 'string', description: 'Item name/description', isRequired: true },
+          { name: 'quantity', type: 'number', description: 'Quantity', isRequired: true },
+          { name: 'unitPrice', type: 'currency', description: 'Unit price', isRequired: true },
+          { name: 'amount', type: 'currency', description: 'Total amount for item', isRequired: true },
+          { name: 'sku', type: 'string', description: 'SKU/Item code', isRequired: false }
+        ]
+      }
+    ]
+  },
+  'dental': {
+    documentName: 'Dental Claim Form',
+    tables: [
+      {
+        name: 'Patient Information',
+        type: 'data',
+        fields: [
+          { name: 'patientName', type: 'string', description: 'Full name of patient', isRequired: true },
+          { name: 'dateOfBirth', type: 'date', description: 'Patient date of birth', isRequired: true },
+          { name: 'insuranceProvider', type: 'string', description: 'Insurance provider name', isRequired: true },
+          { name: 'policyNumber', type: 'string', description: 'Insurance policy number', isRequired: true },
+          { name: 'certificateNumber', type: 'string', description: 'Certificate number', isRequired: false }
+        ]
+      },
+      {
+        name: 'Dentist Information',
+        type: 'data',
+        fields: [
+          { name: 'dentistName', type: 'string', description: 'Name of dentist', isRequired: true },
+          { name: 'dentistAddress', type: 'string', description: 'Dentist address', isRequired: false },
+          { name: 'dentistPhone', type: 'phone', description: 'Dentist phone number', isRequired: false },
+          { name: 'licenseNumber', type: 'string', description: 'Dentist license number', isRequired: true }
+        ]
+      },
+      {
+        name: 'Procedures',
+        type: 'table',
+        fields: [
+          { name: 'serviceDate', type: 'date', description: 'Date of service', isRequired: true },
+          { name: 'procedureCode', type: 'string', description: 'Procedure code', isRequired: true },
+          { name: 'toothCode', type: 'string', description: 'Tooth code/number', isRequired: false },
+          { name: 'procedureDescription', type: 'string', description: 'Description of service', isRequired: true },
+          { name: 'fee', type: 'currency', description: 'Professional fee', isRequired: true }
+        ]
+      },
+      {
+        name: 'Claim Summary',
+        type: 'data',
+        fields: [
+          { name: 'totalFee', type: 'currency', description: 'Total fee charged', isRequired: true },
+          { name: 'amountPaid', type: 'currency', description: 'Amount paid by patient', isRequired: false },
+          { name: 'amountClaimed', type: 'currency', description: 'Amount claimed', isRequired: true }
+        ]
+      }
+    ]
+  },
+  'electricity': {
+    documentName: 'Electricity Bill',
+    tables: [
+      {
+        name: 'Customer Information',
+        type: 'data',
+        fields: [
+          { name: 'customerName', type: 'string', description: 'Name of customer', isRequired: true },
+          { name: 'accountNumber', type: 'string', description: 'Account number', isRequired: true },
+          { name: 'serviceAddress', type: 'string', description: 'Service address', isRequired: true },
+          { name: 'billingPeriod', type: 'string', description: 'Billing period', isRequired: true }
+        ]
+      },
+      {
+        name: 'Billing Summary',
+        type: 'data',
+        fields: [
+          { name: 'previousBalance', type: 'currency', description: 'Previous balance', isRequired: false },
+          { name: 'currentCharges', type: 'currency', description: 'Current charges', isRequired: true },
+          { name: 'totalAmountDue', type: 'currency', description: 'Total amount due', isRequired: true },
+          { name: 'dueDate', type: 'date', description: 'Payment due date', isRequired: true }
+        ]
+      },
+      {
+        name: 'Usage Details',
+        type: 'data',
+        fields: [
+          { name: 'currentReading', type: 'number', description: 'Current meter reading', isRequired: true },
+          { name: 'previousReading', type: 'number', description: 'Previous meter reading', isRequired: true },
+          { name: 'totalUsage', type: 'number', description: 'Total usage (kWh)', isRequired: true },
+          { name: 'ratePerKwh', type: 'currency', description: 'Rate per kWh', isRequired: true }
+        ]
+      },
+      {
+        name: 'Charges',
+        type: 'table',
+        fields: [
+          { name: 'description', type: 'string', description: 'Charge description', isRequired: true },
+          { name: 'amount', type: 'currency', description: 'Amount', isRequired: true }
+        ]
+      }
+    ]
+  }
+};
 
 const documentTypeLabels: Record<string, { title: string, description: string }> = {
   't4': {
     title: 'T4 Tax Form',
-    description: 'Upload a picture or scan of your T4 tax slip'
+    description: 'Load T4 tax form template for document analysis'
   },
   'bank': {
     title: 'Bank Statement',
-    description: 'Upload your bank statement document'
+    description: 'Load bank statement template for document analysis'
   },
   'receipt': {
     title: 'Store Receipt',
-    description: 'Upload a picture of your store receipt'
+    description: 'Load store receipt template for document analysis'
   },
   'dental': {
     title: 'Dental Claim Form',
-    description: 'Upload your dental insurance claim form'
+    description: 'Load dental claim form template for document analysis'
   },
   'electricity': {
     title: 'Electricity Bill',
-    description: 'Upload your electricity bill for analysis'
+    description: 'Load electricity bill template for document analysis'
   },
   'history': {
     title: 'Document History',
@@ -93,8 +382,8 @@ function LoadingSkeleton() {
       <div className="flex-1 min-w-0">
         <Card className="h-full">
           <CardContent className="p-0">
-            <div className="rounded-md border h-full">
-              <Table>
+            <div className="rounded-md border h-full overflow-x-auto bg-background">
+              <Table className="rounded-md overflow-hidden">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Document</TableHead>
@@ -182,26 +471,8 @@ function LoadingSkeleton() {
   );
 }
 
-function createInitialState(): DocumentState {
-  return {
-    file: null,
-    isProcessed: false,
-    selectedDoc: null,
-    extractedText: "",
-    error: null,
-    isSaved: false,
-  };
-}
-
 export default function DemoPage() {
-  const [documentStates, setDocumentStates] = useState<DocumentStateMap>({
-    't4': createInitialState(),
-    'bank': createInitialState(),
-    'receipt': createInitialState(),
-    'dental': createInitialState(),
-    'electricity': createInitialState(),
-  });
-
+  const [documentState, setDocumentState] = useState<DocumentState>(createInitialState());
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
@@ -221,76 +492,11 @@ export default function DemoPage() {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
-  const currentState = selectedType && selectedType !== 'history' 
-    ? documentStates[selectedType as ProcessingDocType] 
-    : createInitialState();
-
-  const updateCurrentDocumentState = (updates: Partial<DocumentState>) => {
-    if (!selectedType || selectedType === 'history') return;
-    
-    const docType = selectedType as ProcessingDocType;
-    setDocumentStates((prev: DocumentStateMap) => ({
+  const updateDocumentState = (updates: Partial<DocumentState>) => {
+    setDocumentState(prev => ({
       ...prev,
-      [docType]: {
-        ...prev[docType],
-        ...updates
-      }
+      ...updates
     }));
-  };
-
-  const validateFileType = (file: File): boolean => {
-    const supportedTypes = {
-      'image/jpeg': true,
-      'image/png': true,
-      'image/gif': true,
-      'image/webp': true,
-      'application/pdf': true
-    } as const;
-    
-    if (!file) {
-      updateCurrentDocumentState({ error: 'No file selected.' });
-      return false;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      updateCurrentDocumentState({ error: 'File size exceeds 10MB limit.' });
-      return false;
-    }
-    
-    if (!(file.type in supportedTypes)) {
-      updateCurrentDocumentState({ 
-        error: `Unsupported file type: ${file.type}. Please upload a PDF or image file (JPG, PNG, GIF, WebP).` 
-      });
-      return false;
-    }
-    return true;
-  };
-
-  const validateDocumentContent = (result: any): boolean => {
-    if (!result.analysis?.documentType) {
-      updateCurrentDocumentState({ error: 'Unable to determine document type. Please ensure you uploaded the correct document.' });
-      return false;
-    }
-
-    const expectedTypes = {
-      't4': ['T4', 'Tax', 'T4 Tax Slip', 'Tax Form'],
-      'bank': ['Bank Statement', 'Bank Document', 'Account Statement'],
-      'receipt': ['Store Receipt', 'Receipt', 'Sales Receipt', 'Purchase Receipt'],
-      'dental': ['Dental Claim', 'Dental Form', 'Dental Insurance Claim'],
-      'electricity': ['Electricity Bill', 'Utility Bill', 'Electric Bill']
-    };
-
-    const detectedType = result.analysis.documentType;
-    const expectedTypeArray = expectedTypes[selectedType as keyof typeof expectedTypes] || [];
-    
-    if (!expectedTypeArray.some(type => detectedType.toLowerCase().includes(type.toLowerCase()))) {
-      updateCurrentDocumentState({ 
-        error: `This document appears to be a "${detectedType}" which doesn't match the selected document type. Please verify and try again.` 
-      });
-      return false;
-    }
-
-    return true;
   };
 
   const handleDemoSelect = (demoType: string) => {
@@ -304,35 +510,31 @@ export default function DemoPage() {
   };
 
   const handleNewDocument = () => {
-    if (!selectedType) return;
-    setDocumentStates((prev: DocumentStateMap) => ({
-      ...prev,
-      [selectedType]: createInitialState()
-    }));
+    setDocumentState(createInitialState());
   };
 
   const handleSaveDocument = async () => {
-    if (!user || !selectedType || !currentState.selectedDoc?.contentJson || currentState.isSaved) return;
+    if (!user || !documentState.selectedDoc?.contentJson || documentState.isSaved) return;
 
     try {
       setIsProcessing(true);
       const contentWithAnalysis = {
-        ...currentState.selectedDoc.contentJson,
+        ...documentState.selectedDoc.contentJson,
         analysis: {
-          summary: currentState.selectedDoc.summary,
-          keywords: currentState.selectedDoc.keywords,
-          insights: currentState.selectedDoc.rawJson?.analysis?.insights || [],
-          confidenceScore: currentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
-          documentType: currentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
+          summary: documentState.selectedDoc.summary,
+          keywords: documentState.selectedDoc.keywords,
+          insights: documentState.selectedDoc.rawJson?.analysis?.insights || [],
+          confidenceScore: documentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
+          documentType: documentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
         }
       };
 
       const documentData = {
-        title: currentState.file?.name || `${selectedType.toUpperCase()} Document`,
-        type: selectedType,
+        title: documentState.file?.name || `${selectedType || 'Custom'} Document`,
+        type: selectedType || 'custom',
         date: new Date().toISOString(),
-        confidence: currentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 
-          Math.round(currentState.selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
+        confidence: documentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 
+          Math.round(documentState.selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
         contentJson: contentWithAnalysis
       };
 
@@ -350,7 +552,7 @@ export default function DemoPage() {
         throw new Error(errorData.error || 'Failed to save document');
       }
 
-      updateCurrentDocumentState({ isSaved: true });
+      updateDocumentState({ isSaved: true });
       toast({
         title: "Success",
         description: "Document saved successfully",
@@ -367,270 +569,26 @@ export default function DemoPage() {
     }
   };
 
-  const downloadJson = () => {
-    const jsonString = JSON.stringify(currentState.selectedDoc?.contentJson, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentState.file?.name || 'document'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleProcessDocument = (customPrompt: string, outputFormat: any) => {
+    processDocument(
+      documentState,
+      updateDocumentState,
+      setIsProcessing,
+      setProgress,
+      { customPrompt, outputFormat }
+    );
   };
 
-  const downloadMarkdown = () => {
-    const markdownContent = generateMarkdown(currentState.selectedDoc?.contentJson);
-    const blob = new Blob([markdownContent], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentState.file?.name || 'document'}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownloadJson = () => {
+    downloadJson(documentState.selectedDoc, documentState.file?.name || 'document');
   };
 
-  const downloadCsv = () => {
-    const content = currentState.selectedDoc?.contentJson;
-    let csvContent = '';
-    
-    if (content.metadata) {
-      csvContent += 'Metadata\n';
-      Object.entries(content.metadata).forEach(([key, value]) => {
-        if (typeof value === 'object') {
-          Object.entries(value as any).forEach(([subKey, subValue]) => {
-            csvContent += `${key},${subKey},${subValue}\n`;
-          });
-        } else {
-          csvContent += `${key},,${value}\n`;
-        }
-      });
-      csvContent += '\n';
-    }
-
-    if (content.content) {
-      csvContent += 'Content\n';
-      Object.entries(content.content).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          const headers = Object.keys(value[0] || {});
-          csvContent += `${key}\n${headers.join(',')}\n`;
-          value.forEach(item => {
-            csvContent += `${Object.values(item).join(',')}\n`;
-          });
-        } else if (typeof value === 'object') {
-          Object.entries(value as any).forEach(([subKey, subValue]) => {
-            csvContent += `${key},${subKey},${subValue}\n`;
-          });
-        }
-        csvContent += '\n';
-      });
-    }
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentState.file?.name || 'document'}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownloadMarkdown = () => {
+    downloadMarkdown(documentState.selectedDoc, documentState.file?.name || 'document', generateMarkdown);
   };
 
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const base64String = reader.result as string;
-        resolve(base64String.split(',')[1]);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const processDocument = async () => {
-    if (!currentState.file || !selectedType) {
-      updateCurrentDocumentState({ error: "Please select a document type and upload a file first" });
-      return;
-    }
-
-    if (!validateFileType(currentState.file)) {
-      return;
-    }
-
-    try {
-      setIsProcessing(true);
-      setProgress(0);
-      let currentProgress = 0;
-
-      // Helper function to add small random variation (only positive)
-      const addVariation = (value: number, range: number = 0.5) => {
-        const variation = Math.random() * range;
-        return value + variation;
-      };
-
-      // Function to create micro-movements in progress
-      const microMovement = async (baseProgress: number, duration: number = 800) => {
-        const smallSteps = Math.floor(duration / 100); // Update every 100ms
-        
-        for (let i = 0; i < smallSteps; i++) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          // Add only positive tiny variations
-          const variation = Math.random() * 0.3;
-          const newProgress = Math.min(baseProgress + variation, baseProgress + 0.5);
-          currentProgress = Math.max(currentProgress, newProgress);
-          setProgress(Math.round(currentProgress * 10) / 10);
-        }
-      };
-
-      // Function to smoothly increment progress with natural variation
-      const incrementProgress = async (start: number, end: number, duration: number) => {
-        const steps = Math.floor((end - start) * 1.5); // More granular steps
-        const baseStepDelay = duration / steps;
-        
-        for (let i = 1; i <= steps; i++) {
-          // Add variation to the delay between steps
-          const stepDelay = addVariation(baseStepDelay, baseStepDelay * 0.3);
-          await new Promise(resolve => setTimeout(resolve, stepDelay));
-          
-          // Calculate progress with slight positive variation
-          const rawProgress = start + ((end - start) * (i / steps));
-          const progress = Math.min(end, rawProgress + (Math.random() * 0.3));
-          currentProgress = Math.max(currentProgress, progress);
-          setProgress(Math.round(currentProgress * 10) / 10);
-        }
-      };
-
-      // Initial jump to show quick response
-      await incrementProgress(0, 8, 300);
-      
-      // Slower progress through main processing stages with natural pauses
-      const stages = [
-        { end: 35, duration: 2500 },
-        { end: 58, duration: 3000 },
-        { end: 73, duration: 2800 },
-        { end: 89, duration: 2500 }
-      ];
-
-      for (const stage of stages) {
-        await incrementProgress(currentProgress, stage.end, stage.duration);
-        // Add micro-movements during "processing" pauses
-        const pauseDuration = addVariation(1500, 500);
-        await microMovement(currentProgress, pauseDuration);
-      }
-
-      // Process the document
-      let result;
-      try {
-        // Validate file size before processing
-        if (currentState.file.size > 10 * 1024 * 1024) {
-          throw new Error('File size exceeds 10MB limit');
-        }
-
-        let base64Data = await convertFileToBase64(currentState.file);
-        if (!base64Data || typeof base64Data !== 'string') {
-          throw new Error('Failed to convert file to base64');
-        }
-        base64Data = base64Data.split(',')[1] || base64Data;
-
-        const requestData = {
-          imageData: base64Data,
-          mimeType: currentState.file.type || 'application/octet-stream'
-        };
-
-        if (!requestData.imageData) {
-          throw new Error('Invalid file data');
-        }
-
-        const endpoint = `/api/analyze/${selectedType}`;
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(requestData),
-        });
-
-        if (!response.ok) {
-          let errorMessage;
-          const contentType = response.headers.get('content-type');
-          
-          if (contentType && contentType.includes('application/json')) {
-            const errorData = await response.json();
-            errorMessage = errorData.error || 'Server processing error';
-          } else {
-            errorMessage = response.statusText || 'Server processing error';
-          }
-          throw new Error(errorMessage);
-        }
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Invalid response format from server');
-        }
-        result = await response.json();
-
-        if (!result || typeof result !== 'object') {
-          throw new Error('Invalid response data from server');
-        }
-
-        if (!result.success) {
-          throw new Error(result.error || 'Processing failed');
-        }
-
-        if (!result.analysis) {
-          throw new Error('No analysis data received');
-        }
-
-        if (!validateDocumentContent(result)) {
-          throw new Error('Invalid document content');
-        }
-      } catch (error) {
-        throw error;
-      }
-
-      // Quick but smooth jump to completion
-      await incrementProgress(currentProgress, 99, 300);
-      await microMovement(99, 400); // Small movements at 99%
-      
-      // Final jump to 100%
-      setProgress(100);
-      
-      // Brief pause at 100%
-      await new Promise(resolve => setTimeout(resolve, 250));
-      
-      // Now update the state with results
-      const updates = {
-        extractedText: result.analysis.content?.text || "No text extracted",
-        selectedDoc: {
-          summary: result.analysis.analysis?.summary || "",
-          keywords: result.analysis.analysis?.keywords || [],
-          sentiment: result.analysis.analysis?.sentiment || "",
-          rawJson: result.analysis,
-          contentJson: result.result
-        },
-        isProcessed: true,
-        error: null
-      };
-
-      // Update all states at once after showing 100%
-      updateCurrentDocumentState(updates);
-      
-      console.log("Document processed successfully!");
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      updateCurrentDocumentState({ error: errorMessage });
-      setProgress(0);
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleDownloadCsv = () => {
+    downloadCsv(documentState.selectedDoc, documentState.file?.name || 'document');
   };
 
   if (showHistory) {
@@ -647,7 +605,7 @@ export default function DemoPage() {
     );
   }
 
-  if (!currentState.isProcessed) {
+  if (!documentState.isProcessed) {
     return (
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar
@@ -656,18 +614,20 @@ export default function DemoPage() {
           onSelectDemo={handleDemoSelect}
           selectedType={selectedType}
         />
-        <div className="flex-1 p-6 overflow-hidden flex items-center justify-center">
-          <DocumentUploader
-            selectedType={selectedType}
-            currentState={currentState}
+        <div className="flex-1 overflow-auto p-6">
+          <CustomAPISection
+            currentState={documentState}
+            onFileChange={(file) => {
+              updateDocumentState({
+                file,
+                isProcessed: false,
+                error: null
+              });
+            }}
+            onProcess={handleProcessDocument}
             isProcessing={isProcessing}
             progress={progress}
-            onProcessDocument={processDocument}
-            onFileChange={(file: File | null) => updateCurrentDocumentState({ file, error: null })}
-            onSelectType={(type) => {
-              setShowHistory(false);
-              setSelectedType(type);
-            }}
+            templateType={selectedType}
           />
         </div>
       </div>
@@ -687,17 +647,17 @@ export default function DemoPage() {
         <main className="flex-1 overflow-y-auto md:pt-6 md:pr-6 md:px-0 pt-14 px-4">
           <div className="grid gap-6 pb-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
             <DocumentViewer
-              currentState={currentState}
+              currentState={documentState}
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />
             <DocumentInfo
-              currentState={currentState}
+              currentState={documentState}
               isProcessing={isProcessing}
               user={user}
-              onDownloadJson={downloadJson}
-              onDownloadMarkdown={downloadMarkdown}
-              onDownloadCsv={downloadCsv}
+              onDownloadJson={handleDownloadJson}
+              onDownloadMarkdown={handleDownloadMarkdown}
+              onDownloadCsv={handleDownloadCsv}
               onSaveDocument={handleSaveDocument}
               onNewDocument={handleNewDocument}
             />
@@ -726,7 +686,7 @@ const generateFormattedView = (data: any) => {
                   <h4 className="font-medium capitalize">{key}</h4>
                 </div>
                 <div className="p-4">
-                  <table className="w-full">
+                  <table className="w-full rounded-md overflow-hidden">
                     <tbody>
                       {Object.entries(value).map(([subKey, subValue]) => (
                         <tr key={subKey} className="border-b last:border-0">
@@ -750,54 +710,44 @@ const generateFormattedView = (data: any) => {
         {data.content && (
           <div className="space-y-6 mt-8">
             <h3 className="text-xl font-semibold">Content</h3>
-            {Object.entries(data.content).map(([key, value]: [string, any]) => (
-              <div key={key} className="rounded-lg border">
-                <div className="px-4 py-3 border-b bg-muted">
-                  <h4 className="font-medium capitalize">{key}</h4>
-                </div>
-                <div className="p-4">
-                  {Array.isArray(value) ? (
-                    <table className="w-full">
+            {Object.entries(data.content).map(([tableName, tableData]: [string, any]) => {
+              // Ensure tableData is an array
+              const entries = Array.isArray(tableData) ? tableData : [tableData];
+              // Get field names from the first entry
+              const fields = entries[0] ? Object.keys(entries[0]) : [];
+
+              return (
+                <div key={tableName} className="rounded-lg border">
+                  <div className="px-4 py-3 border-b bg-muted">
+                    <h4 className="font-medium capitalize">{tableName}</h4>
+                  </div>
+                  <div className="p-4">
+                    <table className="w-full rounded-md overflow-hidden">
                       <thead>
                         <tr className="border-b">
-                          {Object.keys(value[0] || {}).map((header) => (
-                            <th key={header} className="py-2 text-left font-medium capitalize">
-                              {header}
+                          {fields.map((field) => (
+                            <th key={field} className="py-2 text-left font-medium capitalize">
+                              {field}
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {value.map((item, index) => (
+                        {entries.map((entry, index) => (
                           <tr key={index} className="border-b last:border-0">
-                            {Object.values(item).map((cellValue, cellIndex) => (
-                              <td key={cellIndex} className="py-2">
-                                {String(cellValue)}
+                            {fields.map((field) => (
+                              <td key={field} className="py-2">
+                                {String(entry[field] || '')}
                               </td>
                             ))}
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  ) : (
-                    <table className="w-full">
-                      <tbody>
-                        {Object.entries(value).map(([subKey, subValue]: [string, any]) => (
-                          <tr key={subKey} className="border-b last:border-0">
-                            <td className="py-2 font-medium capitalize w-1/3">{subKey}</td>
-                            <td className="py-2">
-                              {typeof subValue === 'object' 
-                                ? JSON.stringify(subValue, null, 2)
-                                : String(subValue)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
