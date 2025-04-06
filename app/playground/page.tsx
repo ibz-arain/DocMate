@@ -516,7 +516,7 @@ export default function PlaygroundPage() {
     setDocumentState(createInitialState());
   };
 
-  const handleSaveDocument = async () => {
+  const handleSaveDocument = async (documentName?: string) => {
     if (!user || !documentState.selectedDoc?.contentJson || documentState.isSaved) return;
 
     try {
@@ -542,11 +542,12 @@ export default function PlaygroundPage() {
         }
       }
 
-      // Get document name
-      const documentName = documentState.selectedDoc?.contentJson?.documentType || selectedType;
+      // Use provided document name if available, otherwise use default naming logic
+      const defaultTitle = documentState.file?.name || `${documentState.selectedDoc?.contentJson?.documentType || selectedType || 'Custom'} Document`;
+      const title = documentName || defaultTitle;
 
       const documentData = {
-        title: documentState.file?.name || `${documentName || selectedType || 'Custom'} Document`,
+        title: title,
         type: documentType,
         date: new Date().toISOString(),
         confidence: documentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 

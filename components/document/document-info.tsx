@@ -3,6 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Code, FileText, TableIcon, Save, RefreshCcw } from "lucide-react";
 import { DocumentState } from "@/types/document";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
 
 interface DocumentInfoProps {
   currentState: DocumentState;
@@ -11,7 +15,7 @@ interface DocumentInfoProps {
   onDownloadJson: () => void;
   onDownloadMarkdown: () => void;
   onDownloadCsv: () => void;
-  onSaveDocument: () => void;
+  onSaveDocument: (documentName?: string) => void;
   onNewDocument: () => void;
 }
 
@@ -25,6 +29,39 @@ export function DocumentInfo({
   onSaveDocument,
   onNewDocument,
 }: DocumentInfoProps) {
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [documentNameInput, setDocumentNameInput] = useState("");
+
+  const handleSaveClick = () => {
+    if (!user) return;
+    
+    if (currentState.isSaved) return;
+    
+    // Initialize document name with the current file name (without extension)
+    if (currentState.file && !documentNameInput) {
+      const fileName = currentState.file.name;
+      const nameWithoutExtension = fileName.split('.').slice(0, -1).join('.');
+      setDocumentNameInput(nameWithoutExtension);
+    }
+    
+    setShowSaveDialog(true);
+  };
+
+  const handleSaveDocument = () => {
+    if (!documentNameInput.trim()) {
+      toast({
+        title: "Document name required",
+        description: "Please enter a name for your document",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onSaveDocument(documentNameInput.trim());
+    setShowSaveDialog(false);
+    setDocumentNameInput("");
+  };
+
   return (
     <div className="space-y-4 min-w-0 w-full lg:overflow-auto">
       <Card className="transition-all">
@@ -117,7 +154,7 @@ export function DocumentInfo({
                 "hover:bg-primary/20",
                 currentState.isSaved && "opacity-50 cursor-not-allowed"
               )}
-              onClick={onSaveDocument}
+              onClick={handleSaveClick}
               disabled={!user || currentState.isSaved || isProcessing}
             >
               {isProcessing ? (
@@ -153,6 +190,43 @@ export function DocumentInfo({
         <RefreshCcw className="h-3.5 w-3.5 mr-2" />
         <span className="sm:inline hidden">Process</span> New Document
       </Button>
+
+      {/* Save Document Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save Document</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="document-name" className="text-sm font-medium">
+                  Document Name
+                </label>
+                <Input
+                  id="document-name"
+                  placeholder="Enter a name for your document"
+                  value={documentNameInput}
+                  onChange={(e) => setDocumentNameInput(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button 
+              type="submit" 
+              variant="outline" 
+              className="bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary"
+              onClick={handleSaveDocument}
+            >
+              Save Document
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

@@ -410,7 +410,10 @@ export function HistorySection({ user }: HistorySectionProps) {
                       )}
                       onClick={() => navigator.clipboard.writeText(
                         activeTab === 'json' 
-                          ? JSON.stringify(selectedDoc?.contentJson, null, 2)
+                          ? JSON.stringify({
+                              documentType: selectedDoc?.contentJson?.documentType,
+                              content: selectedDoc?.contentJson?.content
+                            }, null, 2)
                           : generateMarkdown(selectedDoc?.contentJson)
                       )}
                     >
@@ -515,7 +518,10 @@ export function HistorySection({ user }: HistorySectionProps) {
                             <div className="relative bg-muted w-full overflow-auto">
                               <div className="min-w-[600px] w-full">
                                 <pre className="p-6 text-sm whitespace-pre select-text w-full">
-                                  {JSON.stringify(selectedDoc?.contentJson, null, 2)}
+                                  {JSON.stringify({
+                                    documentType: selectedDoc?.contentJson?.documentType,
+                                    content: selectedDoc?.contentJson?.content
+                                  }, null, 2)}
                                 </pre>
                               </div>
                             </div>
@@ -595,33 +601,6 @@ export function HistorySection({ user }: HistorySectionProps) {
                                             {keyword}
                                           </span>
                                         ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              {/* Confidence Score Card */}
-                              <Card className="bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
-                                <CardContent className="pt-6">
-                                  <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                      <Brain className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-medium mb-3">AI Confidence</h3>
-                                      <div className="space-y-2">
-                                        <div className="w-full bg-muted rounded-full h-2.5">
-                                          <div 
-                                            className="bg-primary h-2.5 rounded-full transition-all duration-500"
-                                            style={{ 
-                                              width: `${(selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100}%` 
-                                            }}
-                                          />
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">
-                                          {((selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100).toFixed(1)}% confidence in analysis
-                                        </p>
                                       </div>
                                     </div>
                                   </div>
