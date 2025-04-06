@@ -16,19 +16,6 @@ const sampleDocuments = {
     description: 'Employee tax information form',
     contentJson: {
       documentType: "T4 Tax Form",
-      metadata: {
-        employer: {
-          name: "Acme Corporation",
-          address: "123 Business Ave, Toronto, ON M5V 2N4",
-          accountNumber: "RP0001234567"
-        },
-        employee: {
-          name: "John Smith",
-          address: "456 Residential St, Toronto, ON M4B 1B3",
-          sin: "123-456-789"
-        },
-        taxYear: "2023"
-      },
       content: {
         boxes: [
           { boxNumber: "14", description: "Employment income", amount: "$72,000.00" },
@@ -47,21 +34,6 @@ const sampleDocuments = {
     description: 'Monthly bank account statement',
     contentJson: {
       documentType: "Bank Statement",
-      metadata: {
-        bank: {
-          name: "FIRST BANK OF WIKI",
-          branchInfo: "1425 JAMES ST, PO BOX 4000\nVICTORIA BC V8X 3X4\n1-800-555-5555"
-        },
-        account: {
-          type: "CHEQUING ACCOUNT",
-          number: "00005-123-456-7",
-          holder: "JOHN JONES"
-        },
-        period: {
-          startDate: "2003-10-09",
-          endDate: "2003-11-08"
-        }
-      },
       content: {
         balances: {
           opening: "0.55",
@@ -105,19 +77,6 @@ const sampleDocuments = {
     description: 'Retail purchase receipt',
     contentJson: {
       documentType: "Store Receipt",
-      metadata: {
-        store: {
-          name: "TechGadgets",
-          address: "789 Shopping Center, Vancouver, BC V6B 5Z6",
-          phone: "(604) 555-1234"
-        },
-        transaction: {
-          date: "2023-11-15",
-          time: "14:23:45",
-          receiptNumber: "T-45678",
-          paymentMethod: "Credit Card"
-        }
-      },
       content: {
         items: [
           { description: "Wireless Earbuds Pro", quantity: "1", unitPrice: "$129.99", total: "$129.99" },
@@ -139,26 +98,6 @@ const sampleDocuments = {
     description: 'Dental insurance claim form',
     contentJson: {
       documentType: "Dental Claim Form",
-      metadata: {
-        patient: {
-          name: "Sarah Johnson",
-          dob: "1985-04-12",
-          addressLine1: "567 Main Street",
-          addressLine2: "Apt 4B",
-          city: "Toronto",
-          province: "ON",
-          postalCode: "M5V 2N4"
-        },
-        provider: {
-          name: "Dr. Emily Chen",
-          addressLine1: "123 Dental Drive",
-          city: "Toronto",
-          province: "ON",
-          postalCode: "M4S 2Y6",
-          phoneNumber: "416-555-1234",
-          licenseNumber: "DDS-1234567"
-        }
-      },
       content: {
         services: [
           { serviceDate: "2023-09-15", procedureCode: "01204", description: "Complete examination", fee: "$125.00" },
@@ -180,25 +119,6 @@ const sampleDocuments = {
     description: 'Monthly electricity utility bill',
     contentJson: {
       documentType: "Electricity Bill",
-      metadata: {
-        utility: {
-          name: "Ontario Power",
-          accountNumber: "12345-67890",
-          addressLine1: "1 Energy Plaza",
-          city: "Toronto",
-          province: "ON",
-          postalCode: "M1M 1M1",
-          phoneNumber: "1-800-555-7890"
-        },
-        customer: {
-          name: "Michael Brown",
-          serviceAddress: "789 Residential Ave, Toronto, ON M6K 3P2"
-        },
-        billingPeriod: {
-          from: "2023-10-01",
-          to: "2023-10-31"
-        }
-      },
       content: {
         usage: {
           currentReading: "5634 kWh",
@@ -369,21 +289,7 @@ const AppMockup = () => {
 
     let markdown = `# ${data.documentType}\n\n`;
 
-    if (data.metadata) {
-      markdown += '## Metadata\n\n';
-      Object.entries(data.metadata).forEach(([key, value]: [string, any]) => {
-        markdown += `### ${key}\n\n`;
-        if (typeof value === 'object' && !Array.isArray(value)) {
-          markdown += createTable(value);
-        } else {
-          markdown += createTable({ [key]: value });
-        }
-        markdown += '\n';
-      });
-    }
-
     if (data.content) {
-      markdown += '## Content\n\n';
       Object.entries(data.content).forEach(([key, value]: [string, any]) => {
         markdown += `### ${key}\n\n`;
         if (Array.isArray(value) && value.length > 0) {
@@ -549,38 +455,8 @@ const AppMockup = () => {
                   >
                     <h2 className="text-2xl font-bold mb-6">{selectedDoc.contentJson.documentType}</h2>
                     
-                    {selectedDoc.contentJson.metadata && (
-                      <div className="space-y-6 mb-8">
-                        <h3 className="text-lg font-semibold text-primary mb-4">Metadata</h3>
-                        {Object.entries(selectedDoc.contentJson.metadata).map(([key, value]: [string, any]) => (
-                          <div key={key} className={`rounded-lg border ${localTheme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'} overflow-hidden`}>
-                            <div className={`px-4 py-2 ${localTheme === 'dark' ? 'bg-zinc-800/50' : 'bg-zinc-100'}`}>
-                              <h4 className={`font-medium capitalize ${localTheme === 'dark' ? 'text-zinc-100' : 'text-zinc-800'}`}>{key}</h4>
-                            </div>
-                            <div className={`p-4 ${localTheme === 'dark' ? 'bg-zinc-800/20' : 'bg-zinc-50'}`}>
-                              <table className="w-full rounded-md overflow-hidden">
-                                <tbody>
-                                  {Object.entries(value as Record<string, any>).map(([subKey, subValue]) => (
-                                    <tr key={subKey} className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'} last:border-0`}>
-                                      <td className={`py-2 font-medium ${localTheme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'} capitalize w-1/3`}>{subKey}</td>
-                                      <td className={`py-2 ${localTheme === 'dark' ? 'text-zinc-200' : 'text-zinc-700'}`}>
-                                        {typeof subValue === 'object' 
-                                          ? JSON.stringify(subValue, null, 2)
-                                          : String(subValue)}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
                     {selectedDoc.contentJson.content && (
                       <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-primary mb-4">Content</h3>
                         {Object.entries(selectedDoc.contentJson.content).map(([key, value]: [string, any]) => (
                           <div key={key} className={`rounded-lg border ${localTheme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'} overflow-hidden`}>
                             <div className={`px-4 py-2 ${localTheme === 'dark' ? 'bg-zinc-800/50' : 'bg-zinc-100'}`}>
