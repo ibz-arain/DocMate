@@ -285,10 +285,10 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.5 }}
                   >
-                    <Link href="/demo">
+                    <Link href="/playground">
                       <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                         <span className="relative z-10 flex items-center">
-                          Try Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
+                          Try It Now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                         </span>
                       </Button>
                     </Link>
@@ -515,7 +515,7 @@ export default function HomePage() {
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  <span>Live Demo</span>
+                  <span>Demo</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -533,7 +533,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Drop any invoice, receipt, or contract. Get structured data in seconds.
+                  Any invoice, receipt, or contract. Get structured data in seconds.
                 </motion.p>
               </motion.div>
 
@@ -554,10 +554,10 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
-                <Link href="/demo">
+                <Link href="/playground">
                   <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                     <span className="relative z-10 flex items-center">
-                      Launch Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
+                      Launch Now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                     </span>
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/10"
