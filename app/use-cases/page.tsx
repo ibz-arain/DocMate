@@ -161,7 +161,7 @@ export default function UseCasesPage() {
   }, [setTheme]);
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative min-h-screen bg-black">
       <Header />
       
       <ScrollArea className="h-screen">

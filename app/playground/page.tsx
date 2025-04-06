@@ -51,6 +51,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CustomAPISection } from "@/components/document/custom-api-section";
 import { createInitialState, validateFileType, downloadJson, downloadMarkdown, downloadCsv } from "@/components/document/document-utils";
 import { processDocument } from "@/components/document/document-processor";
+import Head from 'next/head';
 
 interface FieldConfig {
   name: string;
@@ -471,12 +472,12 @@ function LoadingSkeleton() {
   );
 }
 
-export default function DemoPage() {
+export default function PlaygroundPage() {
   const [documentState, setDocumentState] = useState<DocumentState>(createInitialState());
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
-  const [selectedType, setSelectedType] = useState<DocumentType>(null);
+  const [selectedType, setSelectedType] = useState<string>('docmate');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('sidebarCollapsed');
@@ -499,21 +500,23 @@ export default function DemoPage() {
     }));
   };
 
-  const handleDemoSelect = (demoType: string) => {
-    if (demoType === 'history') {
+  const handleTemplateSelect = (templateType: string) => {
+    if (templateType === 'history') {
       setShowHistory(true);
       setSelectedType('history');
       return;
     }
+    
+    // If not history, it's either docmate or a template
     setShowHistory(false);
-    setSelectedType(demoType as DocumentType);
+    setSelectedType(templateType);
   };
 
   const handleNewDocument = () => {
     setDocumentState(createInitialState());
   };
 
-  const handleSaveDocument = async () => {
+  const handleSaveDocument = async (documentName?: string) => {
     if (!user || !documentState.selectedDoc?.contentJson || documentState.isSaved) return;
 
     try {
@@ -529,14 +532,33 @@ export default function DemoPage() {
         }
       };
 
+      // Get template ID from data attribute if available (for custom templates)
+      let documentType = selectedType;
+      if (typeof document !== 'undefined') {
+        // Use template name as document type instead of ID
+        if (document.documentElement.dataset.currentTemplateName) {
+          documentType = document.documentElement.dataset.currentTemplateName;
+          console.log('Using template name as document type:', documentType);
+        }
+      }
+
+      // Use provided document name if available, otherwise use default naming logic
+      const defaultTitle = documentState.file?.name || `${documentState.selectedDoc?.contentJson?.documentType || selectedType || 'Custom'} Document`;
+      const title = documentName || defaultTitle;
+
       const documentData = {
-        title: documentState.file?.name || `${selectedType || 'Custom'} Document`,
-        type: selectedType || 'custom',
+        title: title,
+        type: documentType,
         date: new Date().toISOString(),
         confidence: documentState.selectedDoc.rawJson?.analysis?.confidenceScore ? 
           Math.round(documentState.selectedDoc.rawJson.analysis.confidenceScore * 100) : 95,
         contentJson: contentWithAnalysis
       };
+
+      console.log('Saving document with data:', {
+        title: documentData.title,
+        type: documentData.type,
+      });
 
       const response = await fetch('/api/documents', {
         method: 'POST',
@@ -592,79 +614,92 @@ export default function DemoPage() {
   };
 
   if (showHistory) {
-      return (
-        <div className="flex h-full overflow-hidden bg-background">
-          <CustomSidebar
-            isCollapsed={isSidebarCollapsed}
-            setIsCollapsed={setIsSidebarCollapsed}
-            onSelectDemo={handleDemoSelect}
-            selectedType="history"
-          />
-        <HistorySection user={user} />
-      </div>
-    );
-  }
-
-  if (!documentState.isProcessed) {
     return (
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
-          onSelectDemo={handleDemoSelect}
-          selectedType={selectedType}
+          onSelectTemplate={handleTemplateSelect}
+          selectedType="history"
         />
-        <div className="flex-1 overflow-auto p-6">
-          <CustomAPISection
-            currentState={documentState}
-            onFileChange={(file) => {
-              updateDocumentState({
-                file,
-                isProcessed: false,
-                error: null
-              });
-            }}
-            onProcess={handleProcessDocument}
-            isProcessing={isProcessing}
-            progress={progress}
-            templateType={selectedType}
-          />
-        </div>
+        <HistorySection user={user} />
       </div>
     );
   }
 
-  return (
-    <div className="flex h-full overflow-hidden bg-background">
-      <CustomSidebar
-        isCollapsed={isSidebarCollapsed}
-        setIsCollapsed={setIsSidebarCollapsed}
-        onSelectDemo={handleDemoSelect}
-        selectedType={selectedType}
-      />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto md:pt-6 md:pr-6 md:px-0 pt-14 px-4">
-          <div className="grid gap-6 pb-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
-            <DocumentViewer
+  // Show document processor regardless if docmate is selected or a specific template
+  if (!documentState.isProcessed) {
+    return (
+      <>
+        <Head>
+          <title>Document Lab | DocMate</title>
+          <meta name="description" content="A powerful document processing workspace for extracting and analyzing information from documents" />
+        </Head>
+        <div className="flex h-full overflow-hidden bg-background">
+          <CustomSidebar
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={setIsSidebarCollapsed}
+            onSelectTemplate={handleTemplateSelect}
+            selectedType={selectedType}
+          />
+          <div className="flex-1 overflow-auto p-6">
+            <CustomAPISection
               currentState={documentState}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-            />
-            <DocumentInfo
-              currentState={documentState}
+              onFileChange={(file) => {
+                updateDocumentState({
+                  file,
+                  isProcessed: false,
+                  error: null
+                });
+              }}
+              onProcess={handleProcessDocument}
               isProcessing={isProcessing}
-              user={user}
-              onDownloadJson={handleDownloadJson}
-              onDownloadMarkdown={handleDownloadMarkdown}
-              onDownloadCsv={handleDownloadCsv}
-              onSaveDocument={handleSaveDocument}
-              onNewDocument={handleNewDocument}
+              progress={progress}
+              templateType={selectedType === 'docmate' ? null : selectedType as DocumentType}
             />
           </div>
-        </main>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Head>
+        <title>Document Lab | DocMate</title>
+        <meta name="description" content="A powerful document processing workspace for extracting and analyzing information from documents" />
+      </Head>
+      <div className="flex h-full overflow-hidden bg-background">
+        <CustomSidebar
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
+          onSelectTemplate={handleTemplateSelect}
+          selectedType={selectedType}
+        />
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 overflow-y-auto md:pt-6 md:pr-6 md:px-0 pt-14 px-4">
+            <div className="grid pl-6 gap-6 pb-6 h-full lg:grid-cols-[minmax(0,_2fr)_minmax(250px,_300px)] grid-cols-1">
+              <DocumentViewer
+                currentState={documentState}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+              />
+              <DocumentInfo
+                currentState={documentState}
+                isProcessing={isProcessing}
+                user={user}
+                onDownloadJson={handleDownloadJson}
+                onDownloadMarkdown={handleDownloadMarkdown}
+                onDownloadCsv={handleDownloadCsv}
+                onSaveDocument={handleSaveDocument}
+                onNewDocument={handleNewDocument}
+              />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

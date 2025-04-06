@@ -67,9 +67,9 @@ export default function Header() {
                 
                 {/* Actions */}
                 <div className="flex items-center space-x-3">
-                  <Link href="/demo">
+                  <Link href="/playground">
                     <Button size="sm" variant="ghost" className="text-sm gap-1 hover:bg-white/5 text-muted-foreground hover:text-white">
-                      Try Demo <ArrowRight className="h-3 w-3 animate-pulse " />
+                      Playground <ArrowRight className="h-3 w-3 animate-pulse " />
                     </Button>
                   </Link>
                   <Button size="icon" variant="ghost" className="md:hidden text-muted-foreground hover:text-white hover:bg-white/5">

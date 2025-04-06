@@ -50,6 +50,7 @@ export function HistorySection({ user }: HistorySectionProps) {
   const [documents, setDocuments] = useState<SavedDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDoc, setDeleteDoc] = useState<SavedDocument | null>(null);
+  const [customTypes, setCustomTypes] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,6 +65,14 @@ export function HistorySection({ user }: HistorySectionProps) {
         if (!response.ok) throw new Error('Failed to fetch documents');
         const data = await response.json();
         setDocuments(data);
+        
+        // Extract unique custom types (types that are not standard ones)
+        const standardTypes = ['t4', 'bank', 'receipt', 'dental', 'electricity'];
+        const uniqueTypes = Array.from(new Set(data
+          .map((doc: SavedDocument) => doc.type || '')
+          .filter((type: string) => type !== '')
+        )) as string[];
+        setCustomTypes(uniqueTypes.filter(type => !standardTypes.includes(type)));
       } catch (error) {
         console.error('Error fetching documents:', error);
         toast({
@@ -202,10 +211,9 @@ export function HistorySection({ user }: HistorySectionProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Documents</SelectItem>
-                <SelectItem value="t4">T4 Forms</SelectItem>
-                <SelectItem value="receipt">Receipts</SelectItem>
-                <SelectItem value="dental">Dental Claims</SelectItem>
-                <SelectItem value="electricity">Utility Bills</SelectItem>
+                {customTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -239,6 +247,8 @@ export function HistorySection({ user }: HistorySectionProps) {
                               {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
                               {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
                               {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                              {doc.type && !['t4', 'bank', 'receipt', 'dental', 'electricity'].includes(doc.type) && 
+                                <FileText className="h-4 w-4 text-muted-foreground" />}
                               <span className="truncate">{doc.title}</span>
                               <div className="flex items-center gap-2 md:hidden">
                                 <span className="text-xs text-muted-foreground capitalize">({doc.type})</span>
@@ -304,6 +314,8 @@ export function HistorySection({ user }: HistorySectionProps) {
                             {type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
                             {type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
                             {type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                            {type && !['t4', 'bank', 'receipt', 'dental', 'electricity'].includes(type) && 
+                              <FileText className="h-4 w-4 text-muted-foreground" />}
                             <span className="text-muted-foreground capitalize">{type}</span>
                           </div>
                           <span className="font-medium">{count}</span>
@@ -334,6 +346,8 @@ export function HistorySection({ user }: HistorySectionProps) {
                             {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
                             {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
                             {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                            {doc.type && !['t4', 'bank', 'receipt', 'dental', 'electricity'].includes(doc.type) && 
+                              <FileText className="h-4 w-4 text-muted-foreground" />}
                             <span className="font-medium truncate">{doc.title}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -396,7 +410,10 @@ export function HistorySection({ user }: HistorySectionProps) {
                       )}
                       onClick={() => navigator.clipboard.writeText(
                         activeTab === 'json' 
-                          ? JSON.stringify(selectedDoc?.contentJson, null, 2)
+                          ? JSON.stringify({
+                              documentType: selectedDoc?.contentJson?.documentType,
+                              content: selectedDoc?.contentJson?.content
+                            }, null, 2)
                           : generateMarkdown(selectedDoc?.contentJson)
                       )}
                     >
@@ -501,7 +518,10 @@ export function HistorySection({ user }: HistorySectionProps) {
                             <div className="relative bg-muted w-full overflow-auto">
                               <div className="min-w-[600px] w-full">
                                 <pre className="p-6 text-sm whitespace-pre select-text w-full">
-                                  {JSON.stringify(selectedDoc?.contentJson, null, 2)}
+                                  {JSON.stringify({
+                                    documentType: selectedDoc?.contentJson?.documentType,
+                                    content: selectedDoc?.contentJson?.content
+                                  }, null, 2)}
                                 </pre>
                               </div>
                             </div>
@@ -581,33 +601,6 @@ export function HistorySection({ user }: HistorySectionProps) {
                                             {keyword}
                                           </span>
                                         ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              {/* Confidence Score Card */}
-                              <Card className="bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
-                                <CardContent className="pt-6">
-                                  <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                      <Brain className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-medium mb-3">AI Confidence</h3>
-                                      <div className="space-y-2">
-                                        <div className="w-full bg-muted rounded-full h-2.5">
-                                          <div 
-                                            className="bg-primary h-2.5 rounded-full transition-all duration-500"
-                                            style={{ 
-                                              width: `${(selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100}%` 
-                                            }}
-                                          />
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">
-                                          {((selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100).toFixed(1)}% confidence in analysis
-                                        </p>
                                       </div>
                                     </div>
                                   </div>

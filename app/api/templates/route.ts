@@ -13,9 +13,7 @@ interface DecodedToken {
 
 async function getUserFromToken(token: string): Promise<DecodedToken | null> {
   try {
-    console.log('Verifying token with secret:', process.env.JWT_SECRET?.slice(0, 5) + '...');
     const decoded = verify(token, process.env.JWT_SECRET!) as DecodedToken;
-    console.log('Decoded token:', decoded);
     return decoded;
   } catch (error) {
     console.error('Token verification failed:', error);
@@ -28,33 +26,28 @@ export async function GET(req: Request) {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
 
-    console.log('Auth token from cookie:', token ? token.slice(0, 10) + '...' : 'null');
-
     if (!token) {
       return new NextResponse("Unauthorized - No token", { status: 401 });
     }
 
     const user = await getUserFromToken(token);
-    console.log('User from token:', user);
 
     if (!user?.userId) {
       return new NextResponse("Unauthorized - Invalid token", { status: 401 });
     }
 
-    console.log('Fetching documents for user:', user.userId);
-
-    const documents = await db.execute({
+    const templates = await db.execute({
       sql: `
-        SELECT * FROM documents 
+        SELECT * FROM templates 
         WHERE user_id = ? 
-        ORDER BY date DESC
+        ORDER BY created_at DESC
       `,
       args: [user.userId],
     });
 
-    return NextResponse.json(documents.rows);
+    return NextResponse.json(templates.rows);
   } catch (error) {
-    console.error('[DOCUMENTS_GET]', error);
+    console.error('[TEMPLATES_GET]', error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -74,47 +67,36 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { title, type, date, confidence, contentJson } = body;
+    const { name, tables } = body;
 
     // Validate required fields
-    if (!title || !type || !date || !contentJson) {
+    if (!name || !tables) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
-    // We no longer validate against a fixed list of types
-    // Allow any string as a type - this supports custom templates
-    
-    console.log('Saving document with type:', type);
-
-    const document = await db.execute({
+    const template = await db.execute({
       sql: `
-        INSERT INTO documents (
+        INSERT INTO templates (
           id,
           user_id,
-          title,
-          type,
-          date,
-          confidence,
-          content_json,
+          name,
+          tables,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
         RETURNING *
       `,
       args: [
         nanoid(),
         user.userId,
-        title,
-        type,
-        date,
-        confidence,
-        JSON.stringify(contentJson),
+        name,
+        JSON.stringify(tables),
       ],
     });
 
-    return NextResponse.json(document.rows[0]);
+    return NextResponse.json(template.rows[0]);
   } catch (error) {
-    console.error('[DOCUMENTS_POST]', error);
+    console.error('[TEMPLATES_POST]', error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -122,10 +104,10 @@ export async function POST(req: Request) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const documentId = searchParams.get('id');
+    const templateId = searchParams.get('id');
 
-    if (!documentId) {
-      return NextResponse.json({ error: 'Document ID required' }, { status: 400 });
+    if (!templateId) {
+      return NextResponse.json({ error: 'Template ID required' }, { status: 400 });
     }
 
     const token = request.cookies.get('auth_token')?.value;
@@ -138,23 +120,23 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
     }
 
-    const document = await db.execute({
-      sql: 'SELECT * FROM documents WHERE id = ? AND user_id = ?',
-      args: [documentId, user.userId],
+    const template = await db.execute({
+      sql: 'SELECT * FROM templates WHERE id = ? AND user_id = ?',
+      args: [templateId, user.userId],
     });
 
-    if (!document.rows.length) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    if (!template.rows.length) {
+      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
 
     await db.execute({
-      sql: 'DELETE FROM documents WHERE id = ? AND user_id = ?',
-      args: [documentId, user.userId],
+      sql: 'DELETE FROM templates WHERE id = ? AND user_id = ?',
+      args: [templateId, user.userId],
     });
 
-    return NextResponse.json({ message: 'Document deleted successfully' });
+    return NextResponse.json({ message: 'Template deleted successfully' });
   } catch (error) {
-    console.error('[DOCUMENT_DELETE]', error);
+    console.error('[TEMPLATE_DELETE]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 } 

@@ -23,43 +23,25 @@ const GradientText = ({ children, className = "" }: { children: React.ReactNode;
   );
 };
 
-// 3D Card component
+// Card component with hover expansion effect
 const Card3D = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
   const [scale, setScale] = useState(1);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateXVal = (y - centerY) / 30;
-    const rotateYVal = (centerX - x) / 30;
-    
-    setRotateX(rotateXVal);
-    setRotateY(rotateYVal);
+  const handleMouseEnter = () => {
     setScale(1.03);
   };
 
   const handleMouseLeave = () => {
-    setRotateX(0);
-    setRotateY(0);
     setScale(1);
   };
 
   return (
     <div
-      ref={cardRef}
       className={`transform-gpu transition-all duration-300 ease-out ${className}`}
       style={{
-        transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
-        transformStyle: "preserve-3d",
+        transform: `scale(${scale})`,
       }}
-      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {children}
@@ -303,14 +285,14 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.5 }}
                   >
-                    <Link href="/demo">
+                    <Link href="/playground">
                       <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                         <span className="relative z-10 flex items-center">
-                          Try Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
+                          Try It Now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                         </span>
                       </Button>
                     </Link>
-                    <Link href="/learn-more">
+                    <Link href="/use-cases">
                       <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
                         Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                       </Button>
@@ -533,7 +515,7 @@ export default function HomePage() {
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  <span>Live Demo</span>
+                  <span>Demo</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -551,7 +533,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Drop any invoice, receipt, or contract. Get structured data in seconds.
+                  Any invoice, receipt, or contract. Get structured data in seconds.
                 </motion.p>
               </motion.div>
 
@@ -572,10 +554,10 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
-                <Link href="/demo">
+                <Link href="/playground">
                   <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                     <span className="relative z-10 flex items-center">
-                      Launch Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
+                      Launch Now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                     </span>
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/10"
