@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History } from "lucide-react";
+import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -78,9 +78,21 @@ export function CustomSidebar({
   // Navigation items
   const mainNavItems = [
     {
-      id: 'docmate',
+      id: 'document',
       name: 'Process Document',
+      icon: <FileText className="h-5 w-5" />,
+      isSection: true
+    },
+    {
+      id: 'template',
+      name: 'Template Editor',
       icon: <Layout className="h-5 w-5" />,
+      isSection: true
+    },
+    {
+      id: 'api',
+      name: 'API Integration',
+      icon: <Code className="h-5 w-5" />,
       isSection: true
     }
   ];

@@ -1,3 +1,4 @@
+//Clone of the custom route
 import { NextRequest, NextResponse } from 'next/server';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
@@ -11,16 +12,14 @@ const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
 });
 
-// Schema for field configuration
 const FieldSchema = z.object({
   name: z.string(),
   type: z.string(),
   description: z.string().optional(),
-  isRequired: z.boolean().optional(),
+  required: z.boolean().optional(),
   format: z.string().optional()
 });
 
-// Schema for table/section configuration
 const TableSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
@@ -28,44 +27,100 @@ const TableSchema = z.object({
   fields: z.array(FieldSchema)
 });
 
-// Schema for the API request
 const RequestSchema = z.object({
-  documentType: z.string(),
-  imageData: z.string(), // Base64 encoded image/PDF data
+  imageData: z.string(),
   mimeType: z.string().optional(),
-  tables: z.array(TableSchema)
+  customPrompt: z.string(),
+  outputFormat: z.object({
+    documentType: z.string(),
+    tables: z.array(TableSchema)
+  }).optional()
 });
 
 export async function POST(req: NextRequest) {
   try {
-    // Parse and validate request body
     const body = await req.json();
-    const { documentType, imageData, mimeType = 'image/jpeg', tables } = RequestSchema.parse(body);
+    const { imageData, mimeType = 'image/jpeg', customPrompt, outputFormat } = RequestSchema.parse(body);
 
-    // Determine file type
     const isPDF = imageData.startsWith('data:application/pdf') || mimeType === 'application/pdf';
     const fileType = isPDF ? 'application/pdf' : 'image/jpeg';
 
-    // Construct the analysis prompt
     let prompt = `Analyze this document and extract information in the following format:\n\n`;
     
-    tables.forEach((table, index) => {
-      prompt += `${table.type === 'table' ? 'Table' : 'Data Section'} ${index + 1}: ${table.name}\n`;
-      if (table.description) {
-        prompt += `Description: ${table.description}\n`;
-      }
-      prompt += `Type: ${table.type === 'table' ? 'Repeating Data (extract all instances)' : 'Single Values (extract one instance)'}\n`;
-      prompt += `Fields to extract:\n`;
-      table.fields.forEach(field => {
-        prompt += `- ${field.name}${field.description ? ` (${field.description})` : ''}\n`;
-        prompt += `  Type: ${field.type}\n`;
-        prompt += `  Required: ${field.isRequired ? 'Yes' : 'No'}\n`;
-        if (field.format) prompt += `  Format: ${field.format}\n`;
+    if (outputFormat) {
+      outputFormat.tables.forEach((table, index) => {
+        prompt += `${table.type === 'table' ? 'Table' : 'Data Section'} ${index + 1}: ${table.name}\n`;
+        if (table.description) {
+          prompt += `Description: ${table.description}\n`;
+        }
+        prompt += `Type: ${table.type === 'table' ? 'Repeating Data (extract all instances)' : 'Single Values (extract one instance)'}\n`;
+        prompt += `Fields to extract:\n`;
+        table.fields.forEach(field => {
+          prompt += `- ${field.name}${field.description ? ` (${field.description})` : ''}\n`;
+          prompt += `  Type: ${field.type}\n`;
+          prompt += `  Required: ${field.required ? 'Yes' : 'No'}\n`;
+          if (field.format) prompt += `  Format: ${field.format}\n`;
+        });
+        prompt += '\n';
       });
-      prompt += '\n';
-    });
 
-    // Generate analysis using Google's Generative AI
+      prompt += `\nStructure the response as follows:
+{
+  "documentType": "${outputFormat.documentType}",
+  "content": {
+    ${outputFormat.tables.map(table => {
+      if (table.type === 'table') {
+        return `"${table.name}": [
+          {
+            ${table.fields.map(f => `"${f.name}": "value"`).join(',\n            ')}
+          }
+          // Additional entries for all instances found...
+        ]`;
+      } else {
+        return `"${table.name}": {
+          ${table.fields.map(f => `"${f.name}": "single value"`).join(',\n          ')}
+        }`;
+      }
+    }).join(',\n    ')}
+  },
+  "analysis": {
+    "summary": "Brief summary of the document",
+    "keywords": ["relevant", "keywords"],
+    "insights": ["Key insights about the extracted data"],
+    "confidenceScore": 0.0,
+    "metadata": {
+      "documentId": "unique_identifier",
+      "processedAt": "timestamp",
+      "confidence": "overall_confidence_score",
+      "documentType": "detected_document_type",
+      "processingDetails": {
+        "ocrConfidence": "ocr_confidence_score",
+        "imageQuality": "image_quality_score",
+        "processingTime": "processing_duration"
+      }
+    },
+    "tableStats": {
+      ${outputFormat.tables.map(table => `"${table.name}": {
+        ${table.type === 'table' ? '"entriesFound": 0,' : ''}
+        "confidence": 0.0,
+        "fieldStats": {
+          ${table.fields.map(field => `"${field.name}": {
+            "found": ${table.type === 'table' ? '0' : '1'},
+            "confidence": 0.0
+          }`).join(',\n          ')}
+        }
+      }`).join(',\n      ')}
+    }
+  }
+}\n\nImportant instructions:
+1. For tables marked as "Repeating Data", extract ALL instances found in the document
+2. For sections marked as "Single Values", extract only ONE instance
+3. Maintain the exact field names and types as specified
+4. Ensure all required fields are populated
+5. Follow any specified formats for fields
+6. Store all metadata in the analysis.metadata section, not in the main content`;
+    }
+
     const result = await generateText({
       model: google('gemini-2.0-flash'),
       messages: [{
@@ -77,25 +132,23 @@ export async function POST(req: NextRequest) {
       }]
     });
 
-    // Clean up AI response
     const text = result.text;
     const cleanText = text.replace(/```json|```/g, '').trim();
 
-    // Parse the response
     let parsedData;
     try {
       parsedData = JSON.parse(cleanText);
     } catch (error) {
       console.error('JSON parsing failed:', error);
       return NextResponse.json(
-        { success: false, error: 'Failed to parse AI response as JSON' },
+        { success: false, error: 'Failed to parse AI response as JSON', rawText: text },
         { status: 500 }
       );
     }
 
     // Clean up and validate the response structure
-    if (parsedData.content) {
-      for (const table of tables) {
+    if (outputFormat && parsedData.content) {
+      for (const table of outputFormat.tables) {
         const tableContent = parsedData.content[table.name];
         
         // Initialize if missing
@@ -122,6 +175,7 @@ export async function POST(req: NextRequest) {
         } else {
           // Handle data section (single values)
           if (Array.isArray(tableContent)) {
+            // If it's an array, take the first item
             parsedData.content[table.name] = tableContent[0] || {};
           } else if (typeof tableContent !== 'object') {
             parsedData.content[table.name] = {};
@@ -136,7 +190,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Initialize or update analysis section
+      // Initialize or update analysis section with metadata
       if (!parsedData.analysis) {
         parsedData.analysis = {
           summary: "",
@@ -147,7 +201,7 @@ export async function POST(req: NextRequest) {
             documentId: `doc_${Date.now()}`,
             processedAt: new Date().toISOString(),
             confidence: 0.95,
-            documentType: documentType,
+            documentType: parsedData.documentType,
             processingDetails: {
               ocrConfidence: 0.95,
               imageQuality: "high",
@@ -158,8 +212,27 @@ export async function POST(req: NextRequest) {
         };
       }
 
+      // Ensure metadata exists in analysis
+      if (!parsedData.analysis.metadata) {
+        parsedData.analysis.metadata = {
+          documentId: `doc_${Date.now()}`,
+          processedAt: new Date().toISOString(),
+          confidence: parsedData.analysis.confidenceScore || 0.95,
+          documentType: parsedData.documentType,
+          processingDetails: {
+            ocrConfidence: 0.95,
+            imageQuality: "high",
+            processingTime: "1.2s"
+          }
+        };
+      }
+
+      if (!parsedData.analysis.tableStats) {
+        parsedData.analysis.tableStats = {};
+      }
+
       // Update statistics for each table
-      tables.forEach(table => {
+      outputFormat.tables.forEach(table => {
         const tableContent = parsedData.content[table.name];
         const stats: {
           entriesFound?: number;
@@ -188,13 +261,13 @@ export async function POST(req: NextRequest) {
       });
     }
     
-    // Return the processed results
+    // Return the cleaned up response with metadata in analysis section
     return NextResponse.json({ 
       success: true,
+      analysis: parsedData,
       result: {
-        documentType: documentType,
-        content: parsedData.content,
-        analysis: parsedData.analysis
+        documentType: parsedData.documentType,
+        content: parsedData.content
       }
     });
 
