@@ -49,12 +49,6 @@ export function DocumentInfo({
                 {currentState.selectedDoc?.contentJson?.metadata?.pageCount || "N/A"}
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium">Confidence Score</h3>
-              <p className="text-sm text-muted-foreground">
-                {(currentState.selectedDoc?.rawJson?.analysis?.confidenceScore * 100).toFixed(1)}%
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>

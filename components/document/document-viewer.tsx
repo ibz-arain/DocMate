@@ -208,33 +208,6 @@ export function DocumentViewer({
                     </CardContent>
                   </Card>
 
-                  {/* Confidence Score Card */}
-                  <Card className="bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <Brain className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-medium mb-3">AI Confidence</h3>
-                          <div className="space-y-2">
-                            <div className="w-full bg-muted rounded-full h-2.5">
-                              <div 
-                                className="bg-primary h-2.5 rounded-full transition-all duration-500"
-                                style={{ 
-                                  width: `${(currentState.selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100}%` 
-                                }}
-                              />
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {((currentState.selectedDoc?.rawJson?.analysis?.confidenceScore || 0) * 100).toFixed(1)}% confidence in analysis
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
                   {/* Insights Card */}
                   <Card className="col-span-full bg-background/50 backdrop-blur-sm hover:bg-background/60 transition-colors">
                     <CardContent className="pt-6">

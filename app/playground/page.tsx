@@ -499,14 +499,14 @@ export default function PlaygroundPage() {
     }));
   };
 
-  const handleDemoSelect = (demoType: string) => {
-    if (demoType === 'history') {
+  const handleTemplateSelect = (templateType: string) => {
+    if (templateType === 'history') {
       setShowHistory(true);
       setSelectedType('history');
       return;
     }
     setShowHistory(false);
-    setSelectedType(demoType as DocumentType);
+    setSelectedType(templateType as DocumentType);
   };
 
   const handleNewDocument = () => {
@@ -597,7 +597,7 @@ export default function PlaygroundPage() {
           <CustomSidebar
             isCollapsed={isSidebarCollapsed}
             setIsCollapsed={setIsSidebarCollapsed}
-            onSelectDemo={handleDemoSelect}
+            onSelectDemo={handleTemplateSelect}
             selectedType="history"
           />
         <HistorySection user={user} />
@@ -611,7 +611,7 @@ export default function PlaygroundPage() {
         <CustomSidebar
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
-          onSelectDemo={handleDemoSelect}
+          onSelectDemo={handleTemplateSelect}
           selectedType={selectedType}
         />
         <div className="flex-1 overflow-auto p-6">
@@ -639,7 +639,7 @@ export default function PlaygroundPage() {
       <CustomSidebar
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
-        onSelectDemo={handleDemoSelect}
+        onSelectDemo={handleTemplateSelect}
         selectedType={selectedType}
       />
       

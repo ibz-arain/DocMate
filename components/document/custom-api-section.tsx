@@ -267,7 +267,7 @@ ${table.fields.map(field =>
 
         {/* Tables Configuration */}
         <Card className="flex-1 overflow-hidden">
-          <ScrollArea className="h-[calc(100vh-16rem)]">
+          <ScrollArea className="h-[calc(100vh-10rem)]">
             <div className="p-6">
               <div className="space-y-6">
                 {tables.length === 0 ? (
@@ -492,7 +492,7 @@ ${table.fields.map(field =>
             <CardContent className="p-4 space-y-4">
               <Progress value={progress} className="h-2" />
               <p className="text-sm text-center text-muted-foreground">
-                {progress}% - Analyzing document...
+                {progress.toFixed(2)}% - Analyzing document...
               </p>
             </CardContent>
           </Card>
