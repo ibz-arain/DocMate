@@ -50,6 +50,7 @@ export function HistorySection({ user }: HistorySectionProps) {
   const [documents, setDocuments] = useState<SavedDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDoc, setDeleteDoc] = useState<SavedDocument | null>(null);
+  const [customTypes, setCustomTypes] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,6 +65,14 @@ export function HistorySection({ user }: HistorySectionProps) {
         if (!response.ok) throw new Error('Failed to fetch documents');
         const data = await response.json();
         setDocuments(data);
+        
+        // Extract unique custom types (types that are not standard ones)
+        const standardTypes = ['t4', 'bank', 'receipt', 'dental', 'electricity'];
+        const uniqueTypes = Array.from(new Set(data
+          .map((doc: SavedDocument) => doc.type || '')
+          .filter((type: string) => type !== '')
+        )) as string[];
+        setCustomTypes(uniqueTypes.filter(type => !standardTypes.includes(type)));
       } catch (error) {
         console.error('Error fetching documents:', error);
         toast({
@@ -202,10 +211,9 @@ export function HistorySection({ user }: HistorySectionProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Documents</SelectItem>
-                <SelectItem value="t4">T4 Forms</SelectItem>
-                <SelectItem value="receipt">Receipts</SelectItem>
-                <SelectItem value="dental">Dental Claims</SelectItem>
-                <SelectItem value="electricity">Utility Bills</SelectItem>
+                {customTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -239,6 +247,8 @@ export function HistorySection({ user }: HistorySectionProps) {
                               {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
                               {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
                               {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                              {doc.type && !['t4', 'bank', 'receipt', 'dental', 'electricity'].includes(doc.type) && 
+                                <FileText className="h-4 w-4 text-muted-foreground" />}
                               <span className="truncate">{doc.title}</span>
                               <div className="flex items-center gap-2 md:hidden">
                                 <span className="text-xs text-muted-foreground capitalize">({doc.type})</span>
@@ -304,6 +314,8 @@ export function HistorySection({ user }: HistorySectionProps) {
                             {type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
                             {type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
                             {type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                            {type && !['t4', 'bank', 'receipt', 'dental', 'electricity'].includes(type) && 
+                              <FileText className="h-4 w-4 text-muted-foreground" />}
                             <span className="text-muted-foreground capitalize">{type}</span>
                           </div>
                           <span className="font-medium">{count}</span>
@@ -334,6 +346,8 @@ export function HistorySection({ user }: HistorySectionProps) {
                             {doc.type === 'receipt' && <ReceiptText className="h-4 w-4 text-muted-foreground" />}
                             {doc.type === 'dental' && <Stethoscope className="h-4 w-4 text-muted-foreground" />}
                             {doc.type === 'electricity' && <BatteryCharging className="h-4 w-4 text-muted-foreground" />}
+                            {doc.type && !['t4', 'bank', 'receipt', 'dental', 'electricity'].includes(doc.type) && 
+                              <FileText className="h-4 w-4 text-muted-foreground" />}
                             <span className="font-medium truncate">{doc.title}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm text-muted-foreground">

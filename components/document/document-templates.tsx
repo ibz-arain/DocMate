@@ -8,14 +8,6 @@ export interface FieldConfig {
   format?: string;
 }
 
-export interface DataTypeTemplate {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  defaultFields: FieldConfig[];
-}
-
 export interface TableTemplate {
   name: string;
   description?: string;
@@ -27,61 +19,6 @@ export interface DocumentTemplate {
   documentName: string;
   tables: TableTemplate[];
 }
-
-export const dataTypeTemplates: DataTypeTemplate[] = [
-  {
-    id: 'financial',
-    name: 'Financial Document',
-    description: 'Extract financial data like transactions, amounts, and account details',
-    icon: <FileText className="h-5 w-5" />,
-    defaultFields: [
-      { name: 'amount', type: 'currency', description: 'Transaction amount', isRequired: true },
-      { name: 'date', type: 'date', description: 'Transaction date', isRequired: true },
-      { name: 'description', type: 'string', description: 'Transaction description' },
-      { name: 'category', type: 'string', description: 'Transaction category' },
-      { name: 'accountNumber', type: 'string', description: 'Account number', format: 'XXXX-XXXX-XXXX' }
-    ]
-  },
-  {
-    id: 'identity',
-    name: 'Identity Document',
-    description: 'Extract personal information from ID cards, passports, etc.',
-    icon: <User className="h-5 w-5" />,
-    defaultFields: [
-      { name: 'fullName', type: 'string', description: 'Full legal name', isRequired: true },
-      { name: 'dateOfBirth', type: 'date', description: 'Date of birth', isRequired: true },
-      { name: 'documentNumber', type: 'string', description: 'ID/Passport number', isRequired: true },
-      { name: 'nationality', type: 'string', description: 'Nationality' },
-      { name: 'expiryDate', type: 'date', description: 'Document expiry date' }
-    ]
-  },
-  {
-    id: 'invoice',
-    name: 'Invoice/Receipt',
-    description: 'Extract line items, totals, and payment details from invoices',
-    icon: <ReceiptText className="h-5 w-5" />,
-    defaultFields: [
-      { name: 'invoiceNumber', type: 'string', description: 'Invoice number', isRequired: true },
-      { name: 'issueDate', type: 'date', description: 'Invoice date', isRequired: true },
-      { name: 'totalAmount', type: 'currency', description: 'Total amount', isRequired: true },
-      { name: 'items', type: 'array', description: 'Line items' },
-      { name: 'tax', type: 'percentage', description: 'Tax rate' }
-    ]
-  },
-  {
-    id: 'contract',
-    name: 'Contract/Agreement',
-    description: 'Extract key terms, dates, and parties from legal documents',
-    icon: <FileStack className="h-5 w-5" />,
-    defaultFields: [
-      { name: 'parties', type: 'array', description: 'Contract parties', isRequired: true },
-      { name: 'startDate', type: 'date', description: 'Contract start date', isRequired: true },
-      { name: 'endDate', type: 'date', description: 'Contract end date' },
-      { name: 'value', type: 'currency', description: 'Contract value' },
-      { name: 'terms', type: 'array', description: 'Key terms and conditions' }
-    ]
-  }
-];
 
 export const documentTemplates: Record<string, DocumentTemplate> = {
   't4': {

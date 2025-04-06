@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Receipt, FileText, Landmark, ChevronRight, ChevronLeft, ReceiptText, Building2, FileStack, Stethoscope, BatteryCharging, LogOut, User, Settings, Sun, Moon, History, Menu, Code } from "lucide-react";
+import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,52 +15,22 @@ import {
 import { useAuthContext } from "./auth-provider";
 import { useRouter } from "next/navigation";
 import { SettingsDialog } from "@/components/settings-dialog";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-
-const documentTypes = [
-  {
-    title: "T4 Tax Form",
-    icon: <FileStack className="h-5 w-5" />,
-    demoType: "t4"
-  },
-  {
-    title: "Bank Statement",
-    icon: <Building2 className="h-5 w-5" />,
-    demoType: "bank"
-  },
-  {
-    title: "Store Receipt",
-    icon: <ReceiptText className="h-5 w-5" />,
-    demoType: "receipt"
-  },
-  {
-    title: "Dental Claim Form",
-    icon: <Stethoscope className="h-5 w-5" />,
-    demoType: "dental"
-  },
-  {
-    title: "Electricity Bill",
-    icon: <BatteryCharging className="h-5 w-5" />,
-    demoType: "electricity"
-  }
-];
 
 interface CustomSidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (value: boolean) => void;
-  onSelectDemo: (demoType: string) => void;
+  onSelectTemplate: (templateType: string) => void;
   selectedType?: string | null;
 }
 
-// Add TypeWriter component at the top of the file
+// TypeWriter component for animated text
 const TypeWriter = ({ text, delay = 50 }: { text: string; delay?: number }) => {
-  const [currentText, setCurrentText] = useState("");
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentText, setCurrentText] = React.useState("");
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Reset on unmount
     return () => {
       setCurrentText("");
@@ -69,7 +39,7 @@ const TypeWriter = ({ text, delay = 50 }: { text: string; delay?: number }) => {
     };
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isDeleting && currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setCurrentText(prev => prev + text[currentIndex]);
@@ -85,14 +55,13 @@ const TypeWriter = ({ text, delay = 50 }: { text: string; delay?: number }) => {
 export function CustomSidebar({
   isCollapsed,
   setIsCollapsed,
-  onSelectDemo,
+  onSelectTemplate,
   selectedType,
 }: CustomSidebarProps) {
   const { user, logout } = useAuthContext();
   const router = useRouter();
   const [showSettings, setShowSettings] = React.useState(false);
   const { theme, setTheme } = useTheme();
-  const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
   const handleAccountClick = () => {
     router.push('/account');
@@ -106,339 +75,18 @@ export function CustomSidebar({
     }
   };
 
-  // Mobile menu content component
-  const SidebarContent = () => (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="h-14 flex items-center px-4 border-b">
-        <div className="font-semibold text-lg text-primary">
-          <Image 
-            src="/logo-text.png" 
-            alt="Logo" 
-            width={100} 
-            height={80} 
-            priority
-            className="select-none"
-          />
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-4">
-          <nav className="space-y-1">
-            {documentTypes.map((item) => {
-              const isSelected = selectedType === item.demoType;
-              return (
-                <Button
-                  key={item.title}
-                  variant="ghost"
-                  onClick={() => {
-                    onSelectDemo(item.demoType);
-                    setIsMobileOpen(false);
-                  }}
-                  className={cn(
-                    "w-full justify-start",
-                    isSelected && "bg-accent text-accent-foreground"
-                  )}
-                >
-                  {item.icon}
-                  <span className="ml-2">{item.title}</span>
-                </Button>
-              );
-            })}
-            
-            {/* History Section - Only visible for signed-in users */}
-            {user && (
-              <>
-                <div className="h-px bg-border my-2" />
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    onSelectDemo('history');
-                    setIsMobileOpen(false);
-                  }}
-                  className={cn(
-                    "w-full justify-start",
-                    selectedType === 'history' && "bg-accent text-accent-foreground"
-                  )}
-                >
-                  <History className="h-5 w-5" />
-                  <span className="ml-2">History</span>
-                </Button>
-              </>
-            )}
-          </nav>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t p-4">
-        {user ? (
-          <>
-            <div className="px-2 py-1.5 text-sm text-muted-foreground">
-              Signed in as {user.username}
-            </div>
-            <div className="space-y-1 mt-2">
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              >
-                <div className="relative h-5 w-5">
-                  <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                </div>
-                <span className="ml-2">Toggle theme</span>
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => {
-                  setShowSettings(true);
-                  setIsMobileOpen(false);
-                }}
-              >
-                <Settings className="h-5 w-5" />
-                <span className="ml-2">Settings</span>
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-5 w-5" />
-                <span className="ml-2">Sign Out</span>
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="space-y-1">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            >
-              <div className="relative h-5 w-5">
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </div>
-              <span className="ml-2">Toggle theme</span>
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={handleAccountClick}
-            >
-              <User className="h-5 w-5" />
-              <span className="ml-2">Account</span>
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  // Navigation items
+  const mainNavItems = [
+    {
+      id: 'docmate',
+      name: 'Process Document',
+      icon: <Layout className="h-5 w-5" />,
+      isSection: true
+    }
+  ];
 
   return (
     <TooltipProvider delayDuration={0}>
-      {/* Mobile Menu Button - Only visible on mobile */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className={cn(
-          "fixed top-3 left-3 z-[100] md:hidden",
-          "h-12 w-12",
-          "bg-background/90 backdrop-blur-sm",
-          "border shadow-md rounded-full",
-          "hover:bg-accent",
-          "transition-all duration-200",
-          isMobileOpen && "hidden"
-        )}
-        onClick={() => setIsMobileOpen(true)}
-      >
-        <Menu className="h-6 w-6" />
-      </Button>
-
-      {/* Mobile Sidebar */}
-      <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-        <SheetContent 
-          side="left"
-          className={cn(
-            "p-0 border-0 bg-background backdrop-blur-lg",
-            "w-full max-w-full sm:max-w-[350px] sm:border",
-            "h-full",
-            "transition-opacity duration-200",
-            "data-[state=open]:opacity-100",
-            "data-[state=closed]:opacity-0",
-            "z-50"
-          )}
-        >
-          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-          <div className="h-full flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="h-16 flex items-center justify-between px-4 border-b">
-              <div className="font-semibold text-lg text-primary">
-                <Image 
-                  src="/logo-text.png" 
-                  alt="Logo" 
-                  width={120} 
-                  height={100} 
-                  priority
-                  className="select-none"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsMobileOpen(false)}
-                className="h-10 w-10 rounded-full"
-                aria-label="Close menu"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Navigation */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-4">
-                <nav className="space-y-2">
-                  {documentTypes.map((item) => {
-                    const isSelected = selectedType === item.demoType;
-                    return (
-                      <Button
-                        key={item.title}
-                        variant="ghost"
-                        onClick={() => {
-                          onSelectDemo(item.demoType);
-                          setIsMobileOpen(false);
-                        }}
-                        className={cn(
-                          "w-full justify-start h-14 text-base",
-                          isSelected && "bg-accent text-accent-foreground"
-                        )}
-                      >
-                        <div className="flex items-center">
-                          <div className="mr-3">
-                            {item.icon}
-                          </div>
-                          <span>{item.title}</span>
-                        </div>
-                      </Button>
-                    );
-                  })}
-                  
-                  {/* History Section - Only visible for signed-in users */}
-                  {user && (
-                    <>
-                      <div className="h-px bg-border my-3" />
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          onSelectDemo('history');
-                          setIsMobileOpen(false);
-                        }}
-                        className={cn(
-                          "w-full justify-start h-14 text-base",
-                          selectedType === 'history' && "bg-accent text-accent-foreground"
-                        )}
-                      >
-                        <div className="flex items-center">
-                          <div className="mr-3">
-                            <History className="h-5 w-5" />
-                          </div>
-                          <span>History</span>
-                        </div>
-                      </Button>
-                    </>
-                  )}
-                </nav>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t p-4">
-              {user ? (
-                <>
-                  <div className="px-2 py-2 text-sm text-muted-foreground">
-                    Signed in as {user.username}
-                  </div>
-                  <div className="space-y-2 mt-3">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start h-14 text-base"
-                      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                    >
-                      <div className="flex items-center">
-                        <div className="mr-3 relative h-5 w-5">
-                          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                          <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                        </div>
-                        <span>Toggle theme</span>
-                      </div>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start h-14 text-base"
-                      onClick={() => {
-                        setShowSettings(true);
-                        setIsMobileOpen(false);
-                      }}
-                    >
-                      <div className="flex items-center">
-                        <div className="mr-3">
-                          <Settings className="h-5 w-5" />
-                        </div>
-                        <span>Settings</span>
-                      </div>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start h-14 text-base"
-                      onClick={handleLogout}
-                    >
-                      <div className="flex items-center">
-                        <div className="mr-3">
-                          <LogOut className="h-5 w-5" />
-                        </div>
-                        <span>Sign Out</span>
-                      </div>
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-2">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start h-14 text-base"
-                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                  >
-                    <div className="flex items-center">
-                      <div className="mr-3 relative h-5 w-5">
-                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                        <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                      </div>
-                      <span>Toggle theme</span>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start h-14 text-base"
-                    onClick={handleAccountClick}
-                  >
-                    <div className="flex items-center">
-                      <div className="mr-3">
-                        <User className="h-5 w-5" />
-                      </div>
-                      <span>Account</span>
-                    </div>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
       {/* Desktop Sidebar */}
       <div className="hidden md:block pl-6 h-screen flex-shrink-0">
         <motion.div
@@ -515,13 +163,14 @@ export function CustomSidebar({
           {/* Desktop Navigation */}
           <div className="flex-1 p-3">
             <nav className="space-y-2">
-              {documentTypes.map((item) => {
-                const isSelected = selectedType === item.demoType;
+              {/* Main Navigation Items */}
+              {mainNavItems.map((item) => {
+                const isSelected = selectedType === item.id;
                 const button = (
                   <Button
-                    key={item.title}
+                    key={item.id}
                     variant="ghost"
-                    onClick={() => onSelectDemo(item.demoType)}
+                    onClick={() => onSelectTemplate(item.id)}
                     className={cn(
                       "w-full h-10 transition-all rounded-lg relative",
                       isCollapsed ? "justify-center px-2" : "justify-start",
@@ -542,7 +191,7 @@ export function CustomSidebar({
                           transition={{ duration: 0.15 }}
                           className="font-medium pl-9"
                         >
-                          {item.title}
+                          {item.name}
                         </motion.span>
                       )}
                     </AnimatePresence>
@@ -550,12 +199,12 @@ export function CustomSidebar({
                 );
 
                 return isCollapsed ? (
-                  <Tooltip key={item.title}>
+                  <Tooltip key={item.id}>
                     <TooltipTrigger asChild>
                       {button}
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      {item.title}
+                      {item.name}
                     </TooltipContent>
                   </Tooltip>
                 ) : (
@@ -572,7 +221,7 @@ export function CustomSidebar({
                       <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
-                          onClick={() => onSelectDemo('history')}
+                          onClick={() => onSelectTemplate('history')}
                           className={cn(
                             "w-full h-10 transition-all rounded-lg relative justify-center px-2",
                             selectedType === 'history' && "bg-primary/10 text-primary"
@@ -588,7 +237,7 @@ export function CustomSidebar({
                   ) :
                     <Button
                       variant="ghost"
-                      onClick={() => onSelectDemo('history')}
+                      onClick={() => onSelectTemplate('history')}
                       className={cn(
                         "w-full h-10 transition-all rounded-lg relative justify-start",
                         selectedType === 'history' && "bg-primary/10 text-primary"
