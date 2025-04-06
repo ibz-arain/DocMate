@@ -42,7 +42,6 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { DocumentType, DocumentState, ProcessingDocType, DocumentStateMap } from "@/types/document";
-import { DocumentUploader } from "@/components/document/document-uploader";
 import { DocumentViewer } from "@/components/document/document-viewer";
 import { DocumentInfo } from "@/components/document/document-info";
 import { HistorySection } from "@/components/document/history-section";
