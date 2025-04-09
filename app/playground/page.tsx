@@ -369,7 +369,7 @@ const documentTypeLabels: Record<string, { title: string, description: string }>
 interface SavedDocument {
   id: string;
   title: string;
-  type: DocumentType;
+  type: string;
   date: string;
   confidence: number;
   contentJson: any;
@@ -551,22 +551,16 @@ export default function PlaygroundPage() {
           keywords: documentState.selectedDoc.keywords,
           insights: documentState.selectedDoc.rawJson?.analysis?.insights || [],
           confidenceScore: documentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
-          documentType: documentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
+          documentType: documentState.selectedDoc.contentJson.documentType
         }
       };
 
-      // Get template ID from data attribute if available (for custom templates)
-      let documentType = selectedType;
-      if (typeof document !== 'undefined') {
-        // Use template name as document type instead of ID
-        if (document.documentElement.dataset.currentTemplateName) {
-          documentType = document.documentElement.dataset.currentTemplateName;
-          console.log('Using template name as document type:', documentType);
-        }
-      }
+      // Use the document type from the processed content
+      const documentType = documentState.selectedDoc.contentJson.documentType;
+      console.log('Using document type from content:', documentType);
 
       // Use provided document name if available, otherwise use default naming logic
-      const defaultTitle = documentState.file?.name || `${documentState.selectedDoc?.contentJson?.documentType || selectedType || 'Custom'} Document`;
+      const defaultTitle = documentState.file?.name || `${documentType} Document`;
       const title = documentName || defaultTitle;
 
       const documentData = {
@@ -578,10 +572,7 @@ export default function PlaygroundPage() {
         contentJson: contentWithAnalysis
       };
 
-      console.log('Saving document with data:', {
-        title: documentData.title,
-        type: documentData.type,
-      });
+      console.log('Saving document with data:', documentData);
 
       const response = await fetch('/api/documents', {
         method: 'POST',

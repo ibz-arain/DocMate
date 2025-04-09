@@ -26,9 +26,6 @@ interface TableConfig {
   fields: {
     name: string;
     type: string;
-    description?: string;
-    isRequired?: boolean;
-    format?: string;
   }[];
 }
 
@@ -69,6 +66,7 @@ export function CustomAPISection({
     maxSize: 10 * 1024 * 1024,
     multiple: false
   });
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
   // Load template when templateType changes
   useEffect(() => {
@@ -79,19 +77,15 @@ export function CustomAPISection({
       // Convert template tables to TableConfig format
       const newTables: TableConfig[] = template.tables.map(table => ({
         name: table.name,
-        description: table.description || '',
         type: table.type,
-        fields: table.fields
+        fields: table.fields.map(field => ({
+          name: field.name,
+          type: field.type
+        }))
       }));
       
       setTables(newTables);
       
-      // Store the template name as a data attribute to use when saving
-      if (typeof document !== 'undefined') {
-        document.documentElement.dataset.currentTemplateName = template.documentName;
-      }
-      
-      // Show toast notification
       toast({
         title: `${template.documentName} Template Loaded`,
         description: "The template has been loaded. You can now upload a document to analyze.",
@@ -99,9 +93,7 @@ export function CustomAPISection({
     }
   }, [templateType]);
 
-  const hasRequiredField = tables.some(table => 
-    table.fields.some(field => field.isRequired)
-  );
+  const hasRequiredField = false;
 
   const addTable = (type: 'table' | 'data') => {
     setTables([...tables, {
@@ -109,9 +101,9 @@ export function CustomAPISection({
       description: '',
       type,
       fields: type === 'table' ? [
-        { name: '', type: 'string', isRequired: true }
+        { name: '', type: 'string' }
       ] : [
-        { name: '', type: 'string', isRequired: true }
+        { name: '', type: 'string' }
       ]
     }]);
   };
@@ -130,12 +122,9 @@ export function CustomAPISection({
 
   const addField = (tableIndex: number) => {
     const newTables = [...tables];
-    const hasRequired = newTables[tableIndex].fields.some(f => f.isRequired);
     newTables[tableIndex].fields.push({
       name: '',
-      type: 'string',
-      description: '',
-      isRequired: !hasRequired
+      type: 'string'
     });
     setTables(newTables);
   };
@@ -143,17 +132,6 @@ export function CustomAPISection({
   const removeField = (tableIndex: number, fieldIndex: number) => {
     const newTables = [...tables];
     const table = newTables[tableIndex];
-    const field = table.fields[fieldIndex];
-    
-    if (field.isRequired && table.fields.filter(f => f.isRequired).length === 1) {
-      toast({
-        title: "Cannot delete field",
-        description: "Each table must have at least one required field",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     table.fields.splice(fieldIndex, 1);
     setTables(newTables);
   };
@@ -196,15 +174,6 @@ export function CustomAPISection({
         return;
       }
 
-      if (!table.fields.some(f => f.isRequired)) {
-        toast({
-          title: "Missing required field",
-          description: `${table.type === 'table' ? 'Table' : 'Data section'} "${table.name}" must have at least one required field`,
-          variant: "destructive"
-        });
-        return;
-      }
-
       for (const field of table.fields) {
         if (!field.name.trim()) {
           toast({
@@ -222,22 +191,18 @@ export function CustomAPISection({
       tables: tables.map(table => ({
         name: table.name,
         type: table.type,
-        description: table.description,
         fields: table.fields.map(field => ({
           name: field.name,
-          type: field.type,
-          description: field.description || '',
-          required: field.isRequired || false,
-          format: field.format
+          type: field.type
         }))
       }))
     };
 
     const prompt = `Analyze this document and extract information in a structured format:\n\n${
       tables.map((table, i) => `${table.type === 'table' ? 'Table' : 'Data Section'} ${i + 1}: ${table.name}
-${table.description ? `Description: ${table.description}\n` : ''}Fields:
+Fields:
 ${table.fields.map(field => 
-  `- ${field.name}: ${field.description || ''} (${field.type}${field.isRequired ? ', required' : ''}${field.format ? `, format: ${field.format}` : ''})`
+  `- ${field.name} (${field.type})`
 ).join('\n')}`).join('\n\n')}`;
 
     onProcess(prompt, outputFormat);
@@ -247,6 +212,40 @@ ${table.fields.map(field =>
   const filteredTemplates = templates.filter(template => 
     template.name.toLowerCase().includes(templateSearchQuery.toLowerCase())
   );
+
+  // Function to load a custom template
+  const loadTemplate = (template: Template) => {
+    try {
+      const parsedTables = typeof template.tables === 'string' 
+        ? JSON.parse(template.tables) 
+        : template.tables;
+      
+      // Ensure loaded templates match our simplified structure
+      const simplifiedTables = parsedTables.map((table: any) => ({
+        name: table.name,
+        type: table.type,
+        fields: table.fields.map((field: any) => ({
+          name: field.name,
+          type: field.type
+        }))
+      }));
+      
+      setDocumentName(template.name);
+      setTables(simplifiedTables);
+      
+      toast({
+        title: "Template loaded",
+        description: `${template.name} template has been loaded successfully`
+      });
+    } catch (error) {
+      console.error('Error loading template:', error);
+      toast({
+        title: "Error loading template",
+        description: "Failed to load template. The format may be invalid.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Function to save current configuration as a template
   const saveAsTemplate = async () => {
@@ -275,11 +274,6 @@ ${table.fields.map(field =>
       // Save template
       await createTemplate(formattedName, tables);
       
-      // Store template name for document type
-      if (typeof document !== 'undefined') {
-        document.documentElement.dataset.currentTemplateName = formattedName;
-      }
-      
       setShowSaveTemplateDialog(false);
       setTemplateNameInput("");
       
@@ -297,35 +291,7 @@ ${table.fields.map(field =>
     }
   };
 
-  // Function to load a custom template
-  const loadTemplate = (template: Template) => {
-    try {
-      const parsedTables = typeof template.tables === 'string' 
-        ? JSON.parse(template.tables) 
-        : template.tables;
-      
-      setDocumentName(template.name);
-      setTables(parsedTables);
-      
-      // Store both template ID and template name as data attributes
-      document.documentElement.dataset.currentTemplateId = template.id;
-      document.documentElement.dataset.currentTemplateName = template.name;
-      
-      toast({
-        title: "Template loaded",
-        description: `${template.name} template has been loaded successfully`
-      });
-    } catch (error) {
-      toast({
-        title: "Error loading template",
-        description: "Failed to load template. The format may be invalid.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDeleteTemplate = async (templateId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteTemplate = async (templateId: string) => {
     try {
       await deleteTemplate(templateId);
       toast({
@@ -338,7 +304,15 @@ ${table.fields.map(field =>
         description: "Failed to delete template",
         variant: "destructive"
       });
+    } finally {
+      setTemplateToDelete(null);
     }
+  };
+
+  // Replace the existing handleDeleteTemplate code with this
+  const promptDeleteTemplate = (templateId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTemplateToDelete(templateId);
   };
 
   return (
@@ -577,10 +551,7 @@ ${table.fields.map(field =>
                             variant="ghost"
                             size="icon"
                             className="ml-auto h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteTemplate(template.id, e);
-                            }}
+                            onClick={(e) => promptDeleteTemplate(template.id, e)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -681,6 +652,27 @@ ${table.fields.map(field =>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Template Confirmation Dialog */}
+      <AlertDialog open={!!templateToDelete} onOpenChange={(open) => !open && setTemplateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this template? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => templateToDelete && handleDeleteTemplate(templateToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 
