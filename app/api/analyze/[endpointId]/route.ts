@@ -187,8 +187,14 @@ export async function POST(req: NextRequest) {
     // Process and validate the result
     const text = result.text;
     
+    console.log('Original AI Response:', text);
+    console.log('----------------------------------------');
+    
     // First try to find JSON content between backticks if it exists
     let jsonContent = text.match(/```(?:json)?\s*({[\s\S]*?})\s*```/)?.[1] || text;
+    
+    console.log('Extracted JSON Content:', jsonContent);
+    console.log('----------------------------------------');
     
     // Clean any non-JSON text before or after the main object
     jsonContent = jsonContent.replace(/^[\s\S]*?({[\s\S]*})[\s\S]*$/, '$1');
