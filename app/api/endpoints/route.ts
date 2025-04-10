@@ -204,7 +204,8 @@ export async function PUT(req: Request) {
       rate_limit_requests,
       rate_limit_period,
       webhook_url,
-      webhook_events
+      webhook_events,
+      api_key
     } = body;
 
     // Build the SQL update statement dynamically
@@ -270,6 +271,11 @@ export async function PUT(req: Request) {
     if (webhook_events !== undefined) {
       sql += ', webhook_events = ?';
       args.push(JSON.stringify(webhook_events));
+    }
+
+    if (api_key !== undefined) {
+      sql += ', api_key = ?';
+      args.push(api_key);
     }
 
     // Finish the SQL statement

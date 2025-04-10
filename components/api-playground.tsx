@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { nanoid } from "nanoid";
 
 interface APIEndpoint {
   id: string;
@@ -46,22 +47,29 @@ interface APIEndpoint {
   path: string;
   method: 'POST' | 'GET';
   status: 'active' | 'inactive';
-  lastUsed?: string;
-  requests: number;
-  createdAt: string;
+  template_id: string | null;
+  template_name?: string;
   api_key: string;
-  settings: {
-    auth: boolean;
-    rateLimit?: {
-      requests: number;
-      period: 'second' | 'minute' | 'hour' | 'day';
-    };
-    webhook?: {
-      url: string;
-      events: string[];
-    };
-    envVariables: { key: string; value: string; isSecret: boolean }[];
-  };
+  auth_enabled: boolean;
+  rate_limit_enabled: boolean;
+  rate_limit_requests: number;
+  rate_limit_period: 'second' | 'minute' | 'hour' | 'day';
+  webhook_url: string | null;
+  webhook_events: string | null;
+  created_at: string;
+  updated_at: string;
+  last_used?: string;
+  requests: number;
+}
+
+interface UsageStats {
+  total_requests: number;
+  avg_response_time: number;
+  max_response_time: number;
+  min_response_time: number;
+  successful_requests: number;
+  failed_requests: number;
+  daily_usage: { date: string; count: number }[];
 }
 
 interface Template {
@@ -75,7 +83,6 @@ interface Template {
 
 export function APIPlayground() {
   const [endpoints, setEndpoints] = useState<APIEndpoint[]>([]);
-  const [isLoadingEndpoints, setIsLoadingEndpoints] = useState(true);
   const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -87,365 +94,109 @@ export function APIPlayground() {
   const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newApiName, setNewApiName] = useState("");
-  const [currentApiKey, setCurrentApiKey] = useState<string | null>(null);
-  const [endpointUsage, setEndpointUsage] = useState<any>(null);
-  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
+  const [usageTimeframe, setUsageTimeframe] = useState<'24hours' | '7days' | '30days'>('7days');
+  const [showCreateApiDialog, setShowCreateApiDialog] = useState(false);
+  const [selectedTemplateForNewApi, setSelectedTemplateForNewApi] = useState<string>("");
 
-  // Fetch endpoints when component mounts
-  useEffect(() => {
-    fetchEndpoints();
-  }, []);
-
-  // Fetch templates when component mounts
-  useEffect(() => {
-    const fetchTemplates = async () => {
-      setIsLoadingTemplates(true);
-      try {
-        const response = await fetch('/api/templates');
-        if (!response.ok) {
-          throw new Error('Failed to fetch templates');
-        }
-        const data = await response.json();
-        setTemplates(data);
-        if (data.length > 0) {
-          setSelectedTemplate(data[0]);
-        }
-      } catch (error) {
-        console.error('Error fetching templates:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load templates. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingTemplates(false);
-      }
-    };
-
-    fetchTemplates();
-  }, []);
-
-  // Fetch usage data when an endpoint is selected
-  useEffect(() => {
-    if (selectedEndpoint) {
-      fetchEndpointUsage(selectedEndpoint);
-    }
-  }, [selectedEndpoint]);
-
-  // Initialize new API name when endpoint changes
-  useEffect(() => {
-    if (selectedEndpoint) {
-      const endpoint = endpoints.find(ep => ep.id === selectedEndpoint);
-      if (endpoint) {
-        setNewApiName(endpoint.name);
-        setCurrentApiKey(endpoint.api_key);
-      }
-    }
-  }, [selectedEndpoint, endpoints]);
-
-  // Fetch endpoints from API
+  // Fetch endpoints
   const fetchEndpoints = async () => {
-    setIsLoadingEndpoints(true);
     try {
       const response = await fetch('/api/endpoints');
-      if (!response.ok) {
-        throw new Error('Failed to fetch endpoints');
-      }
+      if (!response.ok) throw new Error('Failed to fetch endpoints');
       const data = await response.json();
-      
-      // Transform API data to match our interface
-      const transformedEndpoints: APIEndpoint[] = data.map((endpoint: any) => ({
-        id: endpoint.id,
-        name: endpoint.name,
-        path: endpoint.path,
-        method: endpoint.method,
-        status: endpoint.status,
-        lastUsed: endpoint.last_used,
-        requests: 0, // Will be populated from usage data
-        createdAt: endpoint.created_at,
-        api_key: endpoint.api_key,
-        settings: {
-          auth: endpoint.auth_enabled,
-          rateLimit: {
-            requests: endpoint.rate_limit_requests,
-            period: endpoint.rate_limit_period
-          },
-          webhook: {
-            url: endpoint.webhook_url,
-            events: endpoint.webhook_events ? JSON.parse(endpoint.webhook_events) : []
-          },
-          envVariables: [
-            { key: "API_KEY", value: endpoint.api_key, isSecret: true }
-          ]
-        }
-      }));
-      
-      setEndpoints(transformedEndpoints);
-      
-      // Select the first endpoint if none is selected
-      if (transformedEndpoints.length > 0 && !selectedEndpoint) {
-        setSelectedEndpoint(transformedEndpoints[0].id);
-        setCurrentApiKey(transformedEndpoints[0].api_key);
+      setEndpoints(data);
+      if (data.length > 0 && !selectedEndpoint) {
+        setSelectedEndpoint(data[0].id);
       }
     } catch (error) {
       console.error('Error fetching endpoints:', error);
       toast({
         title: "Error",
-        description: "Failed to load API endpoints. Please try again.",
+        description: "Failed to load endpoints. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoadingEndpoints(false);
+      setIsLoading(false);
     }
   };
 
-  // Fetch usage data for a specific endpoint
-  const fetchEndpointUsage = async (endpointId: string) => {
-    setIsLoadingUsage(true);
+  // Fetch templates
+  const fetchTemplates = async () => {
+    setIsLoadingTemplates(true);
     try {
-      const response = await fetch(`/api/endpoints_usage?endpointId=${endpointId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch endpoint usage');
-      }
+      const response = await fetch('/api/templates');
+      if (!response.ok) throw new Error('Failed to fetch templates');
       const data = await response.json();
-      
-      setEndpointUsage(data);
-      
-      // Update the requests count in the endpoints list
-      setEndpoints(prevEndpoints => {
-        return prevEndpoints.map(ep => {
-          if (ep.id === endpointId) {
-            return {
-              ...ep,
-              requests: data.summary ? data.summary.total_requests : 0
-            };
-          }
-          return ep;
-        });
-      });
+      setTemplates(data);
     } catch (error) {
-      console.error('Error fetching endpoint usage:', error);
+      console.error('Error fetching templates:', error);
       toast({
         title: "Error",
-        description: "Failed to load API usage data. Please try again.",
+        description: "Failed to load templates. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoadingUsage(false);
+      setIsLoadingTemplates(false);
     }
   };
 
-  // Create a new endpoint
-  const createEndpoint = async (endpointData: any) => {
+  // Fetch usage statistics
+  const fetchUsageStats = async (endpointId: string) => {
     try {
-      const response = await fetch('/api/endpoints', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(endpointData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create endpoint');
+      let startDate = new Date();
+      switch (usageTimeframe) {
+        case '24hours':
+          startDate.setHours(startDate.getHours() - 24);
+          break;
+        case '7days':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case '30days':
+          startDate.setDate(startDate.getDate() - 30);
+          break;
       }
-      
-      const newEndpoint = await response.json();
-      
-      // Refetch endpoints or add to current state
-      fetchEndpoints();
-      
-      toast({
-        title: "Success",
-        description: "API endpoint created successfully.",
-      });
-      
-      return newEndpoint;
+
+      const response = await fetch(`/api/endpoints_usage?endpointId=${endpointId}&startDate=${startDate.toISOString()}`);
+      if (!response.ok) throw new Error('Failed to fetch usage stats');
+      const data = await response.json();
+      setUsageStats(data.summary);
     } catch (error) {
-      console.error('Error creating endpoint:', error);
+      console.error('Error fetching usage stats:', error);
       toast({
         title: "Error",
-        description: "Failed to create API endpoint. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  // Update an existing endpoint
-  const updateEndpoint = async (endpointId: string, updateData: any) => {
-    try {
-      const response = await fetch(`/api/endpoints?id=${endpointId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update endpoint');
-      }
-      
-      const updatedEndpoint = await response.json();
-      
-      // Update in the local state
-      setEndpoints(prevEndpoints => {
-        return prevEndpoints.map(ep => {
-          if (ep.id === endpointId) {
-            // Map the API response to our interface structure
-            return {
-              ...ep,
-              ...updatedEndpoint,
-              settings: {
-                auth: updatedEndpoint.auth_enabled,
-                rateLimit: {
-                  requests: updatedEndpoint.rate_limit_requests,
-                  period: updatedEndpoint.rate_limit_period
-                },
-                webhook: {
-                  url: updatedEndpoint.webhook_url,
-                  events: updatedEndpoint.webhook_events ? JSON.parse(updatedEndpoint.webhook_events) : []
-                },
-                envVariables: ep.settings.envVariables
-              }
-            };
-          }
-          return ep;
-        });
-      });
-      
-      toast({
-        title: "Success",
-        description: "API endpoint updated successfully.",
-      });
-      
-      return updatedEndpoint;
-    } catch (error) {
-      console.error('Error updating endpoint:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update API endpoint. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  // Delete an endpoint
-  const deleteEndpoint = async (endpointId: string) => {
-    try {
-      const response = await fetch(`/api/endpoints?id=${endpointId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete endpoint');
-      }
-      
-      // Remove from local state
-      setEndpoints(prevEndpoints => prevEndpoints.filter(ep => ep.id !== endpointId));
-      
-      // If the deleted endpoint was selected, select another one
-      if (selectedEndpoint === endpointId) {
-        const remainingEndpoints = endpoints.filter(ep => ep.id !== endpointId);
-        setSelectedEndpoint(remainingEndpoints.length > 0 ? remainingEndpoints[0].id : null);
-      }
-      
-      toast({
-        title: "Success",
-        description: "API endpoint deleted successfully.",
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Error deleting endpoint:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete API endpoint. Please try again.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  // Regenerate API key
-  const handleRegenerateKey = async () => {
-    if (!selectedEndpoint) return;
-    
-    try {
-      // Our API doesn't have a specific endpoint for regenerating keys,
-      // so we'll create a random key here and update the endpoint
-      const newKey = `docm_${Array(32).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-      
-      const result = await updateEndpoint(selectedEndpoint, {
-        api_key: newKey
-      });
-      
-      if (result) {
-        setCurrentApiKey(newKey);
-        setShowApiKey(true);
-        setShowRegenerateDialog(false);
-        
-        toast({
-          title: "API Key Regenerated",
-          description: "Your new API key has been generated. Make sure to update your applications.",
-        });
-      }
-    } catch (error) {
-      console.error('Error regenerating API key:', error);
-      toast({
-        title: "Error",
-        description: "Failed to regenerate API key. Please try again.",
+        description: "Failed to load usage statistics. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  // Handle editing the API name
-  const handleEditName = async () => {
-    if (!selectedEndpoint || !newApiName.trim()) {
-      toast({
-        title: "Invalid name",
-        description: "API name cannot be empty",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const result = await updateEndpoint(selectedEndpoint, {
-      name: newApiName.trim()
-    });
-    
-    if (result) {
-      setShowEditNameDialog(false);
-    }
-  };
+  // Initial data fetch
+  useEffect(() => {
+    fetchEndpoints();
+    fetchTemplates();
+  }, []);
 
-  // Handle deleting the API
-  const handleDeleteApi = async () => {
-    if (!selectedEndpoint) return;
-    
-    const success = await deleteEndpoint(selectedEndpoint);
-    
-    if (success) {
-      setShowDeleteDialog(false);
+  // Fetch usage stats when endpoint or timeframe changes
+  useEffect(() => {
+    if (selectedEndpoint) {
+      fetchUsageStats(selectedEndpoint);
     }
-  };
+  }, [selectedEndpoint, usageTimeframe]);
 
   const handleSelectEndpoint = (endpointId: string) => {
     setSelectedEndpoint(endpointId);
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'Never used';
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+      });
   };
 
   const fullFormatDate = (dateString: string) => {
@@ -520,6 +271,185 @@ export function APIPlayground() {
     }
   };
 
+  const handleRegenerateKey = async () => {
+    if (!selectedEndpoint) return;
+
+    try {
+      const newApiKey = `docm_${Array(32).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      
+      const response = await fetch(`/api/endpoints?id=${selectedEndpoint}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          api_key: newApiKey
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to regenerate API key');
+      
+      await fetchEndpoints(); // Refresh the endpoints list
+      setShowRegenerateDialog(false);
+      setShowApiKey(true);
+      
+      toast({
+        title: "API Key Regenerated",
+        description: "Your new API key has been generated. Make sure to update your applications.",
+      });
+    } catch (error) {
+      console.error('Error regenerating API key:', error);
+      toast({
+        title: "Error",
+        description: "Failed to regenerate API key. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShowEditNameDialog = () => {
+    setNewApiName(getSelectedEndpoint()?.name || "");
+    setShowEditNameDialog(true);
+  };
+
+  const handleEditName = async () => {
+    if (!selectedEndpoint || !newApiName.trim()) {
+      toast({
+        title: "Invalid name",
+        description: "API name cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await handleUpdateEndpointSettings({ name: newApiName.trim() });
+      setShowEditNameDialog(false);
+      setNewApiName("");
+    } catch (error) {
+      console.error('Error updating API name:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update API name. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteApi = async () => {
+    if (!selectedEndpoint) return;
+
+    try {
+      const response = await fetch(`/api/endpoints?id=${selectedEndpoint}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete API');
+      
+      setShowDeleteDialog(false);
+      setSelectedEndpoint(null);
+      await fetchEndpoints(); // Refresh the endpoints list
+      
+      toast({
+        title: "API deleted",
+        description: "The API has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting API:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete API. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateEndpointSettings = async (settings: Partial<APIEndpoint>) => {
+    if (!selectedEndpoint) return;
+
+    try {
+      const response = await fetch(`/api/endpoints?id=${selectedEndpoint}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) throw new Error('Failed to update API settings');
+      
+      await fetchEndpoints(); // Refresh the endpoints list
+      
+      toast({
+        title: "Settings updated",
+        description: "API settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating API settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update API settings. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateApi = async () => {
+    if (!newApiName.trim() || !selectedTemplateForNewApi) {
+      toast({
+        title: "Missing required fields",
+        description: "Please enter an API name and select a template",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Generate a unique ID for the API
+      const apiId = nanoid();
+      
+      const response = await fetch('/api/endpoints', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: apiId,
+          name: newApiName.trim(),
+          path: `/api/analyze/public/${apiId}`,
+          method: "GET",
+          status: "active",
+          template_id: selectedTemplateForNewApi,
+          auth_enabled: true,
+          rate_limit_enabled: true,
+          rate_limit_requests: 100,
+          rate_limit_period: "minute"
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create API');
+      
+      const newEndpoint = await response.json();
+      await fetchEndpoints(); // Refresh the endpoints list
+      setShowCreateApiDialog(false);
+      setNewApiName("");
+      setSelectedTemplateForNewApi("");
+      setSelectedEndpoint(newEndpoint.id);
+      
+      toast({
+        title: "API created",
+        description: "Your new API has been created successfully.",
+      });
+    } catch (error) {
+      console.error('Error creating API:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create API. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-3rem)] flex flex-col">
       <div className="grid h-full grid-cols-[350px_1fr] gap-6">
@@ -527,96 +457,87 @@ export function APIPlayground() {
         <Card className="flex flex-col overflow-hidden">
           <CardHeader className="p-4 border-b">
             <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search APIs..."
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search APIs..."
                 className="pl-9 h-9"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </CardHeader>
           
           {/* API List */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-2 space-y-2">
-              {isLoadingEndpoints ? (
+              {isLoading ? (
                 <div className="flex items-center justify-center p-4">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                  <span className="ml-2">Loading APIs...</span>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                 </div>
-              ) : endpoints.length > 0 ? (
-                endpoints
-                  .filter(endpoint => 
-                    endpoint.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    endpoint.path.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((endpoint) => (
-                    <Card 
-                      key={endpoint.id}
-                      className={cn(
-                        "cursor-pointer hover:bg-muted/50 transition-all overflow-hidden border-l-4",
-                        selectedEndpoint === endpoint.id ? "bg-muted/50 border-l-primary" : "border-l-1"
-                      )}
-                      onClick={() => handleSelectEndpoint(endpoint.id)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className={cn(
-                              "p-1.5 rounded-md",
-                              endpoint.method === 'GET' ? "bg-blue-100 text-blue-600" : "bg-purple-100 text-purple-600"
-                            )}>
-                              {endpoint.method === 'GET' ? (
-                                <Server className="h-3.5 w-3.5" />
-                              ) : (
-                                <Webhook className="h-3.5 w-3.5" />
-                              )}
+              ) : (
+                <>
+                  {endpoints
+                    .filter(endpoint => 
+                      endpoint.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      endpoint.path.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((endpoint) => (
+                      <Card 
+                        key={endpoint.id}
+                        className={cn(
+                          "cursor-pointer hover:bg-muted/50 transition-all overflow-hidden border-l-4",
+                          selectedEndpoint === endpoint.id ? "bg-muted/50 border-l-primary" : "border-l-1"
+                        )}
+                        onClick={() => setSelectedEndpoint(endpoint.id)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "p-1.5 rounded-md",
+                                endpoint.method === 'GET' ? "bg-blue-100 text-blue-600" : "bg-purple-100 text-purple-600"
+                              )}>
+                                {endpoint.method === 'GET' ? (
+                                  <Server className="h-3.5 w-3.5" />
+                                ) : (
+                                  <Webhook className="h-3.5 w-3.5" />
+                                )}
+                              </div>
+                              <span className="font-medium truncate">{endpoint.name}</span>
                             </div>
-                            <span className="font-medium truncate">{endpoint.name}</span>
-                          </div>
                             <Badge 
                               variant={endpoint.status === 'active' ? 'default' : 'secondary'}
                               className={cn(
-                              "text-xs",
-                              endpoint.status === 'active' ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                                "text-xs",
+                                endpoint.status === 'active' ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-700 hover:bg-gray-100"
                               )}
                             >
                               {endpoint.status}
                             </Badge>
-                            </div>
-                        <div className="text-xs text-muted-foreground font-mono truncate">
-                          {endpoint.path}
-                        </div>
-                        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                          <span>{endpoint.requests?.toLocaleString() || '0'} requests</span>
-                          <span>{endpoint.lastUsed ? formatDate(endpoint.lastUsed) : 'Never used'}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-              ) : (
-                <div className="text-center p-4 text-muted-foreground">
-                  <p>No API endpoints found</p>
-                </div>
-              )}
+                          </div>
+                          <div className="text-xs text-muted-foreground font-mono truncate">
+                            {endpoint.path}
+                          </div>
+                          <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                            <span>{usageStats?.total_requests || 0} requests</span>
+                            <span>{endpoint.last_used ? formatDate(endpoint.last_used) : 'Never used'}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
 
-              {/* Add New API Card */}
-              <Card 
-                className="cursor-pointer hover:bg-muted/50 transition-all border-dashed flex items-center justify-center p-3"
-                onClick={() => {
-                  // Will implement this in a future update
-                  toast({
-                    title: "Coming soon",
-                    description: "This feature is under development"
-                  });
-                }}
-              >
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <PlusCircle className="h-4 w-4" />
-                  <span>Add New API</span>
-                </div>
-              </Card>
+                  {/* Add New API Card */}
+                  <Card 
+                    className="cursor-pointer hover:bg-muted/50 transition-all border-dashed flex items-center justify-center p-3"
+                    onClick={() => setShowCreateApiDialog(true)}
+                  >
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <PlusCircle className="h-4 w-4" />
+                      <span>Add New API</span>
+                    </div>
+                  </Card>
+                </>
+              )}
             </div>
           </div>
         </Card>
@@ -679,12 +600,12 @@ export function APIPlayground() {
                                 size="sm"
                                 onClick={() => setShowRegenerateDialog(true)}
                               >
-                                <RefreshCcw className="h-4 w-4 mr-2" /> Regenerate
+                                <RefreshCcw className="h-4 w-4" /> Regenerate
                               </Button>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
                               <code className="text-sm flex-1 text-muted-foreground font-mono">
-                                {showApiKey ? currentApiKey : currentApiKey ? currentApiKey.replace(/./g, "•") : "•••••••••••••••••••••••••••••••••"}
+                                {showApiKey ? getSelectedEndpoint()?.api_key : "docm_••••••••••••••••••••••••••••••••"}
                               </code>
                               <Button 
                                 variant="ghost" 
@@ -692,8 +613,8 @@ export function APIPlayground() {
                                 className="h-8 w-8"
                                 onClick={() => {
                                   if (showApiKey) {
-                                    if (currentApiKey) {
-                                      handleCopy(currentApiKey, "API key copied to clipboard");
+                                    if (getSelectedEndpoint()?.api_key) {
+                                      handleCopy(getSelectedEndpoint()?.api_key || "", "API key copied to clipboard");
                                     }
                                   } else {
                                     setShowApiKey(true);
@@ -715,14 +636,14 @@ export function APIPlayground() {
           </div>
                               <div className="flex items-center gap-2 p-2 mt-1 bg-muted rounded-md">
                                 <code className="text-sm flex-1 text-muted-foreground font-mono">
-                                  https://api.docmate.io{getSelectedEndpoint()?.path}
+                                  https://docmate-alpha.vercel.app{getSelectedEndpoint()?.path}
                                 </code>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   className="h-8 w-8"
                                   onClick={() => {
-                                    const url = `https://api.docmate.io${getSelectedEndpoint()?.path}`;
+                                    const url = `https://docmate-alpha.vercel.app${getSelectedEndpoint()?.path}`;
                                     handleCopy(url, "API URL copied to clipboard");
                                   }}
                                 >
@@ -751,18 +672,14 @@ export function APIPlayground() {
                               ) : (
                                 <>
                                   <Select 
-                                    value={selectedTemplate?.id} 
+                                    value={getSelectedEndpoint()?.template_id || templates[0]?.id} 
                                     onValueChange={async (value) => {
                                       const template = templates.find(t => t.id === value);
                                       if (template) {
                                         setSelectedTemplate(template);
-                                        
-                                        // Update the endpoint's template_id if an endpoint is selected
-                                        if (selectedEndpoint) {
-                                          await updateEndpoint(selectedEndpoint, {
-                                            template_id: value
-                                          });
-                                        }
+                                        await handleUpdateEndpointSettings({
+                                          template_id: value
+                                        });
                                       }
                                     }}
                                   >
@@ -772,18 +689,16 @@ export function APIPlayground() {
                                     <SelectContent>
                                       {templates.map((template) => (
                                         <SelectItem key={template.id} value={template.id}>
-                                          <div className="flex items-center justify-between w-full">
-                                            <span>{template.name}</span>
-                                          </div>
+                                          {template.name}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  <p className="text-sm text-muted-foreground mt-2">
-                                    {templates.length === 0 
-                                      ? "No templates available. Create a template to get started."
-                                      : "The selected template defines the structure of requests and responses for this API."}
-                                  </p>
+                                  {templates.length === 0 && (
+                                    <p className="text-sm text-destructive mt-2">
+                                      You must create a template before creating an API endpoint
+                                    </p>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -877,72 +792,57 @@ export function APIPlayground() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <Card>
                             <CardContent className="p-4">
-                              {isLoadingUsage ? (
-                                <div className="flex items-center justify-center py-4">
-                                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                  <span className="ml-2 text-sm">Loading usage...</span>
-                                </div>
-                              ) : endpointUsage?.summary ? (
-                                <>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="text-sm font-medium">Current Usage</div>
-                                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                                      {endpointUsage.pagination?.total || 0} requests
-                                    </Badge>
-                                  </div>
-                                  <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Successful:</span>
-                                      <span className="font-medium">{endpointUsage.summary.successful_requests || 0}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Failed:</span>
-                                      <span className="font-medium">{endpointUsage.summary.failed_requests || 0}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Avg response time:</span>
-                                      <span className="font-medium">{Math.round(endpointUsage.summary.avg_response_time || 0)}ms</span>
-                                    </div>
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="text-center py-2 text-muted-foreground">
-                                  <p>No usage data available</p>
-                                </div>
-                              )}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm font-medium">Current Period Usage</div>
+                                <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                                  {usageStats?.total_requests || 0}/{getSelectedEndpoint()?.rate_limit_requests || 100}
+                                </Badge>
+                              </div>
+                              <div className="w-full bg-muted rounded-full h-2 mb-1">
+                                <div 
+                                  className="bg-blue-500 h-2 rounded-full" 
+                                  style={{ 
+                                    width: `${Math.min(
+                                      ((usageStats?.total_requests || 0) / (getSelectedEndpoint()?.rate_limit_requests || 100)) * 100,
+                                      100
+                                    )}%` 
+                                  }}
+                                ></div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {usageStats?.total_requests || 0} requests in the last {usageTimeframe}
+                              </p>
                             </CardContent>
                           </Card>
                           
                           <Card className="md:col-span-2">
                             <CardContent className="p-4">
                               <div className="space-y-4">
-                                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between">
                                   <div className="space-y-1">
                                     <Label>Rate Limiting</Label>
                                     <p className="text-sm text-muted-foreground">Limit the number of requests in a time period</p>
-                                  </div>
+                </div>
                                   <Switch 
-                                    checked={getSelectedEndpoint()?.settings.rateLimit !== undefined}
-                                    onCheckedChange={async (checked) => {
-                                      if (selectedEndpoint) {
-                                        await updateEndpoint(selectedEndpoint, {
-                                          rate_limit_enabled: checked
-                                        });
-                                      }
+                                    checked={!!getSelectedEndpoint()?.rate_limit_enabled}
+                                    onCheckedChange={(checked) => {
+                                      handleUpdateEndpointSettings({
+                                        rate_limit_enabled: checked
+                                      });
                                     }}
                                   />
-                                </div>
+                </div>
                                 
-                                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                                   <div>
                                     <Label>Max Requests</Label>
                                     <Input 
                                       type="number" 
-                                      value={getSelectedEndpoint()?.settings.rateLimit?.requests || 100}
-                                      onChange={async (e) => {
+                                      defaultValue={getSelectedEndpoint()?.rate_limit_requests || 100}
+                                      onBlur={(e) => {
                                         const value = parseInt(e.target.value);
-                                        if (selectedEndpoint && !isNaN(value)) {
-                                          await updateEndpoint(selectedEndpoint, {
+                                        if (!isNaN(value) && value > 0) {
+                                          handleUpdateEndpointSettings({
                                             rate_limit_requests: value
                                           });
                                         }
@@ -953,27 +853,25 @@ export function APIPlayground() {
                                   <div>
                                     <Label>Time Period</Label>
                                     <Select 
-                                      value={getSelectedEndpoint()?.settings.rateLimit?.period || "minute"}
-                                      onValueChange={async (value) => {
-                                        if (selectedEndpoint) {
-                                          await updateEndpoint(selectedEndpoint, {
-                                            rate_limit_period: value
-                                          });
-                                        }
+                                      value={getSelectedEndpoint()?.rate_limit_period || "minute"}
+                                      onValueChange={(value: 'second' | 'minute' | 'hour' | 'day') => {
+                                        handleUpdateEndpointSettings({
+                                          rate_limit_period: value
+                                        });
                                       }}
                                     >
                                       <SelectTrigger className="mt-1">
                                         <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="second">Per Second</SelectItem>
-                                        <SelectItem value="minute">Per Minute</SelectItem>
-                                        <SelectItem value="hour">Per Hour</SelectItem>
-                                        <SelectItem value="day">Per Day</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="second">Per Second</SelectItem>
+                      <SelectItem value="minute">Per Minute</SelectItem>
+                      <SelectItem value="hour">Per Hour</SelectItem>
+                      <SelectItem value="day">Per Day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
                               </div>
                             </CardContent>
                           </Card>
@@ -985,11 +883,14 @@ export function APIPlayground() {
                         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                           <BarChart3 className="h-5 w-5" /> Usage Analytics
                         </h2>
-                        <Card>
+                  <Card>
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-6">
                               <div className="text-sm font-medium">Request Volume</div>
-                              <Select defaultValue="7days">
+                              <Select 
+                                value={usageTimeframe}
+                                onValueChange={(value: "24hours" | "7days" | "30days") => setUsageTimeframe(value)}
+                              >
                                 <SelectTrigger className="h-8 w-[120px]">
                                   <SelectValue />
                                 </SelectTrigger>
@@ -1001,77 +902,86 @@ export function APIPlayground() {
                               </Select>
                             </div>
                             
-                            {isLoadingUsage ? (
-                              <div className="w-full h-[180px] flex items-center justify-center">
-                                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="ml-2">Loading analytics...</span>
+                            {/* Simple chart placeholder */}
+                            <div className="w-full h-[180px] relative">
+                              <div className="absolute inset-0 flex items-end justify-between px-2">
+                                {Array.from({ length: 7 }).map((_, i) => {
+                                  const date = new Date();
+                                  date.setDate(date.getDate() - (6 - i));
+                                  const dateStr = date.toISOString().split('T')[0];
+                                  
+                                  // Find usage data for this date
+                                  const dayUsage = usageStats?.daily_usage?.find(
+                                    (day: any) => day.date === dateStr
+                                  ) || { count: 0 };
+                                  
+                                  // Calculate max height based on the highest usage
+                                  const maxUsage = Math.max(
+                                    ...(usageStats?.daily_usage?.map((d: any) => d.count) || [0])
+                                  );
+                                  
+                                  const height = maxUsage > 0 
+                                    ? (dayUsage.count / maxUsage) * 100 
+                                    : 0;
+                                  
+                                  return (
+                                    <div 
+                                      key={i} 
+                                      className="w-8 bg-primary/80 rounded-t" 
+                                      style={{ 
+                                        height: `${height}%`,
+                                        opacity: i === 6 ? 1 : 0.7 - (6-i)*0.1
+                                      }}
+                                    ></div>
+                                  );
+                                })}
                               </div>
-                            ) : endpointUsage?.data && endpointUsage.data.length > 0 ? (
-                              <>
-                                {/* Simple chart visualization */}
-                                <div className="w-full h-[180px] relative">
-                                  <div className="absolute inset-0 flex items-end justify-between px-2">
-                                    {/* Group usage data by day and create bars */}
-                                    {Array.from({ length: 7 }).map((_, i) => {
-                                      // In a real implementation, we would aggregate the data by day here
-                                      // For now, we'll show a simplified visualization
-                                      const height = endpointUsage.data.length > i ? 
-                                        30 + (endpointUsage.data.length - i) * 10 : 
-                                        20 + Math.random() * 30;
-                                      
-                                      return (
-                                        <div key={i} 
-                                          className="w-8 bg-primary/80 rounded-t" 
-                                          style={{ 
-                                            height: `${Math.min(height, 100)}%`,
-                                            opacity: i === 6 ? 1 : 0.7 - (6-i)*0.1
-                                          }}
-                                        ></div>
-                                      );
-                                    })}
+                              <div className="absolute bottom-0 left-0 right-0 h-px bg-muted"></div>
+                            </div>
+                            
+                            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                              {Array.from({ length: 7 }).map((_, i) => {
+                                const date = new Date();
+                                date.setDate(date.getDate() - (6 - i));
+                                return (
+                                  <div key={i}>
+                                    {date.toLocaleDateString('en-US', { weekday: 'short' })}
                                   </div>
-                                  <div className="absolute bottom-0 left-0 right-0 h-px bg-muted"></div>
-                                </div>
-                                
-                                <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                                  {Array.from({ length: 7 }).map((_, i) => {
-                                    const date = new Date();
-                                    date.setDate(date.getDate() - (6 - i));
-                                    return (
-                                      <div key={i}>
-                                        {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                
-                                <div className="mt-6 grid grid-cols-2 gap-4">
-                                  <div>
-                                    <div className="text-sm text-muted-foreground">Total Requests</div>
-                                    <div className="text-2xl font-bold">{endpointUsage.summary?.total_requests || 0}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-sm text-muted-foreground">Average Response Time</div>
-                                    <div className="text-2xl font-bold">
-                                      {Math.round(endpointUsage.summary?.avg_response_time || 0)}ms
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <div className="w-full h-[180px] flex items-center justify-center text-muted-foreground">
-                                <div className="text-center">
-                                  <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                                  <p>No usage data available</p>
-                                  <p className="text-xs mt-1">API analytics will appear here once your endpoint receives traffic</p>
+                                );
+                              })}
+                            </div>
+                            
+                            <div className="mt-6 grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-sm text-muted-foreground">Total Requests</div>
+                                <div className="text-2xl font-bold">{usageStats?.total_requests?.toLocaleString() || '0'}</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-muted-foreground">Average Response Time</div>
+                                <div className="text-2xl font-bold">
+                                  {usageStats?.avg_response_time ? `${Math.round(usageStats.avg_response_time)}ms` : '0ms'}
                                 </div>
                               </div>
-                            )}
-                          </CardContent>
-                        </Card>
+                            </div>
+                            <div className="mt-4 grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-sm text-muted-foreground">Successful Requests</div>
+                                <div className="text-2xl font-bold text-green-600">
+                                  {usageStats?.successful_requests?.toLocaleString() || '0'}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-muted-foreground">Failed Requests</div>
+                                <div className="text-2xl font-bold text-red-600">
+                                  {usageStats?.failed_requests?.toLocaleString() || '0'}
+                                </div>
+                              </div>
+                            </div>
+                    </CardContent>
+                  </Card>
                       </section>
 
-                      {/* Danger Zone */}
+                      {/* Advanced Settings - replaced with Danger Zone */}
                       <section>
                         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                           <AlertCircle className="h-5 w-5 text-destructive" /> Danger Zone
@@ -1087,16 +997,7 @@ export function APIPlayground() {
                               </div>
                               <Button 
                                 variant="outline" 
-                                onClick={() => {
-                                  // Set the current name before showing the dialog
-                                  if (selectedEndpoint) {
-                                    const endpoint = endpoints.find(ep => ep.id === selectedEndpoint);
-                                    if (endpoint) {
-                                      setNewApiName(endpoint.name);
-                                      setShowEditNameDialog(true);
-                                    }
-                                  }
-                                }}
+                                onClick={handleShowEditNameDialog}
                               >
                                 Edit Name
                               </Button>
@@ -1127,7 +1028,7 @@ export function APIPlayground() {
                 <div className="text-center text-muted-foreground">
                   <AlertCircle className="mx-auto h-10 w-10 mb-4" />
                   <p>Select an API to view details</p>
-                    </div>
+                </div>
               </div>
             )}
           </AnimatePresence>
@@ -1177,7 +1078,10 @@ export function APIPlayground() {
       </AlertDialog>
 
       {/* Edit API Name Dialog */}
-      <AlertDialog open={showEditNameDialog} onOpenChange={setShowEditNameDialog}>
+      <AlertDialog open={showEditNameDialog} onOpenChange={(open) => {
+        if (!open) setNewApiName("");
+        setShowEditNameDialog(open);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Edit API Name</AlertDialogTitle>
@@ -1196,11 +1100,8 @@ export function APIPlayground() {
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleEditName}
-              disabled={!newApiName.trim()}
-            >
+            <AlertDialogCancel onClick={() => setNewApiName("")}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEditName}>
               Save Changes
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1225,6 +1126,54 @@ export function APIPlayground() {
             >
               Delete API
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create API Dialog */}
+      <AlertDialog open={showCreateApiDialog} onOpenChange={setShowCreateApiDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create New API</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter the details for your new API endpoint.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="apiName">API Name</Label>
+              <Input
+                id="apiName"
+                value={newApiName}
+                onChange={(e) => setNewApiName(e.target.value)}
+                placeholder="Enter API name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Template</Label>
+              <Select 
+                value={selectedTemplateForNewApi} 
+                onValueChange={setSelectedTemplateForNewApi}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setNewApiName("");
+              setSelectedTemplateForNewApi("");
+            }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreateApi}>Create API</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -98,6 +98,7 @@ export async function GET(req: Request) {
     // If we're requesting a specific endpoint, get summary stats
     let summary = null;
     if (endpointId) {
+      // Get summary statistics
       const summaryResult = await db.execute({
         sql: `
           SELECT 
@@ -112,8 +113,25 @@ export async function GET(req: Request) {
         args: [...args],
       });
       
+      // Get daily usage data for the chart
+      const dailyUsageResult = await db.execute({
+        sql: `
+          SELECT 
+            DATE(timestamp) as date,
+            COUNT(*) as count
+          ${sqlBase}
+          GROUP BY DATE(timestamp)
+          ORDER BY date DESC
+          LIMIT 7
+        `,
+        args: [...args],
+      });
+      
       if (summaryResult.rows.length > 0) {
-        summary = summaryResult.rows[0];
+        summary = {
+          ...summaryResult.rows[0],
+          daily_usage: dailyUsageResult.rows
+        };
       }
     }
 
