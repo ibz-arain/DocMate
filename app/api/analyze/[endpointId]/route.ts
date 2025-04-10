@@ -110,9 +110,12 @@ async function validateApiKey(apiKey: string, endpointId: string): Promise<{ isV
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { endpointId: string } }) {
+export async function POST(
+  req: NextRequest,
+  context: { params: { endpointId: string } }
+) {
   const startTime = Date.now();
-  const { endpointId } = params;
+  const { endpointId } = context.params;
   
   try {
     // Validate endpoint ID
