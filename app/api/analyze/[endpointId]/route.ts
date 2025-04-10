@@ -172,6 +172,34 @@ export async function POST(req: NextRequest) {
       prompt += '\n';
     });
 
+    // Add example structure to the prompt
+    prompt += `\nStructure the response as follows:
+{
+  "documentType": "${validation.endpointData.template_name}",
+  "content": {
+    ${templateTables.map((table: any) => {
+      if (table.type === 'table') {
+        return `"${table.name}": [
+          {
+            ${table.fields.map((f: { name: string }) => `"${f.name}": "value"`).join(',\n            ')}
+          }
+          // Additional entries for all instances found...
+        ]`;
+      } else {
+        return `"${table.name}": {
+          ${table.fields.map((f: { name: string }) => `"${f.name}": "value"`).join(',\n          ')}
+        }`;
+      }
+    }).join(',\n    ')}
+  }
+}\n\nImportant instructions:
+1. For tables marked as "Repeating Data", extract ALL instances found in the document
+2. For sections marked as "Single Values", extract only ONE instance
+3. Maintain the exact field names as specified
+4. Extract all visible text accurately, do not leave fields empty unless the information is truly not present
+5. For tables, create an entry for each row found in the document
+6. Return the response in valid JSON format within triple backticks\n`;
+
     // Generate response using AI
     const result = await generateText({
       model: google('gemini-2.0-flash'),
@@ -187,14 +215,8 @@ export async function POST(req: NextRequest) {
     // Process and validate the result
     const text = result.text;
     
-    console.log('Original AI Response:', text);
-    console.log('----------------------------------------');
-    
     // First try to find JSON content between backticks if it exists
     let jsonContent = text.match(/```(?:json)?\s*({[\s\S]*?})\s*```/)?.[1] || text;
-    
-    console.log('Extracted JSON Content:', jsonContent);
-    console.log('----------------------------------------');
     
     // Clean any non-JSON text before or after the main object
     jsonContent = jsonContent.replace(/^[\s\S]*?({[\s\S]*})[\s\S]*$/, '$1');
@@ -207,8 +229,13 @@ export async function POST(req: NextRequest) {
       parsedData = JSON.parse(jsonContent);
     } catch (error) {
       console.error('JSON parsing error:', error);
+      console.error('Raw text:', text);
       return NextResponse.json(
-        { success: false, error: 'Failed to parse AI response as valid JSON' },
+        { 
+          success: false, 
+          error: 'Failed to parse AI response as valid JSON',
+          rawResponse: text 
+        },
         { status: 500 }
       );
     }
