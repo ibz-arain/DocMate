@@ -154,26 +154,8 @@ export async function POST(req: NextRequest) {
     };
 
     // Generate the prompt based on the template
-    let prompt = `Analyze this document and extract information in the following format:\n\n`;
-    
-    templateTables.forEach((table: any, index: number) => {
-      prompt += `${table.type === 'table' ? 'Table' : 'Data Section'} ${index + 1}: ${table.name}\n`;
-      if (table.description) {
-        prompt += `Description: ${table.description}\n`;
-      }
-      prompt += `Type: ${table.type === 'table' ? 'Repeating Data (extract all instances)' : 'Single Values (extract one instance)'}\n`;
-      prompt += `Fields to extract:\n`;
-      table.fields.forEach((field: any) => {
-        prompt += `- ${field.name}${field.description ? ` (${field.description})` : ''}\n`;
-        prompt += `  Type: ${field.type}\n`;
-        prompt += `  Required: ${field.required ? 'Yes' : 'No'}\n`;
-        if (field.format) prompt += `  Format: ${field.format}\n`;
-      });
-      prompt += '\n';
-    });
+    let prompt = `Extract data in this exact JSON structure:
 
-    // Add example structure to the prompt
-    prompt += `\nStructure the response as follows:
 {
   "documentType": "${validation.endpointData.template_name}",
   "content": {
@@ -181,24 +163,24 @@ export async function POST(req: NextRequest) {
       if (table.type === 'table') {
         return `"${table.name}": [
           {
-            ${table.fields.map((f: { name: string }) => `"${f.name}": "value"`).join(',\n            ')}
+            ${table.fields.map((f: { name: string }) => `"${f.name}": "<${f.name}>"`).join(',\n            ')}
           }
-          // Additional entries for all instances found...
         ]`;
       } else {
         return `"${table.name}": {
-          ${table.fields.map((f: { name: string }) => `"${f.name}": "value"`).join(',\n          ')}
+          ${table.fields.map((f: { name: string }) => `"${f.name}": "<${f.name}>"`).join(',\n          ')}
         }`;
       }
     }).join(',\n    ')}
   }
-}\n\nImportant instructions:
-1. For tables marked as "Repeating Data", extract ALL instances found in the document
-2. For sections marked as "Single Values", extract only ONE instance
-3. Maintain the exact field names as specified
-4. Extract all visible text accurately, do not leave fields empty unless the information is truly not present
-5. For tables, create an entry for each row found in the document
-6. Return the response in valid JSON format within triple backticks\n`;
+}
+
+Rules:
+- Replace <placeholders> with actual values
+- Keep exact field names
+- For tables, include all rows
+- No newlines in values
+- Empty string for missing data`;
 
     // Generate response using AI
     const result = await generateText({
@@ -221,7 +203,7 @@ export async function POST(req: NextRequest) {
     // Clean any non-JSON text before or after the main object
     jsonContent = jsonContent.replace(/^[\s\S]*?({[\s\S]*})[\s\S]*$/, '$1');
     
-    // Remove any markdown or explanatory text
+    // Remove any markdown or explanatory text and clean newlines in values
     jsonContent = jsonContent.replace(/```json|```/g, '').trim();
     
     let parsedData;
@@ -231,11 +213,7 @@ export async function POST(req: NextRequest) {
       console.error('JSON parsing error:', error);
       console.error('Raw text:', text);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Failed to parse AI response as valid JSON',
-          rawResponse: text 
-        },
+        { error: 'Failed to parse AI response as valid JSON' },
         { status: 500 }
       );
     }
@@ -264,24 +242,6 @@ export async function POST(req: NextRequest) {
       content: DocumentContent;
     }
 
-    // Validate the response matches the template structure
-    const expectedStructure: DocumentStructure = {
-      documentType: validation.endpointData.template_name,
-      content: {}
-    };
-
-    // Initialize the content structure based on template
-    templateTables.forEach((table: Table) => {
-      if (table.type === 'table') {
-        expectedStructure.content[table.name] = [];
-      } else {
-        expectedStructure.content[table.name] = {};
-        table.fields.forEach((field: Field) => {
-          expectedStructure.content[table.name][field.name] = '';
-        });
-      }
-    });
-
     // Clean and validate the parsed data
     const cleanedData: DocumentStructure = {
       documentType: parsedData.documentType || validation.endpointData.template_name,
@@ -300,7 +260,9 @@ export async function POST(req: NextRequest) {
         cleanedData.content[table.name] = cleanedData.content[table.name].map((entry: any) => {
           const cleanEntry: Record<string, string> = {};
           table.fields.forEach((field: Field) => {
-            cleanEntry[field.name] = entry[field.name] || '';
+            // Clean any newlines from the value
+            const value = entry[field.name] || '';
+            cleanEntry[field.name] = value.replace(/\n/g, '');
           });
           return cleanEntry;
         });
@@ -308,8 +270,8 @@ export async function POST(req: NextRequest) {
         // Handle single value sections
         cleanedData.content[table.name] = {};
         table.fields.forEach((field: Field) => {
-          cleanedData.content[table.name][field.name] = 
-            tableData?.[field.name] || '';
+          const value = tableData?.[field.name] || '';
+          cleanedData.content[table.name][field.name] = value.replace(/\n/g, '');
         });
       }
     });
@@ -339,10 +301,8 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    return NextResponse.json({
-      success: true,
-      result: cleanedData
-    });
+    // Return just the cleaned data without wrapping
+    return NextResponse.json(cleanedData);
 
   } catch (error) {
     console.error('API Error:', error);
@@ -371,10 +331,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      },
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }
