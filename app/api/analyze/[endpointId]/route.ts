@@ -1,4 +1,3 @@
-//Clone of the custom route
 import { NextRequest, NextResponse } from 'next/server';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
@@ -113,11 +112,11 @@ async function validateApiKey(apiKey: string, endpointId: string): Promise<{ isV
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
-  let endpointId: string | undefined;
+  const url = new URL(req.url);
+  const endpointId = url.pathname.split('/').pop();
   
   try {
-    // Get endpoint ID from URL path
-    endpointId = req.url.split('/').pop();
+    // Validate endpoint ID
     if (!endpointId) {
       return NextResponse.json({ error: 'Invalid endpoint ID' }, { status: 400 });
     }

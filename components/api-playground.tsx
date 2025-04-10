@@ -416,8 +416,8 @@ export function APIPlayground() {
         body: JSON.stringify({
           id: apiId,
           name: newApiName.trim(),
-          path: `/api/analyze/public/${apiId}`,
-          method: "GET",
+          path: `/api/analyze/${apiId}`,
+          method: "POST",
           status: "active",
           template_id: selectedTemplateForNewApi,
           auth_enabled: true,
@@ -452,7 +452,7 @@ export function APIPlayground() {
 
   return (
     <div className="h-[calc(100vh-3rem)] flex flex-col">
-      <div className="grid h-full grid-cols-[350px_1fr] gap-6">
+      <div className="grid h-full grid-cols-[300px_1fr] gap-6">
         {/* Left Sidebar - API List */}
         <Card className="flex flex-col overflow-hidden">
           <CardHeader className="p-4 border-b">
@@ -479,7 +479,7 @@ export function APIPlayground() {
                   {endpoints
                     .filter(endpoint => 
                       endpoint.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      endpoint.path.toLowerCase().includes(searchQuery.toLowerCase())
+                      endpoint.id.toLowerCase().includes(searchQuery.toLowerCase())
                     )
                     .map((endpoint) => (
                       <Card 
@@ -516,7 +516,7 @@ export function APIPlayground() {
                             </Badge>
                           </div>
                           <div className="text-xs text-muted-foreground font-mono truncate">
-                            {endpoint.path}
+                            {endpoint.id}
                           </div>
                           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                             <span>{usageStats?.total_requests || 0} requests</span>
