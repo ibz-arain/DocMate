@@ -186,8 +186,100 @@ export async function POST(req: NextRequest) {
 
     // Process and validate the result
     const text = result.text;
-    const cleanText = text.replace(/```json|```/g, '').trim();
-    let parsedData = JSON.parse(cleanText);
+    
+    // First try to find JSON content between backticks if it exists
+    let jsonContent = text.match(/```(?:json)?\s*({[\s\S]*?})\s*```/)?.[1] || text;
+    
+    // Clean any non-JSON text before or after the main object
+    jsonContent = jsonContent.replace(/^[\s\S]*?({[\s\S]*})[\s\S]*$/, '$1');
+    
+    // Remove any markdown or explanatory text
+    jsonContent = jsonContent.replace(/```json|```/g, '').trim();
+    
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonContent);
+    } catch (error) {
+      console.error('JSON parsing error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to parse AI response as valid JSON' },
+        { status: 500 }
+      );
+    }
+
+    interface Field {
+      name: string;
+      type: string;
+      description?: string;
+      required?: boolean;
+      format?: string;
+    }
+
+    interface Table {
+      name: string;
+      type: 'table' | 'data';
+      description?: string;
+      fields: Field[];
+    }
+
+    interface DocumentContent {
+      [key: string]: any;
+    }
+
+    interface DocumentStructure {
+      documentType: string;
+      content: DocumentContent;
+    }
+
+    // Validate the response matches the template structure
+    const expectedStructure: DocumentStructure = {
+      documentType: validation.endpointData.template_name,
+      content: {}
+    };
+
+    // Initialize the content structure based on template
+    templateTables.forEach((table: Table) => {
+      if (table.type === 'table') {
+        expectedStructure.content[table.name] = [];
+      } else {
+        expectedStructure.content[table.name] = {};
+        table.fields.forEach((field: Field) => {
+          expectedStructure.content[table.name][field.name] = '';
+        });
+      }
+    });
+
+    // Clean and validate the parsed data
+    const cleanedData: DocumentStructure = {
+      documentType: parsedData.documentType || validation.endpointData.template_name,
+      content: {}
+    };
+
+    // Process each table in the template
+    templateTables.forEach((table: Table) => {
+      const tableData = parsedData.content?.[table.name];
+      
+      if (table.type === 'table') {
+        // Ensure table data is an array
+        cleanedData.content[table.name] = Array.isArray(tableData) ? tableData : [];
+        
+        // Clean each entry in the table
+        cleanedData.content[table.name] = cleanedData.content[table.name].map((entry: any) => {
+          const cleanEntry: Record<string, string> = {};
+          table.fields.forEach((field: Field) => {
+            cleanEntry[field.name] = entry[field.name] || '';
+          });
+          return cleanEntry;
+        });
+      } else {
+        // Handle single value sections
+        cleanedData.content[table.name] = {};
+        table.fields.forEach((field: Field) => {
+          cleanedData.content[table.name][field.name] = 
+            tableData?.[field.name] || '';
+        });
+      }
+    });
 
     // Record API usage
     await db.execute({
@@ -208,7 +300,7 @@ export async function POST(req: NextRequest) {
         200,
         Date.now() - startTime,
         Buffer.from(fileData).length,
-        Buffer.from(JSON.stringify(parsedData)).length,
+        Buffer.from(JSON.stringify(cleanedData)).length,
         req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
         req.headers.get('user-agent') || 'unknown'
       ],
@@ -216,7 +308,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      result: parsedData
+      result: cleanedData
     });
 
   } catch (error) {

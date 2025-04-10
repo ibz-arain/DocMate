@@ -87,6 +87,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { 
+      id,
       name, 
       path, 
       method, 
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
     } = body;
 
     // Validate required fields
-    if (!name || !path || !method) {
+    if (!id || !name || !path || !method) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
         RETURNING *
       `,
       args: [
-        nanoid(),
+        id,
         String(user.userId),
         template_id || null,
         name,

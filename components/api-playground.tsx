@@ -434,7 +434,7 @@ export function APIPlayground() {
       setShowCreateApiDialog(false);
       setNewApiName("");
       setSelectedTemplateForNewApi("");
-      setSelectedEndpoint(newEndpoint.id);
+      setSelectedEndpoint(apiId);
       
       toast({
         title: "API created",
