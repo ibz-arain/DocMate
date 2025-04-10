@@ -42,16 +42,17 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { DocumentType, DocumentState, ProcessingDocType, DocumentStateMap } from "@/types/document";
-import { DocumentUploader } from "@/components/document/document-uploader";
 import { DocumentViewer } from "@/components/document/document-viewer";
 import { DocumentInfo } from "@/components/document/document-info";
 import { HistorySection } from "@/components/document/history-section";
 import { generateMarkdown } from "@/lib/document-utils";
 import { Textarea } from "@/components/ui/textarea";
-import { CustomAPISection } from "@/components/document/custom-api-section";
+import { CustomAPISection } from "@/components/document/templates-editor";
 import { createInitialState, validateFileType, downloadJson, downloadMarkdown, downloadCsv } from "@/components/document/document-utils";
 import { processDocument } from "@/components/document/document-processor";
 import Head from 'next/head';
+import { APIPlayground } from "@/components/api-playground";
+import { DocumentSection } from "@/components/document/document-section";
 
 interface FieldConfig {
   name: string;
@@ -368,7 +369,7 @@ const documentTypeLabels: Record<string, { title: string, description: string }>
 interface SavedDocument {
   id: string;
   title: string;
-  type: DocumentType;
+  type: string;
   date: string;
   confidence: number;
   contentJson: any;
@@ -477,7 +478,7 @@ export default function PlaygroundPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'json' | 'markdown' | 'formatted' | 'analysis'>('json');
-  const [selectedType, setSelectedType] = useState<string>('docmate');
+  const [selectedType, setSelectedType] = useState<string>('document');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('sidebarCollapsed');
@@ -507,13 +508,35 @@ export default function PlaygroundPage() {
       return;
     }
     
-    // If not history, it's either docmate or a template
     setShowHistory(false);
     setSelectedType(templateType);
+    
+    // Reset document state when switching sections
+    if (templateType === 'document') {
+      setDocumentState(createInitialState());
+    }
   };
 
-  const handleNewDocument = () => {
-    setDocumentState(createInitialState());
+  const handleProcessDocument = (customPrompt: string = "", outputFormat: any = {}) => {
+    processDocument(
+      documentState,
+      updateDocumentState,
+      setIsProcessing,
+      setProgress,
+      { customPrompt, outputFormat }
+    );
+  };
+
+  const handleDownloadJson = () => {
+    downloadJson(documentState.selectedDoc, documentState.file?.name || 'document');
+  };
+
+  const handleDownloadMarkdown = () => {
+    downloadMarkdown(documentState.selectedDoc, documentState.file?.name || 'document', generateMarkdown);
+  };
+
+  const handleDownloadCsv = () => {
+    downloadCsv(documentState.selectedDoc, documentState.file?.name || 'document');
   };
 
   const handleSaveDocument = async (documentName?: string) => {
@@ -528,22 +551,16 @@ export default function PlaygroundPage() {
           keywords: documentState.selectedDoc.keywords,
           insights: documentState.selectedDoc.rawJson?.analysis?.insights || [],
           confidenceScore: documentState.selectedDoc.rawJson?.analysis?.confidenceScore || 0,
-          documentType: documentState.selectedDoc.rawJson?.analysis?.documentType || selectedType
+          documentType: documentState.selectedDoc.contentJson.documentType
         }
       };
 
-      // Get template ID from data attribute if available (for custom templates)
-      let documentType = selectedType;
-      if (typeof document !== 'undefined') {
-        // Use template name as document type instead of ID
-        if (document.documentElement.dataset.currentTemplateName) {
-          documentType = document.documentElement.dataset.currentTemplateName;
-          console.log('Using template name as document type:', documentType);
-        }
-      }
+      // Use the document type from the processed content
+      const documentType = documentState.selectedDoc.contentJson.documentType;
+      console.log('Using document type from content:', documentType);
 
       // Use provided document name if available, otherwise use default naming logic
-      const defaultTitle = documentState.file?.name || `${documentState.selectedDoc?.contentJson?.documentType || selectedType || 'Custom'} Document`;
+      const defaultTitle = documentState.file?.name || `${documentType} Document`;
       const title = documentName || defaultTitle;
 
       const documentData = {
@@ -555,10 +572,7 @@ export default function PlaygroundPage() {
         contentJson: contentWithAnalysis
       };
 
-      console.log('Saving document with data:', {
-        title: documentData.title,
-        type: documentData.type,
-      });
+      console.log('Saving document with data:', documentData);
 
       const response = await fetch('/api/documents', {
         method: 'POST',
@@ -591,49 +605,38 @@ export default function PlaygroundPage() {
     }
   };
 
-  const handleProcessDocument = (customPrompt: string, outputFormat: any) => {
-    processDocument(
-      documentState,
-      updateDocumentState,
-      setIsProcessing,
-      setProgress,
-      { customPrompt, outputFormat }
-    );
+  const handleNewDocument = () => {
+    setDocumentState(createInitialState());
   };
 
-  const handleDownloadJson = () => {
-    downloadJson(documentState.selectedDoc, documentState.file?.name || 'document');
-  };
-
-  const handleDownloadMarkdown = () => {
-    downloadMarkdown(documentState.selectedDoc, documentState.file?.name || 'document', generateMarkdown);
-  };
-
-  const handleDownloadCsv = () => {
-    downloadCsv(documentState.selectedDoc, documentState.file?.name || 'document');
-  };
-
-  if (showHistory) {
-    return (
-      <div className="flex h-full overflow-hidden bg-background">
-        <CustomSidebar
-          isCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
-          onSelectTemplate={handleTemplateSelect}
-          selectedType="history"
-        />
-        <HistorySection user={user} />
-      </div>
-    );
-  }
-
-  // Show document processor regardless if docmate is selected or a specific template
-  if (!documentState.isProcessed) {
+  if (selectedType === 'api') {
     return (
       <>
         <Head>
-          <title>Document Lab | DocMate</title>
-          <meta name="description" content="A powerful document processing workspace for extracting and analyzing information from documents" />
+          <title>API Integration | DocMate</title>
+          <meta name="description" content="Create and manage custom API endpoints for document processing" />
+        </Head>
+        <div className="flex h-full overflow-hidden bg-background">
+          <CustomSidebar
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={setIsSidebarCollapsed}
+            onSelectTemplate={handleTemplateSelect}
+            selectedType={selectedType}
+          />
+          <div className="flex-1 overflow-auto p-6">
+            <APIPlayground />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (selectedType === 'template') {
+    return (
+      <>
+        <Head>
+          <title>Template Editor | DocMate</title>
+          <meta name="description" content="Create and manage document processing templates" />
         </Head>
         <div className="flex h-full overflow-hidden bg-background">
           <CustomSidebar
@@ -655,7 +658,7 @@ export default function PlaygroundPage() {
               onProcess={handleProcessDocument}
               isProcessing={isProcessing}
               progress={progress}
-              templateType={selectedType === 'docmate' ? null : selectedType as DocumentType}
+              templateType={selectedType}
             />
           </div>
         </div>
@@ -663,11 +666,61 @@ export default function PlaygroundPage() {
     );
   }
 
+  if (showHistory) {
+    return (
+      <div className="flex h-full overflow-hidden bg-background">
+        <CustomSidebar
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
+          onSelectTemplate={handleTemplateSelect}
+          selectedType="history"
+        />
+        <HistorySection user={user} />
+      </div>
+    );
+  }
+
+  // Document processing section
+  if (selectedType === 'document' && !documentState.isProcessed) {
+    return (
+      <>
+        <Head>
+          <title>Process Document | DocMate</title>
+          <meta name="description" content="Upload and process your documents" />
+        </Head>
+        <div className="flex h-full overflow-hidden bg-background">
+          <CustomSidebar
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={setIsSidebarCollapsed}
+            onSelectTemplate={handleTemplateSelect}
+            selectedType={selectedType}
+          />
+          <div className="flex-1 overflow-auto">
+            <DocumentSection
+              currentState={documentState}
+              onFileChange={(file) => {
+                updateDocumentState({
+                  file,
+                  isProcessed: false,
+                  error: null
+                });
+              }}
+              onProcess={handleProcessDocument}
+              isProcessing={isProcessing}
+              progress={progress}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Document results view
   return (
     <>
       <Head>
-        <title>Document Lab | DocMate</title>
-        <meta name="description" content="A powerful document processing workspace for extracting and analyzing information from documents" />
+        <title>Document Results | DocMate</title>
+        <meta name="description" content="View your processed document results" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar

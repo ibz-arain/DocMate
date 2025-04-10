@@ -3,7 +3,7 @@
 import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Users, Wand2, Sparkles, Star, Zap, ArrowRight, Clock, CheckCircle, ChevronRight, ArrowUpRight, Code } from "lucide-react";
+import { FileText, Users, Wand2, Sparkles, Star, Zap, ArrowRight, Clock, CheckCircle, ChevronRight, ArrowUpRight, Code, Save } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -190,73 +190,7 @@ const TimelineItem = ({
   );
 };
 
-// Future roadmap item component with terminal style
-const FutureItem = ({ 
-  title, 
-  description, 
-  timeline,
-  icon: Icon,
-  index
-}: { 
-  title: string;
-  description: string;
-  timeline: string;
-  icon: any;
-  index: number;
-}) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.4, delay: index * 0.1 }}
-      className="mb-8 last:mb-0"
-    >
-      {/* Terminal-style window */}
-      <div className="overflow-hidden rounded-lg border border-white/30 bg-gradient-to-b from-gray-900 to-black shadow-[0_0_25px_rgba(var(--primary-rgb),0.2)]">
-        {/* Terminal header */}
-        <div className="flex items-center px-4 py-2 border-b border-white/20 bg-black">
-          <div className="flex space-x-2 mr-4">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-          </div>
-          <div className="text-xs font-medium text-white/90 flex-1 flex items-center">
-            <span className="text-primary font-bold">docmate</span>
-            <span className="mx-1 text-white/60">:</span>
-            <span className="text-blue-400">~/roadmap</span>
-            <span className="ml-1 text-white/60">$</span>
-          </div>
-        </div>
-        
-        {/* Terminal content */}
-        <div className="p-5 font-mono text-sm bg-gradient-to-b from-black to-gray-900/80">
-          {/* Simple command */}
-          <div className="flex items-center text-white/90 mb-3">
-            <span className="text-green-400 mr-2">$</span>
-            <span className="text-primary mr-1">view</span>
-            <span className="text-white/90">roadmap</span>
-            <span className="ml-2 animate-pulse text-white/90">▌</span>
-          </div>
-          
-          {/* Feature output - simplified */}
-          <div className="bg-black/30 rounded-md border border-white/10 p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
-                <Icon className="w-4 h-4 text-primary" />
-              </div>
-              <div className="flex-1">
-                <div className="text-white font-bold text-lg">{title}</div>
-                <div className="text-primary text-sm font-medium">{timeline}</div>
-              </div>
-            </div>
-            <p className="text-white/90 text-sm leading-relaxed">{description}</p>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+
 
 export default function ChangelogPage() {
   const { scrollYProgress } = useScroll();
@@ -273,6 +207,16 @@ export default function ChangelogPage() {
   }, [setTheme]);
 
   const releases = [
+    {
+      version: "1.3",
+      date: "April 5, 2025",
+      title: "Store templates",
+      icon: Save,
+      features: [
+        "Store templates for your documents",
+        "Use templates to quickly create new documents",
+      ]
+    },
     {
       version: "1.2",
       date: "March 8, 2024",
@@ -363,21 +307,6 @@ export default function ChangelogPage() {
                 </p>
               </motion.div>
 
-              {/* Future updates section */}
-              <div className="mb-16">
-                <div className="flex items-center mb-16">
-                  <div className="h-px bg-white/10 flex-grow"></div>
-                  <h2 className="text-white/80 text-sm font-medium px-4 uppercase tracking-wider">Roadmap</h2>
-                  <div className="h-px bg-white/10 flex-grow"></div>
-                </div>
-                
-                <div className="max-w-2xl mx-auto">
-                  {futureUpdates.map((update, index) => (
-                    <FutureItem key={index} {...update} index={index} />
-                  ))}
-                </div>
-              </div>
-              
               {/* Release history section */}
               <div className="mb-16">
                 <div className="flex items-center mb-10">
