@@ -13,14 +13,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuthContext } from "./auth-provider";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { SettingsDialog } from "@/components/settings-dialog";
+import { useSidebar } from "./sidebar-provider";
 import Image from "next/image";
+import Link from "next/link";
 
 interface CustomSidebarProps {
-  isCollapsed: boolean;
-  setIsCollapsed: (value: boolean) => void;
-  onSelectTemplate: (templateType: string) => void;
   selectedType?: string | null;
 }
 
@@ -53,15 +52,14 @@ const TypeWriter = ({ text, delay = 50 }: { text: string; delay?: number }) => {
 };
 
 export function CustomSidebar({
-  isCollapsed,
-  setIsCollapsed,
-  onSelectTemplate,
   selectedType,
 }: CustomSidebarProps) {
   const { user, logout } = useAuthContext();
   const router = useRouter();
+  const pathname = usePathname();
   const [showSettings, setShowSettings] = React.useState(false);
   const { theme, setTheme } = useTheme();
+  const { isCollapsed, setIsCollapsed } = useSidebar();
 
   const handleAccountClick = () => {
     router.push('/account');
@@ -75,25 +73,25 @@ export function CustomSidebar({
     }
   };
 
-  // Navigation items
+  // Navigation items with routes
   const mainNavItems = [
     {
       id: 'document',
       name: 'Process Document',
       icon: <FileText className="h-5 w-5" />,
-      isSection: true
+      href: '/playground/process'
     },
     {
       id: 'template',
       name: 'Template Editor',
       icon: <Layout className="h-5 w-5" />,
-      isSection: true
+      href: '/playground/templates'
     },
     {
       id: 'api',
       name: 'API Integration',
       icon: <Code className="h-5 w-5" />,
-      isSection: true
+      href: '/playground/api'
     }
   ];
 
@@ -121,7 +119,8 @@ export function CustomSidebar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
-                  className="font-semibold text-lg text-primary"                >
+                  className="font-semibold text-lg text-primary"
+                >
                   <Image 
                     src="/logo-text.png" 
                     alt="Logo" 
@@ -177,12 +176,12 @@ export function CustomSidebar({
             <nav className="space-y-2">
               {/* Main Navigation Items */}
               {mainNavItems.map((item) => {
-                const isSelected = selectedType === item.id;
+                const isSelected = pathname === item.href;
                 const button = (
                   <Button
                     key={item.id}
                     variant="ghost"
-                    onClick={() => onSelectTemplate(item.id)}
+                    asChild
                     className={cn(
                       "w-full h-10 transition-all rounded-lg relative",
                       isCollapsed ? "justify-center px-2" : "justify-start",
@@ -191,22 +190,24 @@ export function CustomSidebar({
                       isSelected && "bg-primary/10 text-primary"
                     )}
                   >
-                    <div className="absolute left-3">
-                      {item.icon}
-                    </div>
-                    <AnimatePresence mode="wait">
-                      {!isCollapsed && (
-                        <motion.span
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          transition={{ duration: 0.15 }}
-                          className="font-medium pl-9"
-                        >
-                          {item.name}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
+                    <Link href={item.href}>
+                      <div className="absolute left-3">
+                        {item.icon}
+                      </div>
+                      <AnimatePresence mode="wait">
+                        {!isCollapsed && (
+                          <motion.span
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="font-medium pl-9"
+                          >
+                            {item.name}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </Link>
                   </Button>
                 );
 
@@ -233,44 +234,48 @@ export function CustomSidebar({
                       <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
-                          onClick={() => onSelectTemplate('history')}
+                          asChild
                           className={cn(
                             "w-full h-10 transition-all rounded-lg relative justify-center px-2",
-                            selectedType === 'history' && "bg-primary/10 text-primary"
+                            pathname === '/playground/history' && "bg-primary/10 text-primary"
                           )}
                         >
-                          <div className="absolute left-3">
-                            <History className="h-5 w-5" />
-                          </div>
+                          <Link href="/playground/history">
+                            <div className="absolute left-3">
+                              <History className="h-5 w-5" />
+                            </div>
+                          </Link>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">History</TooltipContent>
                     </Tooltip>
-                  ) :
+                  ) : (
                     <Button
                       variant="ghost"
-                      onClick={() => onSelectTemplate('history')}
+                      asChild
                       className={cn(
                         "w-full h-10 transition-all rounded-lg relative justify-start",
-                        selectedType === 'history' && "bg-primary/10 text-primary"
+                        pathname === '/playground/history' && "bg-primary/10 text-primary"
                       )}
                     >
-                      <div className="absolute left-3">
-                        <History className="h-5 w-5" />
-                      </div>
-                      <AnimatePresence mode="wait">
-                        <motion.span
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          transition={{ duration: 0.15 }}
-                          className="font-medium pl-9"
-                        >
-                          History
-                        </motion.span>
-                      </AnimatePresence>
+                      <Link href="/playground/history">
+                        <div className="absolute left-3">
+                          <History className="h-5 w-5" />
+                        </div>
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="font-medium pl-9"
+                          >
+                            History
+                          </motion.span>
+                        </AnimatePresence>
+                      </Link>
                     </Button>
-                  }
+                  )}
                 </>
               )}
             </nav>

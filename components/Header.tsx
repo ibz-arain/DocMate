@@ -52,7 +52,7 @@ export default function Header() {
                     { label: 'Use Cases', href: '/use-cases' },
                     { label: 'Changelog', href: '/changelog' },
                     { label: 'About Us', href: '/about' },
-                    //{ label: 'Learn More', href: '/learn-more' },
+                    { label: 'Learn More', href: '/demo' },
                   ].map((item) => (
                     <a 
                       key={item.label}

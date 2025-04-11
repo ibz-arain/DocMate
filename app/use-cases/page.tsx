@@ -17,7 +17,6 @@ import {
   ShieldCheck,
   Users,
   Factory,
-  Leaf,
   Sparkles,
   ChevronRight,
   ArrowUpRight,
@@ -840,7 +839,7 @@ export default function UseCasesPage() {
                     Upload your documents and see how fast we can extract the data. No credit card required.
                   </p>
                   <div className="flex flex-wrap gap-4">
-                  <Link href="/playground">
+                  <Link href="/demo">
                       <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                         <span className="relative z-10 flex items-center">
                           Try It Now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />

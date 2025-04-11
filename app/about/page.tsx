@@ -37,7 +37,7 @@ export default function AboutPage() {
           </div>
 
           {/* Company Overview Section */}
-          <section className="pt-28 pb-12 px-6 relative z-10">
+          <section className="pt-32 pb-12 px-6 relative z-10">
             <div className="container mx-auto max-w-7xl">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

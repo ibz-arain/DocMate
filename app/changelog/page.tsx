@@ -276,7 +276,7 @@ export default function ChangelogPage() {
       <ScrollArea className="h-screen">
         <div className="relative">
           {/* Main Content Section */}
-          <section className="relative pt-36 pb-20 px-6 overflow-hidden">
+          <section className="relative pt-32 pb-20 px-6 overflow-hidden">
             {/* Background elements */}
             <div className="absolute inset-0 bg-black">
               <div className="absolute inset-0 bg-gradient-to-r from-primary/15 via-transparent to-purple-500/15 opacity-20" />

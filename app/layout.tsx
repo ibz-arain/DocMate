@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
+import { SidebarProvider } from "@/components/sidebar-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +25,9 @@ export default function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <Providers attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
           <Toaster />
         </Providers>
       </body>
