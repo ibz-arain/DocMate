@@ -15,7 +15,12 @@ const publicRoutes = [
 const protectedRoutes = [
   '/api/users/me',
   '/api/users/update',
-  '/api/users/delete'
+  '/api/users/delete',
+  '/playground',
+  '/playground/process',
+  '/playground/history',
+  '/playground/api',
+  '/playground/templates'
 ];
 
 export async function middleware(request: NextRequest) {
@@ -31,10 +36,19 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get('auth_token')?.value;
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      // For API routes, return JSON response
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+      
+      // For other routes (like playground), redirect to login page
+      // Include the current path as a redirect parameter
+      const url = new URL('/account', request.url);
+      url.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(url);
     }
 
     try {
@@ -46,10 +60,19 @@ export async function middleware(request: NextRequest) {
 
       return NextResponse.next();
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      // For API routes, return JSON response
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Invalid token' },
+          { status: 401 }
+        );
+      }
+      
+      // For other routes, redirect to login page
+      // Include the current path as a redirect parameter
+      const url = new URL('/account', request.url);
+      url.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(url);
     }
   }
 
@@ -60,5 +83,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/api/:path*',
+    '/playground',
+    '/playground/:path*'
   ],
 }; 

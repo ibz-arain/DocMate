@@ -13,7 +13,7 @@ export const processDocument = async (
   setProgress: (value: number) => void,
   options?: ProcessOptions
 ): Promise<void> => {
-  if (!documentState.file || documentState.isProcessed) return;
+  if (!documentState.file || documentState.isProcessed) return Promise.resolve();
   
   try {
     setIsProcessing(true);
@@ -167,11 +167,13 @@ export const processDocument = async (
     updateState(updates);
     
     console.log("Document processed successfully!");
+    return Promise.resolve();
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     updateState({ error: errorMessage });
     setProgress(0);
+    return Promise.reject(error);
   } finally {
     setIsProcessing(false);
   }

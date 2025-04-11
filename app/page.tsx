@@ -292,7 +292,7 @@ export default function HomePage() {
                         </span>
                       </Button>
                     </Link>
-                    <Link href="/use-cases">
+                    <Link href="/demo">
                       <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
                         Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                       </Button>
