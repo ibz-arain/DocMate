@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { useAuthContext } from "@/components/auth-provider";
 
-export default function AccountPage() {
+// Create a client component that uses useSearchParams
+function AccountContent() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
@@ -168,5 +169,24 @@ export default function AccountPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+// Simple loading component
+function AccountLoading() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="mt-4 text-sm text-muted-foreground">Loading account page...</p>
+    </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<AccountLoading />}>
+      <AccountContent />
+    </Suspense>
   );
 } 
