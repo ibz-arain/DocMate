@@ -11,11 +11,21 @@ interface AuthState {
   loading: boolean;
 }
 
+// Helper to get initial state from localStorage
+const getInitialState = (): AuthState => {
+  if (typeof window === 'undefined') {
+    return { user: null, loading: true };
+  }
+  
+  const storedUser = localStorage.getItem('user');
+  return {
+    user: storedUser ? JSON.parse(storedUser) : null,
+    loading: true, // Still set to true as we need to verify with server
+  };
+};
+
 export function useAuth() {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    loading: true,
-  });
+  const [authState, setAuthState] = useState<AuthState>(getInitialState);
 
   useEffect(() => {
     // Check if user is logged in on mount
@@ -27,12 +37,15 @@ export function useAuth() {
       const response = await fetch('/api/users/me');
       if (response.ok) {
         const user = await response.json();
+        localStorage.setItem('user', JSON.stringify(user));
         setAuthState({ user, loading: false });
       } else {
+        localStorage.removeItem('user');
         setAuthState({ user: null, loading: false });
       }
     } catch (error) {
       console.error('Error checking auth:', error);
+      localStorage.removeItem('user');
       setAuthState({ user: null, loading: false });
     }
   };
@@ -51,6 +64,7 @@ export function useAuth() {
       }
 
       const { user } = await response.json();
+      localStorage.setItem('user', JSON.stringify(user));
       setAuthState({ user, loading: false });
       return user;
     } catch (error) {
@@ -69,6 +83,7 @@ export function useAuth() {
         throw new Error('Failed to logout');
       }
 
+      localStorage.removeItem('user');
       setAuthState({ user: null, loading: false });
     } catch (error) {
       console.error('Logout error:', error);
