@@ -400,7 +400,7 @@ export function CustomSidebar({
                       <Button
                         variant="ghost"
                         className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
-                        onClick={handleLogout}
+                        onClick= {handleLogout} 
                       >
                         <div className="absolute left-3">
                           <LogOut className="h-5 w-5" />

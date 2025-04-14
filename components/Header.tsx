@@ -2,11 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import { motion, useScroll, useSpring, useTransform } from "framer-motion";
-import { ArrowRight, Menu } from "lucide-react";
+import { ArrowRight, Menu, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
+import { useAuthContext } from "@/components/auth-provider";
+import { useRouter } from "next/navigation";
 
 export default function Header() {
   const { scrollYProgress } = useScroll();
@@ -16,9 +18,19 @@ export default function Header() {
     restDelta: 0.001
   });
 
+  const { user, loading } = useAuthContext();
+  const router = useRouter();
+
   // Force dark theme
   const { setTheme } = useTheme();
 
+  const handleAuthAction = () => {
+    if (user) {
+      router.push('/playground');
+    } else {
+      router.push('/account');
+    }
+  };
 
   return (
     <>
@@ -67,11 +79,21 @@ export default function Header() {
                 
                 {/* Actions */}
                 <div className="flex items-center space-x-3">
-                  <Link href="/playground">
-                    <Button size="sm" variant="ghost" className="text-sm gap-1 hover:bg-white/5 text-muted-foreground hover:text-white">
-                      Playground <ArrowRight className="h-3 w-3 animate-pulse " />
-                    </Button>
-                  </Link>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="text-sm gap-1 hover:bg-white/5 text-muted-foreground hover:text-white min-w-[100px] justify-center"
+                    onClick={handleAuthAction}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : user ? (
+                      <>Go to Playground <ArrowRight className="h-3 w-3 animate-pulse" /></>
+                    ) : (
+                      'Sign In'
+                    )}
+                  </Button>
                   <Button size="icon" variant="ghost" className="md:hidden text-muted-foreground hover:text-white hover:bg-white/5">
                     <Menu className="h-5 w-5" />
                   </Button>

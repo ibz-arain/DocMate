@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, useScroll, useSpring, useTransform, useMotionValue, useMotionTemplate } from "framer-motion";
-import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileCheck, LightbulbIcon, Cable, FileSpreadsheet, ArrowUpRight, Sparkles, Building2, ReceiptText, Stethoscope, BatteryCharging, Code, Plus, Users, History, Upload, Menu } from "lucide-react";
+import { ArrowRight, FileText, Brain, Zap, ChevronRight, Receipt, FileCheck, LightbulbIcon, Cable, FileSpreadsheet, ArrowUpRight, Sparkles, Building2, ReceiptText, Stethoscope, BatteryCharging, Code, Plus, Users, History, Upload, Menu, TableIcon } from "lucide-react";
 import Link from "next/link";
 import { TypeAnimation } from 'react-type-animation';
 import { useRef, useState, useEffect } from "react";
@@ -165,34 +165,12 @@ export default function HomePage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [backgroundX, backgroundY]);
 
-  // Add noise texture effect for more Vercel-like appearance
-  const [noiseTexture, setNoiseTexture] = useState<string>("");
+  // Remove noise texture effect
   const [isHydrated, setIsHydrated] = useState(false);
   
   useEffect(() => {
     // Mark as hydrated
     setIsHydrated(true);
-    
-    // Create a subtle noise texture for background
-    const canvas = document.createElement("canvas");
-    canvas.width = 100;
-    canvas.height = 100;
-    const ctx = canvas.getContext("2d");
-    
-    if (ctx) {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, 100, 100);
-      
-      for (let i = 0; i < 100; i++) {
-        for (let j = 0; j < 100; j++) {
-          const value = Math.floor(Math.random() * 50);
-          ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 0.015)`;
-          ctx.fillRect(i, j, 1, 1);
-        }
-      }
-      
-      setNoiseTexture(`url(${canvas.toDataURL()})`);
-    }
   }, []);
 
   return (
@@ -200,9 +178,93 @@ export default function HomePage() {
       <Header />
       <ScrollArea className="h-screen w-full">
         <div 
-          className="min-h-screen bg-background relative"
-          style={isHydrated ? { backgroundImage: noiseTexture } : {}}
+          className="min-h-screen bg-black relative"
         >
+          {/* Cool animated background elements */}
+          <div className="absolute inset-0 z-0 overflow-hidden">
+            {/* Circuit board pattern */}
+            <div className="absolute inset-0 bg-circuit-pattern opacity-[0.07]"></div>
+            
+            {/* Enhanced grid patterns with multiple layers */}
+            <div className="absolute inset-0 bg-[radial-gradient(rgba(var(--primary-rgb),0.15)_1px,transparent_1px)] bg-[size:40px_40px] [transform:perspective(1000px)_rotateX(60deg)] opacity-30"></div>
+            <div className="absolute inset-0 bg-grid-pattern-primary opacity-20"></div>
+            
+            {/* Additional grid layers with different sizes and rotations */}
+            <div className="absolute inset-0 bg-grid-small-pattern opacity-10"></div>
+            <div className="absolute inset-0 bg-grid-large-pattern opacity-[0.05]"></div>
+            <div className="absolute inset-0 bg-grid-diagonal-pattern opacity-[0.04]"></div>
+            
+            {/* Glowing orbs */}
+            <div className="absolute top-[10%] left-[15%] w-64 h-64 rounded-full bg-primary/20 blur-[100px] animate-pulse-slow"></div>
+            <div className="absolute bottom-[20%] right-[10%] w-96 h-96 rounded-full bg-blue-500/20 blur-[120px] animate-pulse-slower"></div>
+            <div className="absolute top-[40%] right-[30%] w-72 h-72 rounded-full bg-purple-500/20 blur-[100px] animate-pulse-slow animation-delay-2000"></div>
+            
+            {/* Floating particles */}
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div 
+                key={i}
+                className="absolute bg-primary/50 rounded-full animate-float"
+                style={{
+                  width: `${Math.random() * 4 + 2}px`,
+                  height: `${Math.random() * 4 + 2}px`,
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  animationDuration: `${Math.random() * 10 + 15}s`,
+                  animationDelay: `${Math.random() * 5}s`
+                }}
+              />
+            ))}
+            
+            {/* Geometric shapes (existing and additional ones) */}
+            <div className="absolute top-[15%] left-[80%] w-40 h-40 border-2 border-primary/20 rounded-lg [transform:rotate(15deg)] animate-spin-very-slow"></div>
+            <div className="absolute top-[75%] left-[20%] w-40 h-40 border-2 border-blue-500/20 rounded-xl [transform:rotate(45deg)] animate-spin-slow"></div>
+            <div className="absolute top-[50%] left-[40%] w-24 h-24 border-2 border-purple-500/20 rounded-md [transform:rotate(30deg)] animate-spin-slow animation-delay-3000"></div>
+            
+            {/* Additional spinning shapes */}
+            <div className="absolute top-[25%] left-[10%] w-32 h-32 border border-primary/15 rounded-lg [transform:rotate(20deg)] animate-spin-medium"></div>
+            <div className="absolute top-[85%] left-[75%] w-36 h-36 border border-blue-500/15 rounded-xl [transform:rotate(-15deg)] animate-spin-slow-reverse"></div>
+            <div className="absolute top-[35%] left-[65%] w-20 h-20 border border-purple-500/15 rounded-md [transform:rotate(12deg)] animate-spin-medium-reverse animation-delay-2000"></div>
+            <div className="absolute top-[60%] left-[85%] w-28 h-28 border-2 border-primary/10 rounded-lg [transform:rotate(-25deg)] animate-spin-slow"></div>
+            <div className="absolute top-[10%] left-[40%] w-16 h-16 border border-blue-500/15 rounded [transform:rotate(45deg)] animate-spin-medium animation-delay-1000"></div>
+            <div className="absolute top-[45%] left-[15%] w-24 h-24 border border-primary/15 rounded-md [transform:rotate(-10deg)] animate-spin-medium-reverse animation-delay-4000"></div>
+            <div className="absolute top-[70%] left-[50%] w-32 h-32 border border-purple-500/10 rounded-lg [transform:rotate(35deg)] animate-spin-slow-reverse animation-delay-2500"></div>
+            
+            {/* Rectangle shapes for variety */}
+            <div className="absolute top-[30%] left-[30%] w-40 h-24 border border-primary/10 rounded-lg [transform:rotate(-5deg)] animate-spin-very-slow animation-delay-1500"></div>
+            <div className="absolute top-[55%] left-[70%] w-24 h-36 border border-blue-500/15 rounded-md [transform:rotate(8deg)] animate-spin-medium animation-delay-3500"></div>
+            
+            {/* Code-like lines */}
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div 
+                key={`line-${i}`}
+                className="absolute h-0.5 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 animate-scan-x"
+                style={{
+                  width: '100%',
+                  top: `${15 + i * 20}%`,
+                  animationDelay: `${i * 2}s`
+                }}
+              />
+            ))}
+            
+            {/* Vertical scan lines */}
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div 
+                key={`vline-${i}`}
+                className="absolute w-0.5 h-full bg-gradient-to-b from-blue-500/0 via-blue-500/20 to-blue-500/0 animate-scan-y"
+                style={{
+                  left: `${25 + i * 25}%`,
+                  animationDelay: `${i * 3}s`
+                }}
+              />
+            ))}
+            
+            {/* Additional subtle grid lines */}
+            <div className="absolute inset-0 bg-grid-dots opacity-10"></div>
+            
+            {/* Binary code-like pattern */}
+            <div className="absolute inset-0 binary-pattern opacity-[0.03]"></div>
+          </div>
+
           {/* Animated background */}
           <motion.div
             className="fixed inset-0 z-0"
@@ -380,7 +442,7 @@ export default function HomePage() {
 
             {/* Scroll indicator - enhanced with better animation */}
             <motion.div
-              className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center"
+              className="absolute bottom-10 transform -translate-x-1/2 flex flex-col items-center"
               animate={{
                 y: [0, 10, 0],
               }}
@@ -407,11 +469,8 @@ export default function HomePage() {
             </motion.div>
           </section>
 
-          {/* Features Section with 3D cards */}
-          <section className="py-32 px-6 relative">
-            {/* Diagonal divider - enhanced with gradient */}
-            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
-            
+          {/* Features Section - completely redesigned */}
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -428,7 +487,7 @@ export default function HomePage() {
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Core Features</span>
+                  <span>Core Capabilities</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
@@ -437,7 +496,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold mb-6"
                 >
-                  <GradientText>Powerful</GradientText> Document Analysis
+                  <GradientText>Document Processing</GradientText> Reimagined
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -446,59 +505,219 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Extract, analyze, and organize document data in seconds.
+                  Instantly extract, analyze, and return structured data from any document format
                 </motion.p>
               </motion.div>
 
+              {/* Document processing capabilities - animated interactive cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[
-                  {
-                    icon: <FileText className="h-10 w-10" />,
-                    title: "Smart Extraction",
-                    description: "Extract key data points from any document. Dates, amounts, tables, and structured data with high accuracy."
-                  },
-                  {
-                    icon: <Brain className="h-10 w-10" />,
-                    title: "AI Analysis",
-                    description: "Context-aware AI understands document relationships and extracts meaningful insights automatically."
-                  },
-                  {
-                    icon: <Zap className="h-10 w-10" />,
-                    title: "Flexible Formats",
-                    description: "Export results as JSON, CSV, Markdown or custom formats. Integrate with your existing workflows."
-                  }
-                ].map((feature, index) => (
+                {/* Feature 1: Document Analysis */}
                   <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.1 * index }}
-                  >
-                    <Card3D className="h-full">
-                      <Card className="h-full bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-white/10">
-                        <CardContent className="p-8">
-                          <div className="text-primary mb-6">
-                            {feature.icon}
+                  transition={{ duration: 0.7 }}
+                  className="relative group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                  <div className="relative h-full bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-6 overflow-hidden">
+                    {/* Animated background lines */}
+                    <div className="absolute inset-0 opacity-20">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div 
+                          key={i}
+                          className="absolute h-0.5 bg-primary/40 rounded-full"
+                          style={{
+                            width: `${20 + Math.random() * 60}%`,
+                            top: `${10 + i * 12}%`,
+                            left: `${Math.random() * 10}%`,
+                            opacity: 0.1 + (Math.random() * 0.4)
+                          }}
+                        ></div>
+                      ))}
                           </div>
-                          <h3 className="text-2xl font-semibold mb-4">{feature.title}</h3>
-                          <p className="text-muted-foreground">
-                            {feature.description}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </Card3D>
+                    
+                    <div className="relative z-10">
+                      <div className="w-14 h-14 rounded-xl bg-primary/20 border border-primary/20 flex items-center justify-center mb-6">
+                        <FileText className="h-7 w-7 text-primary" />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-4">Custom Template Design</h3>
+                      <p className="text-muted-foreground mb-6">Design your own extraction templates to specify exactly how your documents should be processed and what data to extract.</p>
+                      
+                      {/* Template design visualization */}
+                      <div className="mt-6 bg-black/50 border border-white/5 rounded-lg p-3">
+
+                        <div className="space-y-2 text-xs">
+                          <div className="font-mono text-blue-400">Template Editor</div>
+                          <div className="flex">
+                            <div className="w-1/3 text-muted-foreground">Field Name:</div>
+                            <div className="w-2/3 h-5 bg-primary/10 rounded"></div>
+                          </div>
+                          <div className="flex">
+                            <div className="w-1/3 text-muted-foreground">Field Type:</div>
+                            <div className="w-2/3 h-5 bg-primary/10 rounded"></div>
+                          </div>
+                          <div className="flex">
+                            <div className="w-1/3 text-muted-foreground">Required:</div>
+                            <div className="w-5 h-5 bg-primary/20 rounded"></div>
+                          </div>
+                          <div className="h-px bg-white/10 my-2"></div>
+                          <div className="flex items-center">
+                            <div className="w-5 h-5 rounded flex-shrink-0 bg-primary/20 flex items-center justify-center text-[10px] text-primary">+</div>
+                            <div className="ml-2 text-primary/80">Add Field</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Corner accent */}
+                    <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-primary/10 rounded-full blur-xl"></div>
+                  </div>
                   </motion.div>
-                ))}
+                
+                {/* Feature 2: Data Extraction */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: 0.2 }}
+                  className="relative group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-primary/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                  <div className="relative h-full bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-6 overflow-hidden">
+                    {/* Animated extraction indicators */}
+                    <div className="absolute inset-0">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute right-0 h-full w-0.5 bg-primary/40"
+                          style={{ right: `${15 + i * 30}%` }}
+                          animate={{
+                            opacity: [0, 0.8, 0],
+                            height: ["0%", "100%", "0%"],
+                            top: ["100%", "0%", "0%"],
+                          }}
+                          transition={{
+                            duration: 4,
+                            delay: i * 1.5,
+                            repeat: Infinity,
+                            repeatDelay: 3,
+                          }}
+                        ></motion.div>
+                      ))}
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="w-14 h-14 rounded-xl bg-blue-500/20 border border-blue-500/20 flex items-center justify-center mb-6">
+                        <Brain className="h-7 w-7 text-blue-500" />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-4">Smart Extraction</h3>
+                      <p className="text-muted-foreground mb-6">Contextually extract key data points with high accuracy, even from varied layouts, messy scans, and inconsistent formats.</p>
+                      
+                      {/* Data extraction visualization */}
+                      <div className="mt-6 bg-black/50 border border-white/5 rounded-lg p-3">
+                        <div className="mb-1 text-xs text-blue-400">Extracted Data</div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <div className="text-muted-foreground">Invoice Number:</div>
+                            <div className="text-primary">INV-2023-0042</div>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <div className="text-muted-foreground">Date:</div>
+                            <div className="text-primary">2023-05-16</div>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <div className="text-muted-foreground">Amount:</div>
+                            <div className="text-primary">$1,250.00</div>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <div className="text-muted-foreground">Vendor:</div>
+                            <div className="text-primary">Acme Corp</div>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <div className="text-muted-foreground">Due Date:</div>
+                            <div className="text-primary">2023-06-15</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Corner accent */}
+                    <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+                  </div>
+                </motion.div>
+                
+                {/* Feature 3: Structured Output */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: 0.4 }}
+                  className="relative group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                  <div className="relative h-full bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-6 overflow-hidden">
+                    {/* Data structure indicators */}
+                    <div className="absolute inset-0 opacity-10">
+                      {Array.from({ length: 15 }).map((_, i) => (
+                        <div 
+                          key={i}
+                          className="absolute bg-white/20 rounded-full"
+                          style={{
+                            width: `${1 + Math.random() * 3}px`,
+                            height: `${1 + Math.random() * 3}px`,
+                            top: `${Math.random() * 100}%`,
+                            left: `${Math.random() * 100}%`,
+                            opacity: 0.1 + (Math.random() * 0.3)
+                          }}
+                        ></div>
+                      ))}
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div 
+                          key={`line-${i}`}
+                          className="absolute bg-gradient-to-r from-transparent via-purple-500/20 to-transparent h-px w-1/2"
+                          style={{
+                            top: `${10 + i * 16}%`,
+                            left: `${Math.random() * 25}%`,
+                            opacity: 0.1 + (Math.random() * 0.3)
+                          }}
+                        ></div>
+                      ))}
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="w-14 h-14 rounded-xl bg-purple-500/20 border border-purple-500/20 flex items-center justify-center mb-6">
+                        <Zap className="h-7 w-7 text-purple-500" />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-4">Structured Output</h3>
+                      <p className="text-muted-foreground mb-6">Convert unstructured documents into clean, structured data in JSON, CSV, or custom formats. Ready for analysis or integration.</p>
+                      
+                      {/* JSON output visualization */}
+                      <div className="mt-6 bg-black/50 border border-white/5 rounded-lg p-3 font-mono text-xs">
+                        <div className="text-muted-foreground">
+                          <span className="text-blue-400">{"{"}</span><br />
+                          &nbsp;&nbsp;<span className="text-yellow-500">"invoice_data"</span>: <span className="text-blue-400">{"{"}</span><br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-yellow-500">"number"</span>: <span className="text-green-400">"INV-2023-0042"</span>,<br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-yellow-500">"date"</span>: <span className="text-green-400">"2023-05-16"</span>,<br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-yellow-500">"total"</span>: <span className="text-purple-400">1250.00</span><br />
+                          &nbsp;&nbsp;<span className="text-blue-400">{"}"}</span>,<br />
+                          &nbsp;&nbsp;<span className="text-yellow-500">"vendor"</span>: <span className="text-green-400">"Acme Corp"</span>,<br />
+                          &nbsp;&nbsp;<span className="text-yellow-500">"items"</span>: <span className="text-blue-400">[...]</span><br />
+                          <span className="text-blue-400">{"}"}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Corner accent */}
+                    <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-purple-500/10 rounded-full blur-xl"></div>
+                  </div>
+                </motion.div>
               </div>
             </div>
           </section>
 
           {/* Interactive Demo Section */}
-          <section className="py-32 px-6 relative">
-            {/* Diagonal divider - enhanced with gradient */}
-            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
-            
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -571,11 +790,8 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Use Cases Section */}
-          <section className="py-32 px-6 relative">
-            {/* Diagonal divider - enhanced with gradient */}
-            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
-            
+          {/* Use Cases Section - Redesigned with better visuals */}
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -614,61 +830,98 @@ export default function HomePage() {
                 </motion.p>
               </motion.div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {[
                   {
-                    icon: <ReceiptText className="h-10 w-10" />,
+                    icon: <ReceiptText />,
                     title: "Finance & Accounting",
                     description: "Extract data from invoices and financial statements in seconds. Cut manual entry by 90% and close books faster.",
-                    features: ["Invoice Processing", "Receipt Management", "Financial Statement Analysis"]
+                    features: ["Invoice Processing", "Receipt Management", "Financial Statement Analysis"],
+                    color: "from-primary/20 to-blue-500/20",
+                    accent: "bg-primary/30",
+                    rotation: "rotate-3"
                   },
                   {
-                    icon: <Stethoscope className="h-10 w-10" />,
+                    icon: <Stethoscope />,
                     title: "Healthcare",
                     description: "Process medical records and insurance claims instantly. Maintain HIPAA compliance while reducing paperwork.",
-                    features: ["Medical Records Processing", "Insurance Claim Analysis", "Patient Data Management"]
+                    features: ["Medical Records Processing", "Insurance Claim Analysis", "Patient Data Management"],
+                    color: "from-blue-500/20 to-teal-500/20",
+                    accent: "bg-blue-500/30",
+                    rotation: "rotate-[-2deg]"
                   },
                   {
-                    icon: <BatteryCharging className="h-10 w-10" />,
+                    icon: <BatteryCharging />,
                     title: "Energy & Utilities",
                     description: "Analyze utility bills and regulatory documents automatically. Track consumption patterns and simplify reporting.",
-                    features: ["Utility Bill Analysis", "Consumption Tracking", "Regulatory Compliance"]
+                    features: ["Utility Bill Analysis", "Consumption Tracking", "Regulatory Compliance"],
+                    color: "from-emerald-500/20 to-green-500/20",
+                    accent: "bg-emerald-500/30",
+                    rotation: "rotate-2"
                   },
                   {
-                    icon: <Users className="h-10 w-10" />,
+                    icon: <Users />,
                     title: "Human Resources",
                     description: "Parse resumes and employee documents instantly. Speed up onboarding and maintain accurate records effortlessly.",
-                    features: ["Resume Parsing", "Employee Document Management", "Payroll Processing"]
+                    features: ["Resume Parsing", "Employee Document Management", "Payroll Processing"],
+                    color: "from-purple-500/20 to-pink-500/20",
+                    accent: "bg-purple-500/30",
+                    rotation: "rotate-[-1deg]"
                   }
                 ].map((useCase, index) => (
                   <motion.div
                     key={index}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.1 * index }}
+                    transition={{ duration: 0.6, delay: 0.1 * index }}
+                    className="group relative"
                   >
-                    <Card3D className="h-full">
-                      <Card className="h-full bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-white/10">
-                        <CardContent className="p-8">
-                          <div className="text-primary mb-6">
+                    {/* Hovering document layers effect */}
+                    <div className={`absolute inset-0 shadow-xl bg-gradient-to-br ${useCase.color} rounded-2xl transform ${useCase.rotation} group-hover:scale-105 transition-transform duration-300 ease-out`} />
+                    <div className={`absolute inset-0 shadow-xl backdrop-blur-sm bg-black/30 border border-white/10 rounded-2xl transform group-hover:scale-[1.03] transition-transform duration-300 ease-out delay-75 -z-10`} />
+                    <div className={`absolute inset-0 shadow-xl backdrop-blur-sm bg-black/30 border border-white/5 rounded-2xl transform group-hover:scale-[1.01] transition-transform duration-300 ease-out delay-150 -z-20`} />
+                    
+                    {/* Main card */}
+                    <div className="relative backdrop-blur-md bg-black/40 border border-white/10 rounded-2xl p-8 h-full z-10">
+                      {/* Top accent line */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4/5 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                      
+                      {/* Icon with background */}
+                      <div className="flex mb-6">
+                        <div className={`w-16 h-16 rounded-xl ${useCase.accent} backdrop-blur-md shadow-lg flex items-center justify-center text-white`}>
                             {useCase.icon}
                           </div>
-                          <h3 className="text-2xl font-semibold mb-4">{useCase.title}</h3>
+                        <div className="ml-6">
+                          <h3 className="text-2xl font-bold">{useCase.title}</h3>
+                          <div className="h-1 w-12 bg-gradient-to-r from-primary/50 to-transparent rounded-full mt-2" />
+                        </div>
+                      </div>
+                      
                           <p className="text-muted-foreground mb-6">
                             {useCase.description}
                           </p>
-                          <div className="space-y-2">
+                      
+                      {/* Feature bullets with animated hover */}
+                      <div className="space-y-3">
                             {useCase.features.map((feature, i) => (
-                              <div key={i} className="flex items-center">
-                                <ChevronRight className="h-4 w-4 text-primary mr-2" />
-                                <span className="text-sm">{feature}</span>
+                          <div key={i} className="flex items-center group/item">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center mr-3 group-hover/item:bg-primary/20 transition-colors duration-300">
+                              <ChevronRight className="h-4 w-4 text-primary group-hover/item:translate-x-0.5 transition-transform duration-300" />
+                            </div>
+                            <span className="text-sm group-hover/item:text-primary transition-colors duration-300">{feature}</span>
                               </div>
                             ))}
                           </div>
-                        </CardContent>
-                      </Card>
-                    </Card3D>
+                      
+                      {/* Decorative elements */}
+                      <div className="absolute bottom-4 right-4 opacity-20">
+                        <div className="h-20 w-20 border border-dashed border-white/40 rounded-full" />
+                      </div>
+                      <div className="absolute top-6 right-6 opacity-10">
+                        <div className="h-10 w-10 border border-white/30 rotate-45 rounded-sm" />
+                      </div>
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -690,10 +943,7 @@ export default function HomePage() {
           </section>
 
           {/* API & Integration Section */}
-          <section className="py-32 px-6 relative">
-            {/* Diagonal divider - enhanced with gradient */}
-            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-background via-primary/10 to-background transform -skew-y-2" />
-            
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -865,6 +1115,270 @@ console.log(doc.data);
           <Footer />
         </div>
       </ScrollArea>
+
+      {/* Add the CSS animations */}
+      <style jsx global>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        /* Circuit board pattern */
+        .bg-circuit-pattern {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.3) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.3) 1px, transparent 1px),
+            radial-gradient(circle, rgba(var(--primary-rgb), 0.4) 1px, transparent 1px),
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.2) 2px, transparent 2px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.2) 2px, transparent 2px);
+          background-size: 
+            40px 40px,
+            40px 40px,
+            40px 40px,
+            200px 200px,
+            200px 200px;
+          background-position: 
+            -1px -1px,
+            -1px -1px,
+            -1px -1px,
+            -1px -1px,
+            -1px -1px;
+        }
+
+        .bg-dots-primary\/15 {
+          background-image: radial-gradient(circle at 1px 1px, rgb(var(--primary) / 0.15) 2px, transparent 0);
+          background-size: 40px 40px;
+          background-position: center;
+        }
+
+        @keyframes blob {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 20px) scale(0.9);
+          }
+          100% {
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+        
+        .animate-blob {
+          animation: blob 25s infinite alternate;
+        }
+        
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        
+        .animation-delay-3000 {
+          animation-delay: 3s;
+        }
+        
+        /* New cool background animations */
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+        }
+        
+        @keyframes pulse-slower {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.7; }
+        }
+        
+        @keyframes float {
+          0% { transform: translateY(0) translateX(0); }
+          25% { transform: translateY(-20px) translateX(10px); }
+          50% { transform: translateY(0) translateX(20px); }
+          75% { transform: translateY(20px) translateX(10px); }
+          100% { transform: translateY(0) translateX(0); }
+        }
+        
+        @keyframes spin-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes spin-very-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes scan-x {
+          0% { transform: translateX(-100%); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateX(100%); opacity: 0; }
+        }
+        
+        @keyframes scan-y {
+          0% { transform: translateY(-100%); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(100%); opacity: 0; }
+        }
+        
+        .animate-pulse-slow {
+          animation: pulse-slow 4s ease-in-out infinite;
+        }
+        
+        .animate-pulse-slower {
+          animation: pulse-slower 6s ease-in-out infinite;
+        }
+        
+        .animate-float {
+          animation: float 15s ease-in-out infinite;
+        }
+        
+        .animate-spin-slow {
+          animation: spin-slow 20s linear infinite;
+        }
+        
+        .animate-spin-very-slow {
+          animation: spin-very-slow 30s linear infinite;
+        }
+        
+        .animate-scan-x {
+          animation: scan-x 15s linear infinite;
+        }
+        
+        .animate-scan-y {
+          animation: scan-y 20s linear infinite;
+        }
+
+        /* Enhanced grid patterns */
+        .bg-grid-pattern-primary {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+        
+        /* Additional animation for the section dividers */
+        @keyframes pulse-divider {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.7; }
+        }
+        
+        .animate-pulse-divider {
+          animation: pulse-divider 4s ease-in-out infinite;
+        }
+
+        /* Additional spin animations for more variety */
+        @keyframes spin-medium {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes spin-slow-reverse {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(-360deg); }
+        }
+        
+        @keyframes spin-medium-reverse {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(-360deg); }
+        }
+        
+        .animate-spin-medium {
+          animation: spin-medium 15s linear infinite;
+        }
+        
+        .animate-spin-slow-reverse {
+          animation: spin-slow-reverse 25s linear infinite;
+        }
+        
+        .animate-spin-medium-reverse {
+          animation: spin-medium-reverse 18s linear infinite;
+        }
+        
+        .animation-delay-1000 {
+          animation-delay: 1s;
+        }
+        
+        .animation-delay-1500 {
+          animation-delay: 1.5s;
+        }
+        
+        .animation-delay-2500 {
+          animation-delay: 2.5s;
+        }
+        
+        .animation-delay-3500 {
+          animation-delay: 3.5s;
+        }
+        
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+
+        /* Enhanced grid patterns */
+        .bg-grid-pattern-primary {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+        
+        .bg-grid-small-pattern {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px);
+          background-size: 10px 10px;
+        }
+        
+        .bg-grid-large-pattern {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.07) 1.5px, transparent 1.5px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.07) 1.5px, transparent 1.5px);
+          background-size: 50px 50px;
+        }
+        
+        .bg-grid-diagonal-pattern {
+          background-image: 
+            linear-gradient(45deg, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px),
+            linear-gradient(-45deg, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px);
+          background-size: 30px 30px;
+          background-position: 0 0, 15px 15px;
+        }
+        
+        .bg-grid-dots {
+          background-image: radial-gradient(circle, rgba(var(--primary-rgb), 0.2) 1px, transparent 1px);
+          background-size: 15px 15px;
+        }
+        
+        .binary-pattern {
+          position: relative;
+        }
+        
+        .binary-pattern::before {
+          content: "10101010101010101010101";
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          font-family: monospace;
+          font-size: 12px;
+          line-height: 1;
+          opacity: 0.1;
+          color: rgba(var(--primary-rgb), 1);
+          overflow: hidden;
+          pointer-events: none;
+          white-space: pre;
+          background-size: 60px 60px;
+          letter-spacing: 3px;
+          transform: rotate(45deg);
+        }
+      `}</style>
     </div>
   );
 }
