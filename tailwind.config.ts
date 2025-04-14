@@ -65,7 +65,22 @@ export default {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
-  		}
+  		},
+      animation: {
+        "spin-slow": "spin 8s linear infinite",
+        "spin-slow-reverse": "spin-reverse 12s linear infinite",
+        "pulse-slow": "pulse 6s ease-in-out infinite",
+      },
+      keyframes: {
+        "spin-reverse": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(-360deg)" },
+        },
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-conic": "conic-gradient(var(--tw-gradient-stops))",
+      },
   	}
   },
   plugins: [require("tailwindcss-animate")],

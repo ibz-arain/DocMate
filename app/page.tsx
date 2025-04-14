@@ -165,34 +165,12 @@ export default function HomePage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [backgroundX, backgroundY]);
 
-  // Add noise texture effect for more Vercel-like appearance
-  const [noiseTexture, setNoiseTexture] = useState<string>("");
+  // Remove noise texture effect
   const [isHydrated, setIsHydrated] = useState(false);
   
   useEffect(() => {
     // Mark as hydrated
     setIsHydrated(true);
-    
-    // Create a subtle noise texture for background
-    const canvas = document.createElement("canvas");
-    canvas.width = 100;
-    canvas.height = 100;
-    const ctx = canvas.getContext("2d");
-    
-    if (ctx) {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, 100, 100);
-      
-      for (let i = 0; i < 100; i++) {
-        for (let j = 0; j < 100; j++) {
-          const value = Math.floor(Math.random() * 50);
-          ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 0.015)`;
-          ctx.fillRect(i, j, 1, 1);
-        }
-      }
-      
-      setNoiseTexture(`url(${canvas.toDataURL()})`);
-    }
   }, []);
 
   return (
@@ -200,17 +178,21 @@ export default function HomePage() {
       <Header />
       <ScrollArea className="h-screen w-full">
         <div 
-          className="min-h-screen bg-background relative"
-          style={isHydrated ? { backgroundImage: noiseTexture } : {}}
+          className="min-h-screen bg-black relative"
         >
           {/* Cool animated background elements */}
           <div className="absolute inset-0 z-0 overflow-hidden">
             {/* Circuit board pattern */}
             <div className="absolute inset-0 bg-circuit-pattern opacity-[0.07]"></div>
             
-            {/* Floating grid - enhanced with more lines */}
+            {/* Enhanced grid patterns with multiple layers */}
             <div className="absolute inset-0 bg-[radial-gradient(rgba(var(--primary-rgb),0.15)_1px,transparent_1px)] bg-[size:40px_40px] [transform:perspective(1000px)_rotateX(60deg)] opacity-30"></div>
             <div className="absolute inset-0 bg-grid-pattern-primary opacity-20"></div>
+            
+            {/* Additional grid layers with different sizes and rotations */}
+            <div className="absolute inset-0 bg-grid-small-pattern opacity-10"></div>
+            <div className="absolute inset-0 bg-grid-large-pattern opacity-[0.05]"></div>
+            <div className="absolute inset-0 bg-grid-diagonal-pattern opacity-[0.04]"></div>
             
             {/* Glowing orbs */}
             <div className="absolute top-[10%] left-[15%] w-64 h-64 rounded-full bg-primary/20 blur-[100px] animate-pulse-slow"></div>
@@ -233,7 +215,7 @@ export default function HomePage() {
               />
             ))}
             
-            {/* Geometric shapes - enhanced with more spinning elements */}
+            {/* Geometric shapes (existing and additional ones) */}
             <div className="absolute top-[15%] left-[80%] w-40 h-40 border-2 border-primary/20 rounded-lg [transform:rotate(15deg)] animate-spin-very-slow"></div>
             <div className="absolute top-[75%] left-[20%] w-40 h-40 border-2 border-blue-500/20 rounded-xl [transform:rotate(45deg)] animate-spin-slow"></div>
             <div className="absolute top-[50%] left-[40%] w-24 h-24 border-2 border-purple-500/20 rounded-md [transform:rotate(30deg)] animate-spin-slow animation-delay-3000"></div>
@@ -275,6 +257,12 @@ export default function HomePage() {
                 }}
               />
             ))}
+            
+            {/* Additional subtle grid lines */}
+            <div className="absolute inset-0 bg-grid-dots opacity-10"></div>
+            
+            {/* Binary code-like pattern */}
+            <div className="absolute inset-0 binary-pattern opacity-[0.03]"></div>
           </div>
 
           {/* Animated background */}
@@ -482,30 +470,7 @@ export default function HomePage() {
           </section>
 
           {/* Features Section - completely redesigned */}
-          <section className="py-32 px-6 relative">
-            {/* Tech-styled section divider */}
-            <div className="absolute top-0 left-0 right-0 h-16 overflow-hidden">
-              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"></div>
-              <div className="absolute left-0 right-0 h-0.5 blur-sm bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
-              {/* Geometric accent */}
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-40 h-1 bg-primary/30 backdrop-blur-sm rounded"></div>
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-20 h-1 bg-primary/60 rounded animate-pulse-slow"></div>
-              {/* Pattern accents */}
-              <div className="absolute top-0 left-0 right-0 flex justify-center">
-                {Array.from({ length: 40 }).map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      backgroundColor: `rgba(var(--primary-rgb), ${Math.random() * 0.5 + 0.2})`,
-                      marginLeft: i % 2 ? '8px' : '4px',
-                      opacity: i % 3 === 0 ? 0.7 : 0.3,
-                      transform: `translateY(${i % 2 ? '10px' : '6px'})`
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -540,17 +505,17 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Instantly extract, analyze, and structure data from any document format
+                  Instantly extract, analyze, and return structured data from any document format
                 </motion.p>
               </motion.div>
 
               {/* Document processing capabilities - animated interactive cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Feature 1: Document Analysis */}
-                <motion.div
+                  <motion.div
                   initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
                   transition={{ duration: 0.7 }}
                   className="relative group"
                 >
@@ -570,34 +535,37 @@ export default function HomePage() {
                           }}
                         ></div>
                       ))}
-                    </div>
+                          </div>
                     
                     <div className="relative z-10">
                       <div className="w-14 h-14 rounded-xl bg-primary/20 border border-primary/20 flex items-center justify-center mb-6">
                         <FileText className="h-7 w-7 text-primary" />
                       </div>
-                      <h3 className="text-2xl font-bold mb-4">Document Analysis</h3>
-                      <p className="text-muted-foreground mb-6">Advanced AI analyzes document structure, identifying key sections, tables, and data points without predefined templates.</p>
+                      <h3 className="text-2xl font-bold mb-4">Custom Template Design</h3>
+                      <p className="text-muted-foreground mb-6">Design your own extraction templates to specify exactly how your documents should be processed and what data to extract.</p>
                       
-                      {/* Document preview visualization */}
+                      {/* Template design visualization */}
                       <div className="mt-6 bg-black/50 border border-white/5 rounded-lg p-3">
-                        <div className="flex space-x-1 mb-2">
-                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="h-3 w-3/4 bg-primary/20 rounded"></div>
-                          <div className="h-3 w-1/2 bg-primary/15 rounded"></div>
-                          <div className="flex space-x-2">
-                            <div className="h-8 w-8 bg-primary/30 rounded"></div>
-                            <div className="flex-1">
-                              <div className="h-3 w-full bg-primary/20 rounded mb-1"></div>
-                              <div className="h-3 w-2/3 bg-primary/15 rounded"></div>
-                            </div>
+
+                        <div className="space-y-2 text-xs">
+                          <div className="font-mono text-blue-400">Template Editor</div>
+                          <div className="flex">
+                            <div className="w-1/3 text-muted-foreground">Field Name:</div>
+                            <div className="w-2/3 h-5 bg-primary/10 rounded"></div>
                           </div>
-                          <div className="h-3 w-5/6 bg-primary/15 rounded"></div>
-                          <div className="h-3 w-full bg-primary/10 rounded"></div>
+                          <div className="flex">
+                            <div className="w-1/3 text-muted-foreground">Field Type:</div>
+                            <div className="w-2/3 h-5 bg-primary/10 rounded"></div>
+                          </div>
+                          <div className="flex">
+                            <div className="w-1/3 text-muted-foreground">Required:</div>
+                            <div className="w-5 h-5 bg-primary/20 rounded"></div>
+                          </div>
+                          <div className="h-px bg-white/10 my-2"></div>
+                          <div className="flex items-center">
+                            <div className="w-5 h-5 rounded flex-shrink-0 bg-primary/20 flex items-center justify-center text-[10px] text-primary">+</div>
+                            <div className="ml-2 text-primary/80">Add Field</div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -605,7 +573,7 @@ export default function HomePage() {
                     {/* Corner accent */}
                     <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-primary/10 rounded-full blur-xl"></div>
                   </div>
-                </motion.div>
+                  </motion.div>
                 
                 {/* Feature 2: Data Extraction */}
                 <motion.div
@@ -749,30 +717,7 @@ export default function HomePage() {
           </section>
 
           {/* Interactive Demo Section */}
-          <section className="py-32 px-6 relative">
-            {/* Tech-styled section divider */}
-            <div className="absolute top-0 left-0 right-0 h-16 overflow-hidden">
-              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"></div>
-              <div className="absolute left-0 right-0 h-0.5 blur-sm bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
-              {/* Geometric accent */}
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-40 h-1 bg-primary/30 backdrop-blur-sm rounded"></div>
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-20 h-1 bg-primary/60 rounded animate-pulse-slow"></div>
-              {/* Pattern accents */}
-              <div className="absolute top-0 left-0 right-0 flex justify-center">
-                {Array.from({ length: 40 }).map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      backgroundColor: `rgba(var(--primary-rgb), ${Math.random() * 0.5 + 0.2})`,
-                      marginLeft: i % 2 ? '8px' : '4px',
-                      opacity: i % 3 === 0 ? 0.7 : 0.3,
-                      transform: `translateY(${i % 2 ? '10px' : '6px'})`
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -845,31 +790,8 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Use Cases Section */}
-          <section className="py-32 px-6 relative">
-            {/* Tech-styled section divider */}
-            <div className="absolute top-0 left-0 right-0 h-16 overflow-hidden">
-              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"></div>
-              <div className="absolute left-0 right-0 h-0.5 blur-sm bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
-              {/* Geometric accent */}
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-40 h-1 bg-primary/30 backdrop-blur-sm rounded"></div>
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-20 h-1 bg-primary/60 rounded animate-pulse-slow"></div>
-              {/* Pattern accents */}
-              <div className="absolute top-0 left-0 right-0 flex justify-center">
-                {Array.from({ length: 40 }).map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      backgroundColor: `rgba(var(--primary-rgb), ${Math.random() * 0.5 + 0.2})`,
-                      marginLeft: i % 2 ? '8px' : '4px',
-                      opacity: i % 3 === 0 ? 0.7 : 0.3,
-                      transform: `translateY(${i % 2 ? '10px' : '6px'})`
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+          {/* Use Cases Section - Redesigned with better visuals */}
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -908,61 +830,98 @@ export default function HomePage() {
                 </motion.p>
               </motion.div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {[
                   {
-                    icon: <ReceiptText className="h-10 w-10" />,
+                    icon: <ReceiptText />,
                     title: "Finance & Accounting",
                     description: "Extract data from invoices and financial statements in seconds. Cut manual entry by 90% and close books faster.",
-                    features: ["Invoice Processing", "Receipt Management", "Financial Statement Analysis"]
+                    features: ["Invoice Processing", "Receipt Management", "Financial Statement Analysis"],
+                    color: "from-primary/20 to-blue-500/20",
+                    accent: "bg-primary/30",
+                    rotation: "rotate-3"
                   },
                   {
-                    icon: <Stethoscope className="h-10 w-10" />,
+                    icon: <Stethoscope />,
                     title: "Healthcare",
                     description: "Process medical records and insurance claims instantly. Maintain HIPAA compliance while reducing paperwork.",
-                    features: ["Medical Records Processing", "Insurance Claim Analysis", "Patient Data Management"]
+                    features: ["Medical Records Processing", "Insurance Claim Analysis", "Patient Data Management"],
+                    color: "from-blue-500/20 to-teal-500/20",
+                    accent: "bg-blue-500/30",
+                    rotation: "rotate-[-2deg]"
                   },
                   {
-                    icon: <BatteryCharging className="h-10 w-10" />,
+                    icon: <BatteryCharging />,
                     title: "Energy & Utilities",
                     description: "Analyze utility bills and regulatory documents automatically. Track consumption patterns and simplify reporting.",
-                    features: ["Utility Bill Analysis", "Consumption Tracking", "Regulatory Compliance"]
+                    features: ["Utility Bill Analysis", "Consumption Tracking", "Regulatory Compliance"],
+                    color: "from-emerald-500/20 to-green-500/20",
+                    accent: "bg-emerald-500/30",
+                    rotation: "rotate-2"
                   },
                   {
-                    icon: <Users className="h-10 w-10" />,
+                    icon: <Users />,
                     title: "Human Resources",
                     description: "Parse resumes and employee documents instantly. Speed up onboarding and maintain accurate records effortlessly.",
-                    features: ["Resume Parsing", "Employee Document Management", "Payroll Processing"]
+                    features: ["Resume Parsing", "Employee Document Management", "Payroll Processing"],
+                    color: "from-purple-500/20 to-pink-500/20",
+                    accent: "bg-purple-500/30",
+                    rotation: "rotate-[-1deg]"
                   }
                 ].map((useCase, index) => (
                   <motion.div
                     key={index}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.1 * index }}
+                    transition={{ duration: 0.6, delay: 0.1 * index }}
+                    className="group relative"
                   >
-                    <Card3D className="h-full">
-                      <Card className="h-full bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-white/10">
-                        <CardContent className="p-8">
-                          <div className="text-primary mb-6">
+                    {/* Hovering document layers effect */}
+                    <div className={`absolute inset-0 shadow-xl bg-gradient-to-br ${useCase.color} rounded-2xl transform ${useCase.rotation} group-hover:scale-105 transition-transform duration-300 ease-out`} />
+                    <div className={`absolute inset-0 shadow-xl backdrop-blur-sm bg-black/30 border border-white/10 rounded-2xl transform group-hover:scale-[1.03] transition-transform duration-300 ease-out delay-75 -z-10`} />
+                    <div className={`absolute inset-0 shadow-xl backdrop-blur-sm bg-black/30 border border-white/5 rounded-2xl transform group-hover:scale-[1.01] transition-transform duration-300 ease-out delay-150 -z-20`} />
+                    
+                    {/* Main card */}
+                    <div className="relative backdrop-blur-md bg-black/40 border border-white/10 rounded-2xl p-8 h-full z-10">
+                      {/* Top accent line */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4/5 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                      
+                      {/* Icon with background */}
+                      <div className="flex mb-6">
+                        <div className={`w-16 h-16 rounded-xl ${useCase.accent} backdrop-blur-md shadow-lg flex items-center justify-center text-white`}>
                             {useCase.icon}
                           </div>
-                          <h3 className="text-2xl font-semibold mb-4">{useCase.title}</h3>
+                        <div className="ml-6">
+                          <h3 className="text-2xl font-bold">{useCase.title}</h3>
+                          <div className="h-1 w-12 bg-gradient-to-r from-primary/50 to-transparent rounded-full mt-2" />
+                        </div>
+                      </div>
+                      
                           <p className="text-muted-foreground mb-6">
                             {useCase.description}
                           </p>
-                          <div className="space-y-2">
+                      
+                      {/* Feature bullets with animated hover */}
+                      <div className="space-y-3">
                             {useCase.features.map((feature, i) => (
-                              <div key={i} className="flex items-center">
-                                <ChevronRight className="h-4 w-4 text-primary mr-2" />
-                                <span className="text-sm">{feature}</span>
+                          <div key={i} className="flex items-center group/item">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center mr-3 group-hover/item:bg-primary/20 transition-colors duration-300">
+                              <ChevronRight className="h-4 w-4 text-primary group-hover/item:translate-x-0.5 transition-transform duration-300" />
+                            </div>
+                            <span className="text-sm group-hover/item:text-primary transition-colors duration-300">{feature}</span>
                               </div>
                             ))}
                           </div>
-                        </CardContent>
-                      </Card>
-                    </Card3D>
+                      
+                      {/* Decorative elements */}
+                      <div className="absolute bottom-4 right-4 opacity-20">
+                        <div className="h-20 w-20 border border-dashed border-white/40 rounded-full" />
+                      </div>
+                      <div className="absolute top-6 right-6 opacity-10">
+                        <div className="h-10 w-10 border border-white/30 rotate-45 rounded-sm" />
+                      </div>
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -984,30 +943,7 @@ export default function HomePage() {
           </section>
 
           {/* API & Integration Section */}
-          <section className="py-32 px-6 relative">
-            {/* Tech-styled section divider */}
-            <div className="absolute top-0 left-0 right-0 h-16 overflow-hidden">
-              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"></div>
-              <div className="absolute left-0 right-0 h-0.5 blur-sm bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
-              {/* Geometric accent */}
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-40 h-1 bg-primary/30 backdrop-blur-sm rounded"></div>
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-20 h-1 bg-primary/60 rounded animate-pulse-slow"></div>
-              {/* Pattern accents */}
-              <div className="absolute top-0 left-0 right-0 flex justify-center">
-                {Array.from({ length: 40 }).map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      backgroundColor: `rgba(var(--primary-rgb), ${Math.random() * 0.5 + 0.2})`,
-                      marginLeft: i % 2 ? '8px' : '4px',
-                      opacity: i % 3 === 0 ? 0.7 : 0.3,
-                      transform: `translateY(${i % 2 ? '10px' : '6px'})`
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+          <section className="py-10 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -1382,6 +1318,65 @@ console.log(doc.data);
         
         .animation-delay-4000 {
           animation-delay: 4s;
+        }
+
+        /* Enhanced grid patterns */
+        .bg-grid-pattern-primary {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+        
+        .bg-grid-small-pattern {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px);
+          background-size: 10px 10px;
+        }
+        
+        .bg-grid-large-pattern {
+          background-image: 
+            linear-gradient(to right, rgba(var(--primary-rgb), 0.07) 1.5px, transparent 1.5px),
+            linear-gradient(to bottom, rgba(var(--primary-rgb), 0.07) 1.5px, transparent 1.5px);
+          background-size: 50px 50px;
+        }
+        
+        .bg-grid-diagonal-pattern {
+          background-image: 
+            linear-gradient(45deg, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px),
+            linear-gradient(-45deg, rgba(var(--primary-rgb), 0.05) 1px, transparent 1px);
+          background-size: 30px 30px;
+          background-position: 0 0, 15px 15px;
+        }
+        
+        .bg-grid-dots {
+          background-image: radial-gradient(circle, rgba(var(--primary-rgb), 0.2) 1px, transparent 1px);
+          background-size: 15px 15px;
+        }
+        
+        .binary-pattern {
+          position: relative;
+        }
+        
+        .binary-pattern::before {
+          content: "10101010101010101010101";
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          font-family: monospace;
+          font-size: 12px;
+          line-height: 1;
+          opacity: 0.1;
+          color: rgba(var(--primary-rgb), 1);
+          overflow: hidden;
+          pointer-events: none;
+          white-space: pre;
+          background-size: 60px 60px;
+          letter-spacing: 3px;
+          transform: rotate(45deg);
         }
       `}</style>
     </div>
