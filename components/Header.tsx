@@ -25,11 +25,7 @@ export default function Header() {
   const { setTheme } = useTheme();
 
   const handleAuthAction = () => {
-    if (user) {
-      router.push('/playground');
-    } else {
-      router.push('/account');
-    }
+    router.push('/playground');
   };
 
   return (

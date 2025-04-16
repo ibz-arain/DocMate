@@ -13,15 +13,8 @@ import AppMockup from "@/components/app-mockup";
 import { useTheme } from "next-themes";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { GradientText } from "@/components/use-cases/shared/GradientText";
 
-// Gradient text component
-const GradientText = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
-  return (
-    <span className={`bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-blue-500 ${className}`}>
-      {children}
-    </span>
-  );
-};
 
 // Card component with hover expansion effect
 const Card3D = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
@@ -511,9 +504,9 @@ export default function HomePage() {
 
               {/* Document processing capabilities - animated interactive cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Feature 1: Document Analysis */}
+                {/* Feature 1: Custom Template Design */}
                   <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                   transition={{ duration: 0.7 }}
@@ -577,7 +570,7 @@ export default function HomePage() {
                 
                 {/* Feature 2: Data Extraction */}
                 <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.7, delay: 0.2 }}
@@ -649,7 +642,7 @@ export default function HomePage() {
                 
                 {/* Feature 3: Structured Output */}
                 <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.7, delay: 0.4 }}
