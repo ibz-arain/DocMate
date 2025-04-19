@@ -37,23 +37,15 @@ const sidebarSections = [
     links: [
       { id: "introduction", label: "Introduction" },
       { id: "quick-start", label: "Quick Start" },
-      { id: "installation", label: "Installation" },
+      { id: "demo", label: "Try Our Demo" },
+      { id: "examples", label: "Examples" },
     ]
   },
   {
-    title: "Core Concepts",
+    title: "Resources",
     links: [
-      { id: "architecture", label: "Architecture" },
-      { id: "authentication", label: "Authentication" },
-      { id: "deployment", label: "Deployment" },
-    ]
-  },
-  {
-    title: "Advanced",
-    links: [
-      { id: "customization", label: "Customization" },
-      { id: "plugins", label: "Plugins" },
-      { id: "api-reference", label: "API Reference" },
+      { id: "templates", label: "Templates" },
+      { id: "api", label: "API Integration" },
     ]
   }
 ];
