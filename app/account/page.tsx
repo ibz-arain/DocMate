@@ -352,7 +352,7 @@ function AccountContent() {
           transition={{ duration: 0.5 }}
           className="relative z-10 w-full max-w-lg login-form-container"
         >
-          <div className="relative bg-black/95 backdrop-blur-sm rounded-3xl p-8 pt-12 shadow-2xl">
+          <div className="relative bg-black/95 backdrop-blur-sm rounded-3xl p-8 pt-12 shadow-2xl border border-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]">
             <div className="space-y-8">
               <div className="text-center">
                 
