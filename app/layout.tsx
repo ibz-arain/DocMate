@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { SidebarProvider } from "@/components/sidebar-provider";
+import { SessionProvider } from "next-auth/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,12 +25,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="DocMate" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
-        <Providers attribute="class" defaultTheme="system" enableSystem>
-          <SidebarProvider>
-            {children}
+          <Providers attribute="class" defaultTheme="system" enableSystem>
+            <SidebarProvider>
+              {children}
           </SidebarProvider>
-          <Toaster />
-        </Providers>
+            <Toaster />
+          </Providers>
       </body>
     </html>
   );
