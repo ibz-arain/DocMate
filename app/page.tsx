@@ -13,15 +13,8 @@ import AppMockup from "@/components/app-mockup";
 import { useTheme } from "next-themes";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { GradientText } from "@/components/use-cases/shared/GradientText";
 
-// Gradient text component
-const GradientText = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
-  return (
-    <span className={`bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-blue-500 ${className}`}>
-      {children}
-    </span>
-  );
-};
 
 // Card component with hover expansion effect
 const Card3D = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
@@ -154,16 +147,6 @@ export default function HomePage() {
     [0, 0.1],
     [0, 0.5]
   );
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      backgroundX.set(e.clientX);
-      backgroundY.set(e.clientY);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [backgroundX, backgroundY]);
 
   // Remove noise texture effect
   const [isHydrated, setIsHydrated] = useState(false);
@@ -347,10 +330,10 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.5 }}
                   >
-                    <Link href="/playground">
+                    <Link href="/playground" target="_blank">
                       <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                         <span className="relative z-10 flex items-center">
-                          Try It Now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
+                          Get Started <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                         </span>
                       </Button>
                     </Link>
@@ -470,7 +453,7 @@ export default function HomePage() {
           </section>
 
           {/* Features Section - completely redesigned */}
-          <section className="py-10 px-6 relative">
+          <section className="py-20 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -511,9 +494,9 @@ export default function HomePage() {
 
               {/* Document processing capabilities - animated interactive cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Feature 1: Document Analysis */}
+                {/* Feature 1: Custom Template Design */}
                   <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                   transition={{ duration: 0.7 }}
@@ -577,7 +560,7 @@ export default function HomePage() {
                 
                 {/* Feature 2: Data Extraction */}
                 <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.7, delay: 0.2 }}
@@ -649,7 +632,7 @@ export default function HomePage() {
                 
                 {/* Feature 3: Structured Output */}
                 <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.7, delay: 0.4 }}
@@ -743,7 +726,7 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold mb-6"
                 >
-                  <GradientText>Try It</GradientText> Yourself
+                  <GradientText>Take a Look</GradientText> Yourself
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
@@ -766,32 +749,11 @@ export default function HomePage() {
                 <AppMockup />
               </motion.div>
               
-              <motion.div 
-                className="flex justify-center mt-12"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-              >
-                <Link href="/playground">
-                  <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
-                    <span className="relative z-10 flex items-center">
-                      Launch Now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
-                    </span>
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/10"
-                      initial={{ x: "-100%" }}
-                      whileHover={{ x: 0 }}
-                      transition={{ duration: 0.4 }}
-                    />
-                  </Button>
-                </Link>
-              </motion.div>
             </div>
           </section>
 
           {/* Use Cases Section - Redesigned with better visuals */}
-          <section className="py-10 px-6 relative">
+          <section className="py-20 px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -938,176 +900,6 @@ export default function HomePage() {
                     Explore More Use Cases <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                   </Button>
                 </Link>
-              </motion.div>
-            </div>
-          </section>
-
-          {/* API & Integration Section */}
-          <section className="py-10 px-6 relative">
-            <div className="container mx-auto max-w-7xl relative z-10">
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8 }}
-                className="text-center mb-20"
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5 }}
-                  className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
-                >
-                  <Code className="h-4 w-4 mr-2" />
-                  <span>Coming Soon</span>
-                </motion.div>
-                <motion.h2
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                  className="text-4xl md:text-5xl font-bold mb-6"
-                >
-                  <GradientText>API</GradientText> & Integration
-                </motion.h2>
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-xl text-muted-foreground max-w-3xl mx-auto"
-                >
-                  Add document analysis to your apps with a few lines of code.
-                </motion.p>
-              </motion.div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5 }}
-                  className="space-y-8"
-                >
-                  <div className="space-y-6">
-                    {[
-                      {
-                        icon: <Cable className="h-6 w-6" />,
-                        title: "Simple REST API",
-                        description: "One API call to analyze any document. Get structured data back in milliseconds."
-                      },
-                      {
-                        icon: <FileSpreadsheet className="h-6 w-6" />,
-                        title: "Multiple Formats",
-                        description: "Export as JSON, CSV, or custom formats. Fits into any data pipeline."
-                      },
-                      {
-                        icon: <LightbulbIcon className="h-6 w-6" />,
-                        title: "Custom Schemas",
-                        description: "Define extraction rules for industry-specific documents. Train on your own data."
-                      },
-                      {
-                        icon: <Plus className="h-6 w-6" />,
-                        title: "Batch Processing",
-                        description: "Process thousands of documents in parallel. Scale without limits."
-                      }
-                    ].map((feature, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: 0.1 * index }}
-                        className="flex gap-4"
-                      >
-                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                          {feature.icon}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                          <p className="text-muted-foreground">{feature.description}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="relative"
-                >
-                  <Card3D className="w-full">
-                    <Card className="bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden">
-                      <CardContent className="p-6">
-                        <div className="flex items-center mb-4">
-                          <div className="flex space-x-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                          </div>
-                          <div className="ml-4 text-sm text-muted-foreground">API Request Example</div>
-                        </div>
-                        <pre className="bg-black/50 p-4 rounded-lg overflow-x-auto text-sm text-primary font-mono">
-{`// Analyze a document
-import { DocMate } from '@docmate/sdk';
-
-// Initialize client
-const client = new DocMate('api_key');
-
-// Process document
-const doc = await client.analyze({
-  file: './invoice.pdf',
-  type: 'invoice'
-});
-
-// Access extracted data
-console.log(doc.data);
-// {
-//   date: '2023-05-15',
-//   total: 1250.00,
-//   vendor: 'Acme Corp',
-//   items: [...]
-// }`}
-                        </pre>
-                      </CardContent>
-                    </Card>
-                  </Card3D>
-
-                  {/* Decorative elements */}
-                  <motion.div
-                    className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full"
-                    style={{
-                      background: "radial-gradient(circle, rgba(var(--primary-rgb), 0.3) 0%, rgba(var(--primary-rgb), 0.1) 50%, transparent 70%)",
-                      filter: "blur(40px)",
-                    }}
-                    animate={{
-                      scale: [1, 1.2, 1],
-                      opacity: [0.5, 0.7, 0.5],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      repeatType: "reverse",
-                      ease: "easeInOut",
-                    }}
-                  />
-                </motion.div>
-              </div>
-
-              <motion.div 
-                className="flex justify-center mt-16"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-              >
-                <Button variant="outline" size="lg"className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
-                  Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
-                </Button>
               </motion.div>
             </div>
           </section>

@@ -9,7 +9,7 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-
+import Image from "next/image";
 // Gradient text component
 const GradientText = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
   return (
@@ -85,7 +85,8 @@ const TimelineItem = ({
   title, 
   features,
   icon: Icon,
-  index
+  index,
+  imageUrl
 }: { 
   version: string;
   date: string;
@@ -93,6 +94,7 @@ const TimelineItem = ({
   features: string[];
   icon: any;
   index: number;
+  imageUrl: string;
 }) => {
   const itemRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -133,15 +135,16 @@ const TimelineItem = ({
         </div>
         
         {/* Terminal content */}
-        <div className="p-5 font-mono text-sm bg-gradient-to-b from-black to-gray-900/80">
-          {/* Simple command */}
-          <div className="flex items-center text-white/90 mb-3">
-            <span className="text-green-400 mr-2">$</span>
-            <span className="text-primary mr-1">show</span>
-            <span className="text-white/90">v{version}</span>
-          </div>
-          
-          {/* Release info - simplified */}
+        <div className="p-5 font-mono text-sm bg-gradient-to-b from-black to-gray-900/80 flex gap-4">
+          {/* Left Half (Text Content) */}
+          <div className="w-1/2 flex flex-col gap-3">
+            {/* Simple command */}
+            <div className="flex items-center text-white/90">
+              <span className="text-green-400 mr-2">$</span>
+              <span className="text-white/90">v{version}</span>
+            </div>
+            
+            {/* Release info - simplified */}
           <div className="bg-black/30 rounded-md border border-white/10 p-4 mb-3">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
@@ -162,11 +165,10 @@ const TimelineItem = ({
               </div>
             </div>
           </div>
-          
-          {/* Features - compact */}
-          <div className="flex items-start">
-            <div className="flex-1">
-              <div className="text-xs text-primary mb-2">Features:</div>
+
+            {/* Features - compact */}
+            <div className="flex-grow">
+              <div className="text-sm text-primary mb-2">Features:</div>
               <div className="grid grid-cols-1 gap-1 pl-2 border-l border-primary/30">
                 {features.map((feature, idx) => (
                   <motion.div
@@ -175,7 +177,7 @@ const TimelineItem = ({
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.2, delay: idx * 0.05 }}
-                    className="flex items-start gap-1.5 text-xs"
+                    className="flex items-start gap-1.5 text-sm"
                   >
                     <span className="text-green-400 font-bold mt-0.5">✓</span>
                     <span className="text-white/80">{feature}</span>
@@ -183,6 +185,17 @@ const TimelineItem = ({
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Right Half (Image) */}
+          <div className="w-1/2 flex-shrink-0">
+            <Image 
+              src={imageUrl} 
+              alt={`${title} feature illustration`} 
+              className="w-full h-full rounded-md object-cover border border-white/10 shadow-md" 
+              width={1080}
+              height={540}
+            />
           </div>
         </div>
       </div>
@@ -212,6 +225,7 @@ export default function ChangelogPage() {
       date: "April 5, 2025",
       title: "Store templates",
       icon: Save,
+      imageUrl: "/versions/v1.3.png",
       features: [
         "Store templates for your documents",
         "Use templates to quickly create new documents",
@@ -222,6 +236,7 @@ export default function ChangelogPage() {
       date: "March 8, 2024",
       title: "Custom Document Types",
       icon: Wand2,
+      imageUrl: "/versions/v1.2.png",
       features: [
         "Make your own document types",
         "Customize the output with your own variables",
@@ -233,6 +248,7 @@ export default function ChangelogPage() {
       date: "February 22, 2024",
       title: "User Accounts & Document History",
       icon: Users,
+      imageUrl: "/versions/v1.1.png",
       features: [
         "User accounts and session management",
         "Store processed documents in your account",
@@ -245,26 +261,12 @@ export default function ChangelogPage() {
       date: "February 16, 2024",
       title: "Initial Release",
       icon: FileText,
+      imageUrl: "/versions/v1.0.png",
       features: [
         "Limited to 5 document types",
         "Limited to only PDF files",
         "Basic user interface"
       ]
-    }
-  ];
-
-  const futureUpdates = [
-    {
-      title: "Our very own API",
-      description: "Building an API to allow seamless integration with your existing systems and workflows for automated document processing.",
-      timeline: "Estimated Release: April, 2025",
-      icon: Code
-    },
-    {
-      title: "Automatic Document Type Styling",
-      description: "Using AI to automatically detect and apply appropriate styling for data extraction.",
-      timeline: "Estimated Release: April, 2025",
-      icon: Wand2
     }
   ];
 
@@ -287,7 +289,7 @@ export default function ChangelogPage() {
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
             </div>
             
-            <div className="container max-w-3xl mx-auto relative z-10">
+            <div className="container max-w-6xl mx-auto relative z-10">
               {/* Header */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

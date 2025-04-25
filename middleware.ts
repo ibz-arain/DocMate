@@ -1,14 +1,28 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
+import { getToken } from 'next-auth/jwt';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.NEXTAUTH_SECRET;
 
 // Public routes that don't require authentication
 const publicRoutes = [
+  '/',
   '/api/auth/login',
   '/api/users/register',
-  '/api/auth/logout'
+  '/api/auth/logout',
+  '/api/auth/providers',
+  '/api/auth/session',
+  '/api/auth/csrf',
+  '/api/auth/signin',
+  '/api/auth/signout',
+  '/api/auth/error',
+  '/api/auth/callback',
+  '/account',
+  '/use-cases',
+  '/docs',
+  '/changelog',
+  '/about',
+  '/demo'
 ];
 
 // Routes that require authentication
@@ -17,73 +31,51 @@ const protectedRoutes = [
   '/api/users/update',
   '/api/users/delete',
   '/playground',
-  '/playground/process',
-  '/playground/history',
-  '/playground/api',
-  '/playground/templates'
+  // '/playground/process',
+  // '/playground/history',
+  // '/playground/api',
+  // '/playground/templates'
 ];
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Allow public routes
+  // Early exit for public routes
   if (publicRoutes.some(route => pathname.startsWith(route))) {
     return NextResponse.next();
   }
 
-  // Check if the route requires authentication
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    const token = request.cookies.get('auth_token')?.value;
+  // Check for NextAuth session token for all other routes (implicitly protected)
+  const token = await getToken({ req: request, secret: JWT_SECRET });
+  console.log(`Middleware check for ${pathname}: Token found?`, !!token);
 
+  // If no token, redirect or return error
     if (!token) {
-      // For API routes, return JSON response
+    // Check if it's an API route request
       if (pathname.startsWith('/api/')) {
+      // Do not protect next-auth internal API routes even if not explicitly public
+      if (pathname.startsWith('/api/auth/')) {
+         return NextResponse.next();
+      }
         return NextResponse.json(
           { error: 'Authentication required' },
           { status: 401 }
         );
       }
       
-      // For other routes (like playground), redirect to login page
-      // Include the current path as a redirect parameter
+    // For page routes, redirect to the sign-in page
       const url = new URL('/account', request.url);
-      url.searchParams.set('redirect', pathname);
+    url.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(url);
     }
 
-    try {
-      // Verify the token
-      await jwtVerify(
-        token,
-        new TextEncoder().encode(JWT_SECRET)
-      );
-
-      return NextResponse.next();
-    } catch (error) {
-      // For API routes, return JSON response
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { error: 'Invalid token' },
-          { status: 401 }
-        );
-      }
-      
-      // For other routes, redirect to login page
-      // Include the current path as a redirect parameter
-      const url = new URL('/account', request.url);
-      url.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(url);
-    }
-  }
-
-  // Allow all other routes
+  // Token exists, allow the request to proceed
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/api/:path*',
-    '/playground',
+    '/((?!api/auth/|_next/static|_next/image|favicon.ico|logo.png|manifest.json).*)',
     '/playground/:path*'
   ],
 }; 
