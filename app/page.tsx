@@ -148,16 +148,6 @@ export default function HomePage() {
     [0, 0.5]
   );
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      backgroundX.set(e.clientX);
-      backgroundY.set(e.clientY);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [backgroundX, backgroundY]);
-
   // Remove noise texture effect
   const [isHydrated, setIsHydrated] = useState(false);
   
