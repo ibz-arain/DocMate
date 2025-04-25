@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { signOut } from 'next-auth/react';
 
 interface User {
   id: number;
@@ -75,17 +76,23 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to logout');
+      // Set the flag before initiating sign out
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('forceGooglePrompt', 'true');
       }
+      
+      // Use NextAuth signOut to clear the session
+      await signOut({ redirect: false });
 
+      // Clear local user data
       localStorage.removeItem('user');
       setAuthState({ user: null, loading: false });
+
     } catch (error) {
+      // Clear the flag if any error occurs during sign out
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('forceGooglePrompt');
+      }
       console.error('Logout error:', error);
       throw error;
     }

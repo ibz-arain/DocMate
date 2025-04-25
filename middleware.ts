@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.NEXTAUTH_SECRET;
 
 // Public routes that don't require authentication
 const publicRoutes = [
+  '/',
   '/api/auth/login',
   '/api/users/register',
   '/api/auth/logout',
@@ -13,8 +14,15 @@ const publicRoutes = [
   '/api/auth/session',
   '/api/auth/csrf',
   '/api/auth/signin',
+  '/api/auth/signout',
+  '/api/auth/error',
   '/api/auth/callback',
-  '/account'
+  '/account',
+  '/use-cases',
+  '/docs',
+  '/changelog',
+  '/about',
+  '/demo'
 ];
 
 // Routes that require authentication
@@ -42,24 +50,24 @@ export async function middleware(request: NextRequest) {
   console.log(`Middleware check for ${pathname}: Token found?`, !!token);
 
   // If no token, redirect or return error
-  if (!token) {
+    if (!token) {
     // Check if it's an API route request
-    if (pathname.startsWith('/api/')) {
+      if (pathname.startsWith('/api/')) {
       // Do not protect next-auth internal API routes even if not explicitly public
       if (pathname.startsWith('/api/auth/')) {
          return NextResponse.next();
       }
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+      
     // For page routes, redirect to the sign-in page
-    const url = new URL('/account', request.url);
+      const url = new URL('/account', request.url);
     url.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(url);
-  }
+      return NextResponse.redirect(url);
+    }
 
   // Token exists, allow the request to proceed
   return NextResponse.next();

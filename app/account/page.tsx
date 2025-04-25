@@ -309,19 +309,28 @@ function AccountContent() {
   const handleOAuthSignIn = async (provider: "google" | "azure-ad") => {
     setLoading(true);
     try {
-      // Optionally pass callbackUrl and redirect based on redirectPath
-      // const callbackUrl = redirectPath || '/'; // Redirect to intended page or home
-      await signIn(provider, { callbackUrl: redirectPath || '/' });
-      // No need to handle success/error here as NextAuth handles the redirect flow
+      const callbackUrl = redirectPath || '/';
+      let authParams: { prompt?: string } | undefined = undefined; // Default to undefined
+
+      if (provider === "google" && typeof window !== 'undefined') {
+        const forcePrompt = sessionStorage.getItem('forceGooglePrompt');
+        if (forcePrompt === 'true') {
+          authParams = { prompt: "select_account" };
+          sessionStorage.removeItem('forceGooglePrompt'); // Clear the flag after use
+        }
+      }
+      
+      // Pass authParams (which is either { prompt: 'select_account' } or undefined)
+      await signIn(provider, { callbackUrl }, authParams);
+      
     } catch (error: any) {
       toast({
         title: "OAuth Sign-In Error",
         description: error.message || "Something went wrong during OAuth sign-in.",
         variant: "destructive",
       });
-      setLoading(false); // Only set loading false on error
+      setLoading(false);
     }
-    // Don't setLoading(false) on success, as the page will redirect
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
