@@ -5,7 +5,6 @@ import { Providers } from "./providers";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { SidebarProvider } from "@/components/sidebar-provider";
-import { SessionProvider } from "next-auth/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,7 +27,7 @@ export default function RootLayout({
           <Providers attribute="class" defaultTheme="system" enableSystem>
             <SidebarProvider>
               {children}
-          </SidebarProvider>
+            </SidebarProvider>
             <Toaster />
           </Providers>
       </body>

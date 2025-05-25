@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ArrowLeft } from "lucide-react";
-import { useAuthContext } from "@/components/auth-provider";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -249,7 +248,6 @@ function AccountContent() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [redirectPath, setRedirectPath] = useState<string | null>(null);
-  const { login, register, user } = useAuthContext();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -290,74 +288,61 @@ function AccountContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    const handleAuthStateChange = async () => {
-      if (user && redirectPath) {
-        try {
-          await router.push(redirectPath);
-          sessionStorage.removeItem('redirectAfterLogin');
-        } catch (navError) {
-          console.error('Navigation error:', navError);
-          router.push('/');
-        }
-      }
-    };
-
-    handleAuthStateChange();
-  }, [user, redirectPath, router]);
-
-  const handleOAuthSignIn = async (provider: "google" | "azure-ad") => {
-    setLoading(true);
-    try {
-      const callbackUrl = redirectPath || '/';
-      let authParams: { prompt?: string } | undefined = undefined; // Default to undefined
-
-      if (provider === "google" && typeof window !== 'undefined') {
-        const forcePrompt = sessionStorage.getItem('forceGooglePrompt');
-        if (forcePrompt === 'true') {
-          authParams = { prompt: "select_account" };
-          sessionStorage.removeItem('forceGooglePrompt'); // Clear the flag after use
-        }
-      }
-      
-      // Pass authParams (which is either { prompt: 'select_account' } or undefined)
-      await signIn(provider, { callbackUrl }, authParams);
-      
-    } catch (error: any) {
-      toast({
-        title: "OAuth Sign-In Error",
-        description: error.message || "Something went wrong during OAuth sign-in.",
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       if (mode === "signin") {
-        await login(username, password);
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
+        const result = await signIn("credentials", {
+          redirect: false,
+          username,
+          password,
+          callbackUrl: redirectPath || "/playground"
         });
-        
-        if (!redirectPath) {
-          router.back();
+        if (result?.error) {
+          toast({
+            title: "Error",
+            description: result.error || "Invalid credentials.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in.",
+          });
+          // NextAuth will update the session, so redirect
+          router.push(redirectPath || "/playground");
         }
       } else {
-        await register(username, password);
-        await login(username, password);
-        toast({
-          title: "Account created!",
-          description: "Your account has been created and you are now signed in.",
+        // Register user first
+        const response = await fetch('/api/users/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
         });
-        
-        if (!redirectPath) {
-          router.back();
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to register');
+        }
+        // After registration, sign in
+        const result = await signIn("credentials", {
+          redirect: false,
+          username,
+          password,
+          callbackUrl: redirectPath || "/playground"
+        });
+        if (result?.error) {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to sign in after registration.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Account created!",
+            description: "Your account has been created and you are now signed in.",
+          });
+          router.push(redirectPath || "/playground");
         }
       }
     } catch (error: any) {

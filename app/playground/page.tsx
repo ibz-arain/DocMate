@@ -7,8 +7,8 @@ export default function PlaygroundPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the process route by default
-    router.replace("/playground/process");
+    // Redirect to the document route by default
+    router.replace("/playground/document");
   }, [router]);
 
   // Return null while redirecting
