@@ -306,10 +306,10 @@ function AccountContent() {
             variant: "destructive",
           });
         } else {
-          toast({
-            title: "Welcome back!",
-            description: "You have successfully signed in.",
-          });
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+        });
           // NextAuth will update the session, so redirect
           router.push(redirectPath || "/playground");
         }
@@ -338,10 +338,10 @@ function AccountContent() {
             variant: "destructive",
           });
         } else {
-          toast({
-            title: "Account created!",
-            description: "Your account has been created and you are now signed in.",
-          });
+        toast({
+          title: "Account created!",
+          description: "Your account has been created and you are now signed in.",
+        });
           router.push(redirectPath || "/playground");
         }
       }

@@ -16,16 +16,16 @@ export function Providers({ children, ...props }: ThemeProviderProps) {
 
   return (
     <SessionProvider>
-      <NextThemesProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        {...props}
-      >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </NextThemesProvider>
+    <NextThemesProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      {...props}
+    >
+      <AuthProvider>
+        {children}
+      </AuthProvider>
+    </NextThemesProvider>
     </SessionProvider>
   )
 } 

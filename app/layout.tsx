@@ -27,7 +27,7 @@ export default function RootLayout({
           <Providers attribute="class" defaultTheme="system" enableSystem>
             <SidebarProvider>
               {children}
-            </SidebarProvider>
+          </SidebarProvider>
             <Toaster />
           </Providers>
       </body>

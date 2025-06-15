@@ -131,37 +131,37 @@ export default function DocumentPage() {
         <CustomSidebar selectedType="document" />
         
         <main className="flex-1 flex flex-col overflow-hidden p-2 md:p-4">
-          <div className="grid gap-2 h-full lg:grid-cols-[1fr_auto] grid-cols-1">
+            <div className="grid gap-2 h-full lg:grid-cols-[1fr_auto] grid-cols-1">
             {/* PDF Viewer Card with Floating Controls */}
             <Card className="shadow-sm overflow-hidden relative">
-              <CardContent className="p-0 h-full">
-                {!pdfUrl ? (
-                  <div 
-                    className="w-full h-full flex flex-col items-center justify-center p-8"
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                        handleFileDrop(e.dataTransfer.files[0]);
-                      }
-                    }}
-                  >
-                    <div className="w-full max-w-md p-6 border-2 border-dashed border-border rounded-lg text-center">
-                      <p className="text-muted-foreground mb-4">Drop PDF here or select a file</p>
-                      <Input 
-                        type="file" 
-                        accept="application/pdf" 
-                        onChange={handleFileChange}
-                        className="w-full"
-                      />
+                <CardContent className="p-0 h-full">
+                  {!pdfUrl ? (
+                    <div 
+                      className="w-full h-full flex flex-col items-center justify-center p-8"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                          handleFileDrop(e.dataTransfer.files[0]);
+                        }
+                      }}
+                    >
+                      <div className="w-full max-w-md p-6 border-2 border-dashed border-border rounded-lg text-center">
+                        <p className="text-muted-foreground mb-4">Drop PDF here or select a file</p>
+                        <Input 
+                          type="file" 
+                          accept="application/pdf" 
+                          onChange={handleFileChange}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-full relative">
+                  ) : (
+                    <div className="w-full h-full relative">
                     {/* Floating Document Info */}
                     {pdfFile && (
                       <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md">
@@ -196,76 +196,76 @@ export default function DocumentPage() {
                       </Button>
                     </div>
 
-                    {isLoading && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-                        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-                      </div>
-                    )}
-                    <div className="absolute inset-0">
-                      <PdfViewer
-                        file={pdfUrl}
-                        pageNumber={pageNumber}
-                        scale={scale}
-                        rotation={rotation}
-                        onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                        onLoadError={(error) => {
-                          console.error("Error loading PDF:", error);
-                          setIsLoading(false);
-                        }}
+                      {isLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                        </div>
+                      )}
+                      <div className="absolute inset-0">
+                        <PdfViewer
+                          file={pdfUrl}
+                          pageNumber={pageNumber}
+                          scale={scale}
+                          rotation={rotation}
+                          onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                          onLoadError={(error) => {
+                            console.error("Error loading PDF:", error);
+                            setIsLoading(false);
+                          }}
                         onPageChange={handlePageChange}
-                      />
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
 
-            {/* Tools Sidebar Card */}
-            <Card className="shadow-sm flex flex-col h-full w-[60px]">
-              <CardContent className="p-2 flex flex-col h-full items-center gap-1">
-                <TooltipProvider delayDuration={0}>
-                  {tools.map(tool => (
-                    <Tooltip key={tool.id}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={selectedTool === tool.id ? "default" : "ghost"}
-                          size="icon"
-                          className="h-10 w-10"
-                          onClick={() => handleToolSelect(tool.id)}
-                        >
-                          {tool.icon}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" align="center">
-                        <p>{tool.label}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-
-                  {pdfFile && (
-                    <div className="mt-auto pt-2 border-t border-border w-full flex justify-center">
-                      <Tooltip>
+              {/* Tools Sidebar Card */}
+              <Card className="shadow-sm flex flex-col h-full w-[60px]">
+                <CardContent className="p-2 flex flex-col h-full items-center gap-1">
+                  <TooltipProvider delayDuration={0}>
+                    {tools.map(tool => (
+                      <Tooltip key={tool.id}>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant={selectedTool === tool.id ? "default" : "ghost"}
                             size="icon"
                             className="h-10 w-10"
+                            onClick={() => handleToolSelect(tool.id)}
                           >
-                            <FileTextIcon className="h-5 w-5" />
+                            {tool.icon}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left" align="center">
-                          <p className="font-medium">{pdfFile.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
+                          <p>{tool.label}</p>
                         </TooltipContent>
                       </Tooltip>
-                    </div>
-                  )}
-                </TooltipProvider>
-              </CardContent>
-            </Card>
+                    ))}
+
+                    {pdfFile && (
+                      <div className="mt-auto pt-2 border-t border-border w-full flex justify-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10"
+                            >
+                              <FileTextIcon className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" align="center">
+                            <p className="font-medium">{pdfFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </TooltipProvider>
+                </CardContent>
+              </Card>
           </div>
         </main>
       </div>
