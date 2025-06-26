@@ -17,6 +17,7 @@ import {
   Eye as EyeIcon,
   Scissors as ScissorsIcon,
   FileText as FileTextIcon,
+  Upload,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +27,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { useDropzone } from "react-dropzone";
+import { toast } from "@/components/ui/use-toast";
 
 export default function DocumentPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -36,7 +41,27 @@ export default function DocumentPage() {
   const [rotation, setRotation] = useState<number>(0);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [dropText, setDropText] = useState("Drag & drop your PDF here");
   const lastPageChangeRef = useRef<number>(0);
+
+  const dropTexts = [
+    "Drag & drop your PDF here",
+    "Let's edit your document",
+    "Drop it like it's hot",
+    "Your PDF's new home",
+    "Ready when you are"
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDropText(prev => {
+        const currentIndex = dropTexts.indexOf(prev);
+        return dropTexts[(currentIndex + 1) % dropTexts.length];
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Clean up URL object when component unmounts
   useEffect(() => {
@@ -47,9 +72,26 @@ export default function DocumentPage() {
     };
   }, [pdfUrl]);
 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        handleFileDrop(acceptedFiles[0]);
+      }
+    },
+    accept: {
+      'application/pdf': ['.pdf']
+    },
+    maxSize: 10 * 1024 * 1024,
+    multiple: false
+  });
+
   const handleFileDrop = (file: File) => {
     if (file.type !== 'application/pdf') {
-      alert('Please select a PDF file');
+      toast({
+        title: "Invalid file type",
+        description: "Please select a PDF file",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -130,38 +172,76 @@ export default function DocumentPage() {
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar selectedType="document" />
         
-        <main className="flex-1 flex flex-col overflow-hidden p-2 md:p-4">
-            <div className="grid gap-2 h-full lg:grid-cols-[1fr_auto] grid-cols-1">
+        <main className="flex-1 flex flex-col overflow-hidden p-6">
+          <div className="grid gap-6 h-full lg:grid-cols-[1fr_auto] grid-cols-1">
             {/* PDF Viewer Card with Floating Controls */}
             <Card className="shadow-sm overflow-hidden relative">
-                <CardContent className="p-0 h-full">
-                  {!pdfUrl ? (
-                    <div 
-                      className="w-full h-full flex flex-col items-center justify-center p-8"
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                          handleFileDrop(e.dataTransfer.files[0]);
-                        }
-                      }}
+              <CardContent className="p-0 h-full">
+                {!pdfUrl ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-dots-primary/15">
+                    {/* Dynamic Text Above Upload */}
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={dropText}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="text-center mb-8"
+                      >
+                        <p className="text-2xl font-medium text-primary">
+                          {isDragActive ? "Drop it right here!" : dropText}
+                        </p>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    {/* Document Upload */}
+                    <div
+                      {...getRootProps()}
+                      className={cn(
+                        "flex flex-col items-center justify-center py-12 px-8",
+                        "transition-all duration-300 w-full max-w-md",
+                        "border-2 border-dashed rounded-lg",
+                        isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50 hover:bg-muted/50",
+                        "group cursor-pointer relative overflow-hidden"
+                      )}
                     >
-                      <div className="w-full max-w-md p-6 border-2 border-dashed border-border rounded-lg text-center">
-                        <p className="text-muted-foreground mb-4">Drop PDF here or select a file</p>
-                        <Input 
-                          type="file" 
-                          accept="application/pdf" 
-                          onChange={handleFileChange}
-                          className="w-full"
-                        />
-                      </div>
+                      <input {...getInputProps()} />
+                      <motion.div 
+                        className="space-y-6 text-center relative z-10"
+                        animate={isDragActive ? { scale: 1.02 } : { scale: 1 }}
+                      >
+                        <div className="h-16 w-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
+                          <Upload className="h-8 w-8" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-medium">
+                            Select or drop your PDF
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            PDF files up to 10MB
+                          </p>
+                        </div>
+                        <div className="flex justify-center">
+                          <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm">PDF</span>
+                        </div>
+                      </motion.div>
+                      
+                      {/* Animated background gradient */}
+                      <div 
+                        className={cn(
+                          "absolute inset-0 transition-opacity duration-300",
+                          isDragActive ? "opacity-100" : "opacity-0",
+                          "bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5"
+                        )}
+                        style={{
+                          backgroundSize: '400% 400%',
+                          animation: 'gradient 15s ease infinite',
+                        }}
+                      />
                     </div>
-                  ) : (
-                    <div className="w-full h-full relative">
+                  </div>
+                ) : (
+                  <div className="w-full h-full relative">
                     {/* Floating Document Info */}
                     {pdfFile && (
                       <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md">
@@ -196,79 +276,94 @@ export default function DocumentPage() {
                       </Button>
                     </div>
 
-                      {isLoading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-                        </div>
-                      )}
-                      <div className="absolute inset-0">
-                        <PdfViewer
-                          file={pdfUrl}
-                          pageNumber={pageNumber}
-                          scale={scale}
-                          rotation={rotation}
-                          onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                          onLoadError={(error) => {
-                            console.error("Error loading PDF:", error);
-                            setIsLoading(false);
-                          }}
-                        onPageChange={handlePageChange}
-                        />
+                    {isLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+                        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
                       </div>
+                    )}
+                    <div className="absolute inset-0">
+                      <PdfViewer
+                        file={pdfUrl}
+                        pageNumber={pageNumber}
+                        scale={scale}
+                        rotation={rotation}
+                        onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                        onLoadError={(error) => {
+                          console.error("Error loading PDF:", error);
+                          setIsLoading(false);
+                        }}
+                        onPageChange={handlePageChange}
+                      />
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-              {/* Tools Sidebar Card */}
-              <Card className="shadow-sm flex flex-col h-full w-[60px]">
-                <CardContent className="p-2 flex flex-col h-full items-center gap-1">
-                  <TooltipProvider delayDuration={0}>
-                    {tools.map(tool => (
-                      <Tooltip key={tool.id}>
+            {/* Tools Sidebar Card */}
+            <Card className="shadow-sm flex flex-col h-full w-[60px]">
+              <CardContent className=" flex flex-col h-full items-center gap-1">
+                <TooltipProvider delayDuration={0}>
+                  {tools.map(tool => (
+                    <Tooltip key={tool.id}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={selectedTool === tool.id ? "default" : "ghost"}
+                          size="icon"
+                          className="h-10 w-10"
+                          onClick={() => handleToolSelect(tool.id)}
+                        >
+                          {tool.icon}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" align="center">
+                        <p>{tool.label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+
+                  {pdfFile && (
+                    <div className="mt-auto pt-2 border-t border-border w-full flex justify-center">
+                      <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant={selectedTool === tool.id ? "default" : "ghost"}
+                            variant="ghost"
                             size="icon"
                             className="h-10 w-10"
-                            onClick={() => handleToolSelect(tool.id)}
                           >
-                            {tool.icon}
+                            <FileTextIcon className="h-5 w-5" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left" align="center">
-                          <p>{tool.label}</p>
+                          <p className="font-medium">{pdfFile.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
                         </TooltipContent>
                       </Tooltip>
-                    ))}
-
-                    {pdfFile && (
-                      <div className="mt-auto pt-2 border-t border-border w-full flex justify-center">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10"
-                            >
-                              <FileTextIcon className="h-5 w-5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" align="center">
-                            <p className="font-medium">{pdfFile.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    )}
-                  </TooltipProvider>
-                </CardContent>
-              </Card>
+                    </div>
+                  )}
+                </TooltipProvider>
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>
+
+      {/* CSS for animated gradient background */}
+      <style jsx global>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        .bg-dots-primary\/15 {
+          background-image: radial-gradient(circle at 1px 1px, rgb(var(--primary) / 0.15) 2px, transparent 0);
+          background-size: 40px 40px;
+          background-position: center;
+        }
+      `}</style>
     </>
   );
 } 
