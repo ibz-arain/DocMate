@@ -1,148 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@libsql/client';
-import bcrypt from 'bcryptjs';
+import { db } from '@/lib/db';
+import { verifyJWT, getTokenFromRequest, sanitizeUser } from '@/lib/auth-utils';
+import { User } from '@/types/auth';
 
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL!,
-  authToken: process.env.TURSO_AUTH_TOKEN!,
-});
-
-// GET /api/users - Get all users (for admin purposes)
-export async function GET() {
+// GET /api/users - Get all users (for admin purposes - requires authentication)
+export async function GET(request: NextRequest) {
   try {
-    const result = await client.execute('SELECT id, username, created_at FROM users');
-    return NextResponse.json(result.rows);
+    const token = getTokenFromRequest(request);
+    
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json(
+        { message: 'Invalid or expired token' },
+        { status: 401 }
+      );
+    }
+
+    // Get all users (without password hashes)
+    const result = await db.execute(`
+      SELECT user_id, first_name, last_name, email, phone_number, 
+             email_verified, phone_verified, is_active, created_at, updated_at 
+      FROM users 
+      ORDER BY created_at DESC
+    `);
+
+    const users = result.rows.map(row => row as unknown as User).map(sanitizeUser);
+    return NextResponse.json(users);
+
   } catch (error) {
     console.error('Error fetching users:', error);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
-  }
-}
-
-// POST /api/users - Create a new user (sign up)
-export async function POST(request: NextRequest) {
-  try {
-    const { username, password } = await request.json();
-
-    // Validate input
-    if (!username || !password) {
-      return NextResponse.json(
-        { error: 'Username and password are required' },
-        { status: 400 }
-      );
-    }
-
-    // Check if username already exists
-    const existingUser = await client.execute({
-      sql: 'SELECT id FROM users WHERE username = ?',
-      args: [username]
-    });
-
-    if (existingUser.rows.length > 0) {
-      return NextResponse.json(
-        { error: 'Username already exists' },
-        { status: 409 }
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const result = await client.execute({
-      sql: 'INSERT INTO users (username, password) VALUES (?, ?) RETURNING id, username, created_at',
-      args: [username, hashedPassword]
-    });
-
-    return NextResponse.json(result.rows[0], { status: 201 });
-  } catch (error) {
-    console.error('Error creating user:', error);
     return NextResponse.json(
-      { error: 'Failed to create user' },
+      { message: 'Failed to fetch users' },
       { status: 500 }
     );
   }
 }
 
-// PUT /api/users/:id - Update a user
-export async function PUT(request: NextRequest) {
-  try {
-    const { id, username, password } = await request.json();
-
-    // Validate input
-    if (!id || (!username && !password)) {
-      return NextResponse.json(
-        { error: 'ID and at least one field to update are required' },
-        { status: 400 }
-      );
-    }
-
-    let updates = [];
-    let args: any[] = [];
-
-    if (username) {
-      updates.push('username = ?');
-      args.push(username);
-    }
-
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updates.push('password = ?');
-      args.push(hashedPassword);
-    }
-
-    args.push(id);
-
-    const result = await client.execute({
-      sql: `UPDATE users SET ${updates.join(', ')} WHERE id = ? RETURNING id, username, created_at`,
-      args
-    });
-
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error updating user:', error);
-    return NextResponse.json(
-      { error: 'Failed to update user' },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE /api/users/:id - Delete a user
+// DELETE /api/users - Delete current user account
 export async function DELETE(request: NextRequest) {
   try {
-    const { id } = await request.json();
-
-    if (!id) {
+    const token = getTokenFromRequest(request);
+    
+    if (!token) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { message: 'Authentication required' },
+        { status: 401 }
       );
     }
 
-    const result = await client.execute({
-      sql: 'DELETE FROM users WHERE id = ? RETURNING id',
-      args: [id]
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json(
+        { message: 'Invalid or expired token' },
+        { status: 401 }
+      );
+    }
+
+    // Instead of hard delete, we'll deactivate the user
+    const result = await db.execute({
+      sql: 'UPDATE users SET is_active = 0, updated_at = CURRENT_DATE WHERE user_id = ? RETURNING user_id',
+      args: [payload.userId]
     });
 
     if (result.rows.length === 0) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { message: 'User not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ message: 'User deleted successfully' });
+    return NextResponse.json({ 
+      message: 'Account deactivated successfully. Contact support to reactivate.' 
+    });
+
   } catch (error) {
-    console.error('Error deleting user:', error);
+    console.error('Error deactivating user:', error);
     return NextResponse.json(
-      { error: 'Failed to delete user' },
+      { message: 'Failed to deactivate account' },
       { status: 500 }
     );
   }

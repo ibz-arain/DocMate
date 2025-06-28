@@ -1,104 +1,111 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@libsql/client';
-import bcrypt from 'bcryptjs';
-import { SignJWT } from 'jose';
-
-interface User {
-  id: number;
-  username: string;
-  password: string;
-  created_at: string;
-}
-
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL!,
-  authToken: process.env.TURSO_AUTH_TOKEN!,
-});
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { db } from '@/lib/db';
+import { 
+  verifyPassword, 
+  createJWT, 
+  sanitizeUser, 
+  validateEmail 
+} from '@/lib/auth-utils';
+import { LoginRequest, User } from '@/types/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    const body: LoginRequest = await request.json();
+    const { email, password } = body;
 
-    // Validate input
-    if (!username || !password) {
+    // Validate required fields
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Username and password are required' },
+        { message: 'Email and password are required' },
         { status: 400 }
       );
     }
 
-    // Find user
-    const result = await client.execute({
-      sql: 'SELECT * FROM users WHERE username = ?',
-      args: [username]
+    // Validate email format
+    if (!validateEmail(email)) {
+      return NextResponse.json(
+        { message: 'Please provide a valid email address' },
+        { status: 400 }
+      );
+    }
+
+    // Find user by email
+    const result = await db.execute({
+      sql: `SELECT user_id, first_name, last_name, email, password_hash, phone_number, 
+                   email_verified, phone_verified, is_active, created_at, updated_at 
+            FROM users WHERE email = ?`,
+      args: [email.toLowerCase()]
     });
 
-    const userRow = result.rows[0];
-    if (!userRow) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { message: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    const user = {
-      id: userRow.id as number,
-      username: userRow.username as string,
-      password: userRow.password as string,
-      created_at: userRow.created_at as string
-    };
+    const user = result.rows[0] as unknown as User;
 
-    if (!user.password) {
+    // Check if user is active
+    if (!user.is_active) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { message: 'Your account has been deactivated. Please contact support.' },
         { status: 401 }
       );
     }
 
     // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-
-    if (!isValidPassword) {
+    if (!user.password_hash) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { message: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    // Create JWT token
-    const token = await new SignJWT({ 
-      userId: user.id,
-      username: user.username
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('24h')
-      .sign(new TextEncoder().encode(JWT_SECRET));
+    const isValidPassword = await verifyPassword(password, user.password_hash);
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { message: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
 
-    // Create response with cookie
-    const response = NextResponse.json({
-      user: {
-        id: user.id,
-        username: user.username,
-        created_at: user.created_at
-      }
+    // Update last login timestamp
+    await db.execute({
+      sql: 'UPDATE users SET updated_at = CURRENT_DATE WHERE user_id = ?',
+      args: [user.user_id]
     });
 
-    // Set cookie
+    // Create sanitized user object
+    const publicUser = sanitizeUser(user);
+
+    // Create JWT token
+    const token = await createJWT({ 
+      userId: user.user_id, 
+      email: user.email 
+    });
+
+    // Create response
+    const response = NextResponse.json({
+      user: publicUser,
+      message: 'Login successful'
+    });
+
+    // Set HTTP-only cookie
     response.cookies.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 // 24 hours
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/'
     });
 
     return response;
+
   } catch (error) {
-    console.error('Error logging in:', error);
+    console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Failed to log in' },
+      { message: 'An error occurred while logging in' },
       { status: 500 }
     );
   }

@@ -1,129 +1,169 @@
-import { useState, useEffect } from 'react';
-import { signOut } from 'next-auth/react';
-
-interface User {
-  id: number;
-  username: string;
-  created_at: string;
-}
-
-interface AuthState {
-  user: User | null;
-  loading: boolean;
-}
-
-// Helper to get initial state from localStorage
-const getInitialState = (): AuthState => {
-  if (typeof window === 'undefined') {
-    return { user: null, loading: true };
-  }
-  
-  const storedUser = localStorage.getItem('user');
-  return {
-    user: storedUser ? JSON.parse(storedUser) : null,
-    loading: true, // Still set to true as we need to verify with server
-  };
-};
+import { useState, useEffect, useCallback } from 'react';
+import { AuthState, PublicUser, LoginRequest, RegisterRequest } from '@/types/auth';
 
 export function useAuth() {
-  const [authState, setAuthState] = useState<AuthState>(getInitialState);
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    loading: true,
+    isAuthenticated: false,
+  });
 
+  // Check authentication status on mount
   useEffect(() => {
-    // Check if user is logged in on mount
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
-      const response = await fetch('/api/users/me');
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include',
+      });
+
       if (response.ok) {
-        const user = await response.json();
-        localStorage.setItem('user', JSON.stringify(user));
-        setAuthState({ user, loading: false });
+        const user: PublicUser = await response.json();
+        setAuthState({
+          user,
+          loading: false,
+          isAuthenticated: true,
+        });
       } else {
-        localStorage.removeItem('user');
-        setAuthState({ user: null, loading: false });
+        setAuthState({
+          user: null,
+          loading: false,
+          isAuthenticated: false,
+        });
       }
     } catch (error) {
-      console.error('Error checking auth:', error);
-      localStorage.removeItem('user');
-      setAuthState({ user: null, loading: false });
+      console.error('Error checking authentication:', error);
+      setAuthState({
+        user: null,
+        loading: false,
+        isAuthenticated: false,
+      });
     }
-  };
+  }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = useCallback(async (credentials: LoginRequest): Promise<PublicUser> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(credentials),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to login');
+        throw new Error(error.message || 'Login failed');
       }
 
-      const { user } = await response.json();
-      localStorage.setItem('user', JSON.stringify(user));
-      setAuthState({ user, loading: false });
+      const { user }: { user: PublicUser } = await response.json();
+      
+      setAuthState({
+        user,
+        loading: false,
+        isAuthenticated: true,
+      });
+
       return user;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const register = useCallback(async (userData: RegisterRequest): Promise<PublicUser> => {
     try {
-      // Set the flag before initiating sign out
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('forceGooglePrompt', 'true');
-      }
-      
-      // Use NextAuth signOut to clear the session
-      await signOut({ redirect: false });
-
-      // Clear local user data
-      localStorage.removeItem('user');
-      setAuthState({ user: null, loading: false });
-
-    } catch (error) {
-      // Clear the flag if any error occurs during sign out
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('forceGooglePrompt');
-      }
-      console.error('Logout error:', error);
-      throw error;
-    }
-  };
-
-  const register = async (username: string, password: string) => {
-    try {
-      const response = await fetch('/api/users/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(userData),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to register');
+        throw new Error(error.message || 'Registration failed');
       }
 
-      const user = await response.json();
+      const { user }: { user: PublicUser } = await response.json();
+      
+      setAuthState({
+        user,
+        loading: false,
+        isAuthenticated: true,
+      });
+
       return user;
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
     }
-  };
+  }, []);
+
+  const logout = useCallback(async (): Promise<void> => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setAuthState({
+        user: null,
+        loading: false,
+        isAuthenticated: false,
+      });
+    }
+  }, []);
+
+  const updateUser = useCallback(async (updates: Partial<PublicUser>): Promise<PublicUser> => {
+    try {
+      const response = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Update failed');
+      }
+
+      const user: PublicUser = await response.json();
+      
+      setAuthState(prev => ({
+        ...prev,
+        user,
+      }));
+
+      return user;
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error;
+    }
+  }, []);
+
+  const refreshAuth = useCallback(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   return {
     user: authState.user,
     loading: authState.loading,
+    isAuthenticated: authState.isAuthenticated,
     login,
-    logout,
     register,
+    logout,
+    updateUser,
+    refreshAuth,
   };
 } 

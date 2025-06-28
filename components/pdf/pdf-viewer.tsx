@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { PdfErrorBoundary } from './pdf-error-boundary';
 import { useDraggable } from '@/hooks/use-draggable';
@@ -14,7 +14,9 @@ const configurePdfJs = () => {
 interface PdfViewerProps {
   file: string | null; // URL to PDF
   pageNumber: number;
-  scale: number;
+  renderScale: number; // The scale for rendering the PDF canvas
+  displayScale: number; // The "live" scale for CSS transform
+  isLiveZooming: boolean; // Is a native zoom gesture active
   rotation: number;
   onDocumentLoadSuccess: ({ numPages }: { numPages: number }) => void;
   onLoadError: (error: Error) => void;
@@ -24,7 +26,9 @@ interface PdfViewerProps {
 export function PdfViewer({
   file,
   pageNumber: externalPageNumber,
-  scale,
+  renderScale,
+  displayScale,
+  isLiveZooming,
   rotation,
   onDocumentLoadSuccess,
   onLoadError,
@@ -45,9 +49,11 @@ export function PdfViewer({
   const { onMouseDown } = useDraggable({
     onDragStart: () => setIsDragging(true),
     onDragMove: (delta) => {
+      // Adjust drag sensitivity based on current display scale
+      const scaleFactor = displayScale / renderScale;
       setPosition(prev => ({
-        x: prev.x + delta.x,
-        y: prev.y + delta.y
+        x: prev.x + (delta.x / scaleFactor),
+        y: prev.y + (delta.y / scaleFactor)
       }));
     },
     onDragEnd: () => setIsDragging(false)
@@ -62,10 +68,17 @@ export function PdfViewer({
     }
   }, []);
 
-  // Reset position when file changes
+  // Reset position when file changes or when scale changes significantly
   useEffect(() => {
     setPosition({ x: 0, y: 0 });
   }, [file]);
+
+  // Reset position when committed scale changes to prevent drift
+  useEffect(() => {
+    if (!isLiveZooming) {
+      setPosition({ x: 0, y: 0 });
+    }
+  }, [renderScale, isLiveZooming]);
 
   // Handle changes to the external pageNumber (button navigation)
   useEffect(() => {
@@ -137,6 +150,12 @@ export function PdfViewer({
     };
   }, [isDragging, onPageChange, visiblePageNumber]);
 
+  const setPageRef = useCallback((node: HTMLDivElement | null, index: number) => {
+    if (node) {
+      pageRefs.current[index] = node;
+    }
+  }, []);
+
   const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     pageRefs.current = new Array(numPages).fill(null);
@@ -162,7 +181,8 @@ export function PdfViewer({
         ref={containerRef}
         className="relative w-full h-full overflow-auto scroll-smooth"
         style={{
-          cursor: isDragging ? 'grabbing' : 'grab'
+          cursor: isDragging ? 'grabbing' : 'grab',
+          touchAction: isLiveZooming ? 'none' : 'auto'
         }}
         onScroll={() => {
           if (!isScrollingRef.current) {
@@ -179,8 +199,10 @@ export function PdfViewer({
           className="min-h-full flex flex-col items-center py-8 gap-8"
           onMouseDown={onMouseDown}
           style={{
-            transform: `translate(${position.x}px, ${position.y}px)`,
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            transform: `translate(${position.x}px, ${position.y}px) scale(${displayScale / renderScale})`,
+            transformOrigin: 'center center',
+            transition: isDragging || isLiveZooming ? 'none' : 'transform 0.2s ease-out',
+            willChange: isLiveZooming ? 'transform' : 'auto',
           }}
         >
           <Document
@@ -196,12 +218,12 @@ export function PdfViewer({
             {Array.from(new Array(numPages), (_, index) => (
               <div
                 key={`page_${index + 1}`}
-                ref={el => pageRefs.current[index] = el}
+                ref={(el) => setPageRef(el, index)}
                 className={`relative ${index + 1 === visiblePageNumber ? 'ring-2 ring-primary ring-offset-4' : ''}`}
               >
                 <Page
                   pageNumber={index + 1}
-                  scale={scale}
+                  scale={renderScale}
                   rotate={rotation}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}

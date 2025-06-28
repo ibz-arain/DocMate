@@ -1,41 +1,40 @@
 "use client";
 
-import { useEffect, ReactNode } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useAuthContext } from '@/components/auth-provider';
+import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { data: session, status } = useSession();
+  const { isAuthenticated, loading } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
 
-  const loading = status === "loading";
-  const user = session?.user;
-
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !isAuthenticated) {
       // Store the current path to redirect back after login
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('redirectAfterLogin', pathname);
-      }
-      router.push("/account");
+      const loginUrl = new URL('/account', window.location.origin);
+      loginUrl.searchParams.set('redirect', pathname);
+      router.push(loginUrl.toString());
     }
-  }, [user, loading, router, pathname]);
+  }, [isAuthenticated, loading, router, pathname]);
 
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground font-mono">Authenticating...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return null; // Don't render anything while redirecting
   }
 

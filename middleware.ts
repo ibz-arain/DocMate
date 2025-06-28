@@ -1,25 +1,22 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-
-const JWT_SECRET = process.env.NEXTAUTH_SECRET;
+import { verifyJWT } from '@/lib/auth-utils';
 
 // Public routes that don't require authentication
 const publicRoutes = [
   '/',
   '/api/auth/login',
-  '/api/users/register',
+  '/api/auth/register',
   '/api/auth/logout',
-  '/api/auth/providers',
-  '/api/auth/session',
-  '/api/auth/csrf',
-  '/api/auth/signin',
-  '/api/auth/signout',
-  '/api/auth/error',
-  '/api/auth/callback',
   '/account',
   '/use-cases',
   '/docs',
+  '/docs/introduction',
+  '/docs/quick-start',
+  '/docs/api',
+  '/docs/examples',
+  '/docs/templates',
+  '/docs/demo',
   '/changelog',
   '/about',
   '/demo'
@@ -27,55 +24,129 @@ const publicRoutes = [
 
 // Routes that require authentication
 const protectedRoutes = [
-  '/api/users/me',
-  '/api/users/update',
-  '/api/users/delete',
-  '/playground',
-  // '/playground/process',
-  // '/playground/history',
-  // '/playground/api',
-  // '/playground/templates'
+  '/api/auth/me',
+  '/api/users',
+  '/api/documents',
+  '/api/templates',
+  '/api/endpoints',
+  '/api/endpoints_usage',
+  '/api/analyze',
+  '/playground'
 ];
 
-export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+function isPublicRoute(pathname: string): boolean {
+  return publicRoutes.some(route => {
+    if (route === pathname) return true;
+    // Handle dynamic routes like /docs/[...slug]
+    if (route.endsWith('/') && pathname.startsWith(route)) return true;
+    if (pathname.startsWith('/docs/') && route === '/docs') return true;
+    return false;
+  });
+}
 
-  // Early exit for public routes
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+function isProtectedRoute(pathname: string): boolean {
+  return protectedRoutes.some(route => {
+    if (pathname === route) return true;
+    if (pathname.startsWith(route + '/')) return true;
+    return false;
+  });
+}
+
+function getTokenFromRequest(request: NextRequest): string | null {
+  // Try to get token from Authorization header
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  // Try to get token from cookies
+  const token = request.cookies.get('auth_token')?.value;
+  return token || null;
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Skip middleware for static files and Next.js internals
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/api/_next/') ||
+    pathname.includes('.') // Files with extensions
+  ) {
     return NextResponse.next();
   }
 
-  // Check for NextAuth session token for all other routes (implicitly protected)
-  const token = await getToken({ req: request, secret: JWT_SECRET });
-  console.log(`Middleware check for ${pathname}: Token found?`, !!token);
+  // Allow public routes
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next();
+  }
 
-  // If no token, redirect or return error
+  // Check if route requires authentication
+  if (isProtectedRoute(pathname)) {
+    const token = getTokenFromRequest(request);
+    
     if (!token) {
-    // Check if it's an API route request
-      if (pathname.startsWith('/api/')) {
-      // Do not protect next-auth internal API routes even if not explicitly public
-      if (pathname.startsWith('/api/auth/')) {
-         return NextResponse.next();
+      // Redirect to login for protected pages
+      if (pathname.startsWith('/playground')) {
+        const loginUrl = new URL('/account', request.url);
+        loginUrl.searchParams.set('redirect', pathname);
+        return NextResponse.redirect(loginUrl);
       }
+      
+      // Return 401 for API routes
+      if (pathname.startsWith('/api/')) {
         return NextResponse.json(
-          { error: 'Authentication required' },
+          { message: 'Authentication required' },
           { status: 401 }
         );
       }
-      
-    // For page routes, redirect to the sign-in page
-      const url = new URL('/account', request.url);
-    url.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(url);
     }
 
-  // Token exists, allow the request to proceed
+    // Verify token
+    const payload = await verifyJWT(token!);
+    if (!payload) {
+      // Clear invalid token
+      const response = pathname.startsWith('/playground') 
+        ? NextResponse.redirect(new URL('/account', request.url))
+        : NextResponse.json({ message: 'Invalid or expired token' }, { status: 401 });
+      
+      response.cookies.set('auth_token', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 0,
+        path: '/'
+      });
+      
+      return response;
+    }
+
+    // Add user info to request headers for API routes
+    if (pathname.startsWith('/api/')) {
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-user-id', payload.userId.toString());
+      requestHeaders.set('x-user-email', payload.email);
+      
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/((?!api/auth/|_next/static|_next/image|favicon.ico|logo.png|manifest.json).*)',
-    '/playground/:path*'
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }; 

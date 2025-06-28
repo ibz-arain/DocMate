@@ -2,15 +2,12 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
-import { Loader2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { ArrowLeft } from "lucide-react";
+import { AuthForm } from "@/components/auth/auth-form";
+import { useAuthContext } from "@/components/auth-provider";
 
 // Dynamic Code Background component
 function CodeBackground() {
@@ -187,7 +184,6 @@ function CodeBackground() {
 
         if (item.mode === 'typing') {
           const displayText = item.text.substring(0, Math.floor(item.progress));
-          const partialWidth = ctx.measureText(displayText).width;
           ctx.fillText(displayText, x, item.y);
           item.progress += item.speed;
 
@@ -244,122 +240,64 @@ function CodeBackground() {
 // Create a client component that uses useSearchParams
 function AccountContent() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [redirectPath, setRedirectPath] = useState<string | null>(null);
-  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [typedText, setTypedText] = useState('');
+  const { isAuthenticated, loading } = useAuthContext();
 
-  useEffect(() => {
-    const text = mode === 'signin' ? 'Welcome back!' : 'Create your account';
-    let currentIndex = 0;
-    
-    const interval = setInterval(() => {
-      if (currentIndex <= text.length) {
-        setTypedText(text.slice(0, currentIndex));
-        currentIndex++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [mode]);
-
-  // Get the redirect path from URL params or sessionStorage on component mount
+  // Get the redirect path from URL params
   useEffect(() => {
     const urlRedirect = searchParams.get('redirect');
     if (urlRedirect) {
       setRedirectPath(urlRedirect);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('redirectAfterLogin', urlRedirect);
-      }
-      return;
-    }
-    
-    if (typeof window !== 'undefined') {
-      const storedPath = sessionStorage.getItem('redirectAfterLogin');
-      if (storedPath) {
-        setRedirectPath(storedPath);
-      }
     }
   }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (mode === "signin") {
-        const result = await signIn("credentials", {
-          redirect: false,
-          username,
-          password,
-          callbackUrl: redirectPath || "/playground"
-        });
-        if (result?.error) {
-          toast({
-            title: "Error",
-            description: result.error || "Invalid credentials.",
-            variant: "destructive",
-          });
-        } else {
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
-        });
-          // NextAuth will update the session, so redirect
-          router.push(redirectPath || "/playground");
-        }
-      } else {
-        // Register user first
-        const response = await fetch('/api/users/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to register');
-        }
-        // After registration, sign in
-        const result = await signIn("credentials", {
-          redirect: false,
-          username,
-          password,
-          callbackUrl: redirectPath || "/playground"
-        });
-        if (result?.error) {
-          toast({
-            title: "Error",
-            description: result.error || "Failed to sign in after registration.",
-            variant: "destructive",
-          });
-        } else {
-        toast({
-          title: "Account created!",
-          description: "Your account has been created and you are now signed in.",
-        });
-          router.push(redirectPath || "/playground");
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.push(redirectPath || "/playground");
     }
+  }, [isAuthenticated, loading, router, redirectPath]);
+
+  const handleAuthSuccess = () => {
+    router.push(redirectPath || "/playground");
   };
+
+  const toggleMode = () => {
+    setMode(mode === 'signin' ? 'signup' : 'signin');
+  };
+
+  // Show loading while checking authentication
+  if (loading) {
+    return <AccountLoading />;
+  }
+
+  // Don't render if already authenticated (will redirect)
+  if (isAuthenticated) {
+    return <AccountLoading />;
+  }
 
   return (
     <>
       <CodeBackground />
       <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
+        {/* Back button */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="absolute top-8 left-8 z-20"
+        >
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-white/60 hover:text-white transition-colors duration-200 font-mono text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>back to home</span>
+          </Link>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -369,8 +307,7 @@ function AccountContent() {
           <div className="relative bg-black/95 backdrop-blur-sm rounded-3xl p-8 pt-12 shadow-2xl border border-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]">
             <div className="space-y-8">
               <div className="text-center">
-                
-              <motion.div
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
@@ -381,146 +318,19 @@ function AccountContent() {
                   </Link>
                 </motion.div>
 
-                
-
-                <motion.h1
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="font-mono text-2xl mb-2 text-gray-300"
-                >
-                  {typedText}<span className="animate-blink">_</span>
-                </motion.h1>
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: "80px" }}
                   transition={{ delay: 0.4, duration: 0.8 }}
                   className="h-px bg-primary/50 mx-auto"
-                ></motion.div>
+                />
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="space-y-2"
-                >
-                  <Label htmlFor="username" className="font-mono text-sm font-medium">
-                    <span className="text-blue-400">const</span> <span className="text-yellow-400">USERNAME</span> <span className="text-white/60">=</span>
-                  </Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required={mode === 'signup' || !loading}
-                    disabled={loading}
-                    className="bg-black font-mono text-primary border-white/20 focus:border-primary/50 focus:ring-0 placeholder:text-primary/30"
-                  />
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="space-y-2"
-                >
-                  <Label htmlFor="password" className="font-mono text-sm font-medium">
-                    <span className="text-blue-400">const</span> <span className="text-yellow-400">PASSWORD</span> <span className="text-white/60">=</span>
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required={mode === 'signup' || !loading}
-                    disabled={loading}
-                    className="bg-black font-mono text-primary border-white/20 focus:border-primary/50 focus:ring-0 placeholder:text-primary/30"
-                  />
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary/10 hover:bg-primary/20 text-primary font-mono border border-primary/30 shadow-sm transition-all duration-300"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        <span className="text-white/90">{mode === "signin" ? "authenticating()" : "createUser()"}</span>
-                      </>
-                    ) : (
-                      <span className="text-white/90">{mode === "signin" ? "authenticate()" : "createUser()"}</span>
-                    )}
-                  </Button>
-                </motion.div>
-              </form>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.55 }}
-                className="flex items-center my-6"
-              >
-                <div className="flex-grow border-t border-white/20"></div>
-                <span className="flex-shrink mx-4 text-xs font-mono text-white/60">// OR //</span>
-                <div className="flex-grow border-t border-white/20"></div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="space-y-4"
-              >
-                <Button
-                  type="button"
-                  className="w-full bg-black/80 hover:bg-white/10 text-white/90 font-mono border border-white/30 shadow-sm transition-all duration-300 flex items-center justify-center gap-2"
-                  onClick={() => handleOAuthSignIn("google")}
-                  disabled={loading}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="currentColor" d="M12 5.38c1.63 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                  Continue with Google()
-                </Button>
-                {/* <Button
-                  type="button"
-                  className="w-full bg-black/80 hover:bg-white/10 text-white/90 font-mono border border-white/30 shadow-sm transition-all duration-300 flex items-center justify-center gap-2"
-                  onClick={() => handleOAuthSignIn("azure-ad")}
-                  disabled={loading}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M11.4 21.9H2.9V13.4h8.5v8.5zm0-9.9H2.9V3.5h8.5v8.5zm9.6 9.9h-8.5V13.4h8.5v8.5zm0-9.9h-8.5V3.5h8.5v8.5z"/></svg>
-                  Continue with Microsoft()
-                </Button> */}
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
-                className="text-center"
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="font-mono text-xs text-white/60 hover:text-primary transition-colors duration-300"
-                  onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-                  disabled={loading}
-                >
-                  <span className="text-white/60">
-                    {mode === "signin"
-                      ? "// Don't have an account? Sign Up"
-                      : "// Already registered? Login"}
-                  </span>
-                </Button>
-              </motion.div>
+              <AuthForm
+                mode={mode}
+                onSuccess={handleAuthSuccess}
+                onToggleMode={toggleMode}
+              />
             </div>
           </div>
         </motion.div>
@@ -529,24 +339,17 @@ function AccountContent() {
   );
 }
 
-// Simple loading component
 function AccountLoading() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="text-center"
-      >
-        <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-        <p className="mt-4 text-sm font-mono text-primary">Initializing system...</p>
-      </motion.div>
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-white/60 font-mono">Loading...</p>
+      </div>
     </div>
   );
 }
 
-// Main component with Suspense boundary
 export default function AccountPage() {
   return (
     <Suspense fallback={<AccountLoading />}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import Head from "next/head";
 import { Button } from "@/components/ui/button";
@@ -38,11 +38,34 @@ export default function DocumentPage() {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
+  const [committedScale, setCommittedScale] = useState<number>(1.0);
   const [rotation, setRotation] = useState<number>(0);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [dropText, setDropText] = useState("Drag & drop your PDF here");
   const lastPageChangeRef = useRef<number>(0);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const [isLiveZooming, setIsLiveZooming] = useState(false);
+  const [showZoomHint, setShowZoomHint] = useState(false);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSetScale = useCallback((newScale: number | ((prev: number) => number)) => {
+    setScale(prev => {
+      const value = typeof newScale === 'function' ? newScale(prev) : newScale;
+      const clampedValue = Math.max(0.5, Math.min(2.0, value));
+
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+  
+      debounceTimeoutRef.current = setTimeout(() => {
+        setCommittedScale(clampedValue);
+        setIsLiveZooming(false);
+      }, 300);
+
+      return clampedValue;
+    });
+  }, []);
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -115,6 +138,10 @@ export default function DocumentPage() {
   const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setIsLoading(false);
+    
+    // Show zoom hint for a few seconds when document loads
+    setShowZoomHint(true);
+    setTimeout(() => setShowZoomHint(false), 4000);
   };
 
   const handleToolSelect = (tool: string) => {
@@ -143,16 +170,119 @@ export default function DocumentPage() {
   };
 
   const zoomIn = () => {
-    setScale(prev => Math.min(prev + 0.1, 2.0));
+    handleSetScale(prev => prev + 0.1);
   };
 
   const zoomOut = () => {
-    setScale(prev => Math.max(prev - 0.1, 0.5));
+    handleSetScale(prev => prev - 0.1);
   };
 
   const rotate = () => {
     setRotation(prev => (prev + 90) % 360);
   };
+
+  // Native zoom functionality
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container || !pdfUrl) return;
+
+    let lastTouchDistance = 0;
+    let isZooming = false;
+
+    // Mouse wheel / trackpad zoom
+    const handleWheel = (e: WheelEvent) => {
+      // Check if Ctrl/Cmd key is pressed (for desktop) or detect pinch gesture
+      const isPinchGesture = e.ctrlKey || e.metaKey;
+      const isHorizontalScroll = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      
+      if (isPinchGesture || (isHorizontalScroll && Math.abs(e.deltaY) < 10)) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        setIsLiveZooming(true);
+        // Use deltaY for ctrl+scroll, deltaX for trackpad pinch
+        const delta = isPinchGesture ? e.deltaY : e.deltaX;
+        const zoomDelta = delta > 0 ? -0.05 : 0.05; // Reduced sensitivity for smoother zoom
+        handleSetScale(prev => prev + zoomDelta);
+        
+        // Reset zoom indicator after a delay
+        setTimeout(() => setIsLiveZooming(false), 200);
+      }
+    };
+
+    // Touch zoom for mobile/tablets
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isZooming = true;
+        setIsLiveZooming(true);
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        lastTouchDistance = Math.sqrt(
+          Math.pow(touch2.clientX - touch1.clientX, 2) +
+          Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && isZooming) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.sqrt(
+          Math.pow(touch2.clientX - touch1.clientX, 2) +
+          Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+
+        if (lastTouchDistance > 0) {
+          const zoomRatio = currentDistance / lastTouchDistance;
+          const zoomDelta = (zoomRatio - 1) * 0.3; // Reduced sensitivity for smoother zoom
+          
+          handleSetScale(prev => prev + zoomDelta);
+        }
+        
+        lastTouchDistance = currentDistance;
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        isZooming = false;
+        lastTouchDistance = 0;
+        setIsLiveZooming(false);
+      }
+    };
+
+    // Add event listeners with proper options to prevent default browser behavior
+    container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    container.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+      
+      // Clean up any pending timeouts
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [pdfUrl]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const tools = [
     { id: 'view', label: 'View', icon: <EyeIcon className="h-5 w-5" /> },
@@ -176,7 +306,14 @@ export default function DocumentPage() {
           <div className="grid gap-6 h-full lg:grid-cols-[1fr_auto] grid-cols-1">
             {/* PDF Viewer Card with Floating Controls */}
             <Card className="shadow-sm overflow-hidden relative">
-              <CardContent className="p-0 h-full">
+              <CardContent 
+                className="p-0 h-full" 
+                ref={pdfContainerRef}
+                style={{
+                  touchAction: isLiveZooming ? 'none' : 'auto',
+                  overscrollBehavior: 'contain'
+                }}
+              >
                 {!pdfUrl ? (
                   <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-dots-primary/15">
                     {/* Dynamic Text Above Upload */}
@@ -264,16 +401,47 @@ export default function DocumentPage() {
                     
                     {/* Floating Zoom Controls */}
                     <div className="absolute top-2 right-2 z-10 flex items-center bg-background/80 backdrop-blur-sm rounded-lg shadow-md">
-                      <Button variant="ghost" size="icon" onClick={zoomOut} title="Zoom out" className="h-8 w-8">
-                        <MinusIcon className="h-4 w-4" />
-                      </Button>
-                      <span className="text-xs w-10 text-center">{Math.round(scale * 100)}%</span>
-                      <Button variant="ghost" size="icon" onClick={zoomIn} title="Zoom in" className="h-8 w-8">
-                        <PlusIcon className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={rotate} title="Rotate" className="h-8 w-8">
-                        <RotateCw className="h-4 w-4" />
-                      </Button>
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={zoomOut} className="h-8 w-8">
+                              <MinusIcon className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">
+                            <p>Zoom out (or use Ctrl+scroll/pinch)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        
+                        <span className={cn(
+                          "text-xs w-12 text-center font-medium transition-all duration-150",
+                          isLiveZooming && "text-primary bg-primary/10 px-1 py-0.5 rounded"
+                        )}>
+                          {Math.round(scale * 100)}%
+                        </span>
+                        
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={zoomIn} className="h-8 w-8">
+                              <PlusIcon className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">
+                            <p>Zoom in (or use Ctrl+scroll/pinch)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={rotate} className="h-8 w-8">
+                              <RotateCw className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">
+                            <p>Rotate 90°</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
 
                     {isLoading && (
@@ -281,11 +449,31 @@ export default function DocumentPage() {
                         <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
                       </div>
                     )}
+
+                    {/* Zoom Hint Overlay */}
+                    <AnimatePresence>
+                      {showZoomHint && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg shadow-lg"
+                          onClick={() => setShowZoomHint(false)}
+                        >
+                          <p className="text-sm font-medium text-center cursor-pointer">
+                            💡 Use Ctrl+scroll or pinch to zoom naturally!
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     <div className="absolute inset-0">
                       <PdfViewer
                         file={pdfUrl}
                         pageNumber={pageNumber}
-                        scale={scale}
+                        renderScale={committedScale}
+                        displayScale={scale}
+                        isLiveZooming={isLiveZooming}
                         rotation={rotation}
                         onDocumentLoadSuccess={handleDocumentLoadSuccess}
                         onLoadError={(error) => {

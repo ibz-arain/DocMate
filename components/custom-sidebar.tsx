@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText } from "lucide-react";
+import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,12 @@ export function CustomSidebar({
 
   // Navigation items with routes
   const mainNavItems = [
+    {
+      id: 'Editor',
+      name: 'Editor',
+      icon: <Edit className="h-5 w-5" />,
+      href: '/playground/document'
+    },
     {
       id: 'document',
       name: 'Process Document',
@@ -307,7 +313,7 @@ export function CustomSidebar({
                       }}
                       className="px-3 py-2 text-sm text-muted-foreground overflow-hidden whitespace-nowrap"
                     >
-                      <TypeWriter text={`Signed in as ${user.username}`} delay={50} />
+                      <TypeWriter text={`Signed in as ${user.first_name}`} delay={50} />
                     </motion.div>
                   )}
                 </AnimatePresence>
