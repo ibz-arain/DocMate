@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import Head from "next/head";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import {
   Upload,
   MousePointer as MousePointerIcon,
 } from "lucide-react";
-import PdfHighlighterViewer from "@/components/pdf/pdf-highlighter-viewer";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -36,11 +35,12 @@ import { toast } from "@/components/ui/use-toast";
 export default function DocumentPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfWorkerReady, setPdfWorkerReady] = useState<boolean>(false);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [rotation, setRotation] = useState<number>(0);
-  const [selectedTool, setSelectedTool] = useState<string | null>('highlight');
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -77,6 +77,32 @@ export default function DocumentPage() {
     }, 3000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  // Initialize PDF worker
+  useEffect(() => {
+    const initializePdfWorker = async () => {
+      try {
+        // Dynamically import pdfjs to ensure it's loaded
+        const { pdfjs } = await import('react-pdf');
+        
+        // Set up worker
+        if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+          pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+        }
+        
+        setPdfWorkerReady(true);
+      } catch (error) {
+        console.error('Failed to initialize PDF worker:', error);
+        toast({
+          title: "PDF Initialization Error",
+          description: "Failed to initialize PDF viewer. Please refresh the page.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    initializePdfWorker();
   }, []);
 
   // Clean up URL object when component unmounts
@@ -478,6 +504,10 @@ export default function DocumentPage() {
   const handleSummarize = () => analyzeWithPrompt('Summarize the following text in concise bullet points.');
   const handleStructured = () => analyzeWithPrompt('Please convert the following text into clean JSON capturing all facts.');
   const handleAnalyzeDefault = () => analyzeWithPrompt('Analyze this selection and provide insights.');
+  const handleExtractKeyPoints = () => analyzeWithPrompt('Extract the key points and important information from this text in bullet format.');
+  const handleTranslate = () => analyzeWithPrompt('Translate this text to English and provide the original language detected.');
+  const handleExplain = () => analyzeWithPrompt('Explain this text in simple terms, breaking down complex concepts.');
+  const handleQuestions = () => analyzeWithPrompt('Generate relevant questions that could be answered by this text content.');
 
   // Capture last mouse position (works for both text select and box draw end)
   useEffect(()=>{
@@ -519,6 +549,66 @@ export default function DocumentPage() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [selectedText, menuPos]);
+
+  const updateCurrentPageFromScroll = useCallback(() => {
+    const container = pdfContainerRef.current;
+    if (!container || !pdfUrl) return;
+
+    const pageElems: NodeListOf<HTMLElement> = container.querySelectorAll('[data-page-number], .page');
+    if (!pageElems.length) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const containerTop = containerRect.top;
+    const containerBottom = containerRect.bottom;
+    const containerCenter = containerTop + containerRect.height / 2;
+
+    let visiblePage = 1;
+    let maxVisibleArea = 0;
+    let closestToCenter = 1;
+    let closestDistance = Infinity;
+
+    pageElems.forEach((el, idx) => {
+      const rect = el.getBoundingClientRect();
+      const pageTop = rect.top;
+      const pageBottom = rect.bottom;
+      const pageCenter = pageTop + rect.height / 2;
+
+      const visibleTop = Math.max(pageTop, containerTop);
+      const visibleBottom = Math.min(pageBottom, containerBottom);
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+      const visibleArea = visibleHeight * rect.width;
+
+      const distanceToCenter = Math.abs(containerCenter - pageCenter);
+
+      if (visibleArea > maxVisibleArea) {
+        maxVisibleArea = visibleArea;
+        visiblePage = idx + 1;
+      }
+
+      if (distanceToCenter < closestDistance) {
+        closestDistance = distanceToCenter;
+        closestToCenter = idx + 1;
+      }
+    });
+
+    const newPage = maxVisibleArea > 0 ? visiblePage : closestToCenter;
+    if (newPage !== pageNumber) {
+      setPageNumber(newPage);
+    }
+  }, [pageNumber, pdfUrl]);
+
+  // Attach scroll listener for page detection
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      updateCurrentPageFromScroll();
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [updateCurrentPageFromScroll]);
 
   return (
     <>
@@ -728,44 +818,82 @@ export default function DocumentPage() {
                     </AnimatePresence>
 
                     <div className="absolute inset-0">
-                      {!selectedText && (
+                      {!selectedText && pdfWorkerReady && (
                         <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md z-20 text-sm">
-                          {selectedTool === 'box' ? 'Drag a box to capture content' : 'Select text to capture content'}
+                          {selectedTool === 'box' ? 'Drag a box to capture content' : 
+                           selectedTool === 'highlight' ? 'Select text to capture content' :
+                           'Select a tool from the sidebar to capture content'}
                         </div>
                       )}
 
-                      <PdfHighlighterViewer
-                        file={pdfUrl}
-                        scale={scale}
-                        rotation={rotation}
-                        onSelection={handleSelection}
-                        selectionMode={selectedTool === 'box' ? 'box':'text'}
-                        onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                        onLoadError={(error: any) => {
-                          console.error("Error loading PDF:", error);
-                          setIsLoading(false);
-                        }}
-                      />
+                      {!pdfWorkerReady ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mr-2"></div>
+                          <p>Initializing PDF viewer...</p>
+                        </div>
+                      ) :  (
+
+                        // Use regular PDF viewer for better zoom and page tracking
+                        <PdfViewer
+                          file={pdfUrl}
+                          pageNumber={pageNumber}
+                          scale={scale}
+                          rotation={rotation}
+                          onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                          onPageChange={handlePageChange}
+                          onLoadError={(error: any) => {
+                            console.error("Error loading PDF:", error);
+                            setIsLoading(false);
+                            toast({
+                              title: "PDF Loading Error",
+                              description: "Failed to load PDF. Please try a different file or refresh the page.",
+                              variant: "destructive"
+                            });
+                          }}
+                          selectionMode={selectedTool as 'text' | 'box' | null}
+                          onSelection={handleSelection}
+                        />
+                      )}
 
                       {/* Selection Overlay */}
                       {selectedText && menuPos && (
                         <>
-                          {/* context menu near selection rect */}
+                          {/* AI-powered context menu */}
                           <div
-                            className="fixed z-40 bg-background border shadow-md rounded-lg p-2 flex gap-1"
+                            className="fixed z-40 bg-background border shadow-md rounded-lg p-2 flex flex-wrap gap-1 max-w-[280px]"
                             style={{
                               top: menuPos.top,
                               left: menuPos.left,
                             }}
                           >
-                            {/* Unified context menu for both text and box selections */}
-                            <Button title="Analyze" size="icon" variant="ghost" onClick={handleAnalyzeDefault} disabled={isAnalyzing}>
-                              <BoxSelectIcon className="h-4 w-4" />
-                            </Button>
-                            <Button title="Extract Text" size="icon" variant="ghost" onClick={handleStructured} disabled={isAnalyzing}>
+                            {/* Primary AI Actions */}
+                            <Button title="Summarize" size="icon" variant="ghost" onClick={handleSummarize} disabled={isAnalyzing}>
                               <FileTextIcon className="h-4 w-4" />
                             </Button>
-                            <Button title="Clear" size="icon" variant="ghost" onClick={clearSelection}>
+                            <Button title="Extract Key Points" size="icon" variant="ghost" onClick={handleExtractKeyPoints} disabled={isAnalyzing}>
+                              <HighlighterIcon className="h-4 w-4" />
+                            </Button>
+                            <Button title="Structure as JSON" size="icon" variant="ghost" onClick={handleStructured} disabled={isAnalyzing}>
+                              <BoxSelectIcon className="h-4 w-4" />
+                            </Button>
+                            
+                            {/* Secondary AI Actions */}
+                            <Button title="Analyze Content" size="icon" variant="ghost" onClick={handleAnalyzeDefault} disabled={isAnalyzing}>
+                              <PenLineIcon className="h-4 w-4" />
+                            </Button>
+                            <Button title="Explain Simply" size="icon" variant="ghost" onClick={handleExplain} disabled={isAnalyzing}>
+                              <ScissorsIcon className="h-4 w-4" />
+                            </Button>
+                            <Button title="Generate Questions" size="icon" variant="ghost" onClick={handleQuestions} disabled={isAnalyzing}>
+                              <SignatureIcon className="h-4 w-4" />
+                            </Button>
+                            <Button title="Translate" size="icon" variant="ghost" onClick={handleTranslate} disabled={isAnalyzing}>
+                              <RotateCw className="h-4 w-4" />
+                            </Button>
+                            
+                            {/* Separator and Clear */}
+                            <div className="w-full h-px bg-border my-1"></div>
+                            <Button title="Clear Selection" size="icon" variant="ghost" onClick={clearSelection} className="text-muted-foreground hover:text-foreground">
                               ✕
                             </Button>
                           </div>
@@ -789,14 +917,47 @@ export default function DocumentPage() {
                       {/* Analysis Result Modal */}
                       {analysisResult && (
                         <div className="absolute inset-0 flex items-center justify-center z-40 bg-background/80 backdrop-blur-sm">
-                          <div className="bg-background border rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-auto p-6">
+                          <div className="bg-background border rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-auto p-6 m-4">
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold">AI Structured Output</h3>
-                              <Button size="icon" variant="ghost" onClick={() => setAnalysisResult(null)}>
-                                ✕
-                              </Button>
+                              <h3 className="text-lg font-semibold">AI Analysis Result</h3>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(JSON.stringify(analysisResult, null, 2))}>
+                                  Copy
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => setAnalysisResult(null)}>
+                                  ✕
+                                </Button>
+                              </div>
                             </div>
-                            <pre className="text-xs whitespace-pre-wrap break-all">{JSON.stringify(analysisResult, null, 2)}</pre>
+                            <div className="space-y-4">
+                              {/* Display formatted analysis result */}
+                              {typeof analysisResult === 'string' ? (
+                                <div className="prose prose-sm max-w-none">
+                                  <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-md">{analysisResult}</pre>
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  {Object.entries(analysisResult).map(([key, value]) => (
+                                    <div key={key} className="border rounded-md p-3">
+                                      <h4 className="font-medium text-sm text-primary mb-2 capitalize">{key.replace(/_/g, ' ')}</h4>
+                                      <div className="text-sm">
+                                        {typeof value === 'string' ? (
+                                          <p className="whitespace-pre-wrap">{value}</p>
+                                        ) : Array.isArray(value) ? (
+                                          <ul className="list-disc list-inside space-y-1">
+                                            {value.map((item, idx) => (
+                                              <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>
+                                            ))}
+                                          </ul>
+                                        ) : (
+                                          <pre className="text-xs bg-muted/50 p-2 rounded overflow-auto">{JSON.stringify(value, null, 2)}</pre>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
