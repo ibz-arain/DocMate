@@ -3,61 +3,39 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { PdfErrorBoundary } from './pdf-error-boundary';
-import { useDraggable } from '@/hooks/use-draggable';
 
 // Configure PDF.js CDN worker
 const configurePdfJs = () => {
-  // Use CDN worker to avoid issues with local worker files
   pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 };
 
 interface PdfViewerProps {
-  file: string | null; // URL to PDF
+  file: string | null;
   pageNumber: number;
-  renderScale: number; // The scale for rendering the PDF canvas
-  displayScale: number; // The "live" scale for CSS transform
-  isLiveZooming: boolean; // Is a native zoom gesture active
+  scale: number;
   rotation: number;
   onDocumentLoadSuccess: ({ numPages }: { numPages: number }) => void;
   onLoadError: (error: Error) => void;
-  onPageChange: (pageNumber: number) => void; // Called when visible page changes
+  onPageChange: (pageNumber: number) => void;
 }
 
 export function PdfViewer({
   file,
   pageNumber: externalPageNumber,
-  renderScale,
-  displayScale,
-  isLiveZooming,
+  scale,
   rotation,
   onDocumentLoadSuccess,
   onLoadError,
   onPageChange
 }: PdfViewerProps) {
   const [isWorkerInitialized, setIsWorkerInitialized] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
   const [numPages, setNumPages] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  
+  const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [visiblePageNumber, setVisiblePageNumber] = useState(externalPageNumber);
-  const isScrollingRef = useRef(false);
-  const lastMouseUpdateTimeRef = useRef(0);
-  const previousExternalPageRef = useRef(externalPageNumber);
-
-  // Initialize draggable functionality
-  const { onMouseDown } = useDraggable({
-    onDragStart: () => setIsDragging(true),
-    onDragMove: (delta) => {
-      // Adjust drag sensitivity based on current display scale
-      const scaleFactor = displayScale / renderScale;
-      setPosition(prev => ({
-        x: prev.x + (delta.x / scaleFactor),
-        y: prev.y + (delta.y / scaleFactor)
-      }));
-    },
-    onDragEnd: () => setIsDragging(false)
-  });
+  const isExternalNavigationRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     try {
@@ -68,96 +46,113 @@ export function PdfViewer({
     }
   }, []);
 
-  // Reset position when file changes or when scale changes significantly
+  // Handle external page navigation (from buttons)
   useEffect(() => {
-    setPosition({ x: 0, y: 0 });
-  }, [file]);
-
-  // Reset position when committed scale changes to prevent drift
-  useEffect(() => {
-    if (!isLiveZooming) {
-      setPosition({ x: 0, y: 0 });
-    }
-  }, [renderScale, isLiveZooming]);
-
-  // Handle changes to the external pageNumber (button navigation)
-  useEffect(() => {
-    // Only respond to external page changes, not when we update the parent
-    if (externalPageNumber !== visiblePageNumber && externalPageNumber !== previousExternalPageRef.current) {
-      previousExternalPageRef.current = externalPageNumber;
+    if (externalPageNumber !== currentPage && externalPageNumber >= 1 && externalPageNumber <= numPages) {
+      isExternalNavigationRef.current = true;
+      setCurrentPage(externalPageNumber);
       
-      // Scroll to the requested page
+      // Scroll to the page
       const targetPage = pageRefs.current[externalPageNumber - 1];
-      if (targetPage) {
-        isScrollingRef.current = true;
-        targetPage.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
+      if (targetPage && containerRef.current) {
+        const container = containerRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const pageRect = targetPage.getBoundingClientRect();
+        
+        // Calculate scroll position to center the page
+        const scrollTop = container.scrollTop + pageRect.top - containerRect.top - (containerRect.height - pageRect.height) / 2;
+        
+        container.scrollTo({
+          top: Math.max(0, scrollTop),
+          behavior: 'smooth'
         });
-        
-        // Update the visible page immediately for better UI feedback
-        setVisiblePageNumber(externalPageNumber);
-        
-        // Reset scrolling flag after animation
-        setTimeout(() => {
-          isScrollingRef.current = false;
-        }, 800);
       }
+      
+      // Reset flag after scroll animation
+      setTimeout(() => {
+        isExternalNavigationRef.current = false;
+      }, 500);
     }
-  }, [externalPageNumber, visiblePageNumber]);
+  }, [externalPageNumber, currentPage, numPages]);
 
-  // Setup mouse movement tracking for pages
-  useEffect(() => {
-    if (!pageRefs.current.length || !containerRef.current) return;
+  // Scroll-based page detection
+  const handleScroll = useCallback(() => {
+    if (isExternalNavigationRef.current || !containerRef.current || pageRefs.current.length === 0) {
+      return;
+    }
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging || isScrollingRef.current) return;
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
 
-      // Find which page div contains the mouse
-      for (let i = 0; i < pageRefs.current.length; i++) {
-        const pageRef = pageRefs.current[i];
-        if (!pageRef) continue;
+    // Immediate update for responsive feel, then debounced update for final state
+    const updateVisiblePage = () => {
+      const container = containerRef.current;
+      if (!container) return;
 
-        const rect = pageRef.getBoundingClientRect();
-        if (
-          e.clientX >= rect.left &&
-          e.clientX <= rect.right &&
-          e.clientY >= rect.top &&
-          e.clientY <= rect.bottom
-        ) {
-          const newPageNumber = i + 1;
-          if (newPageNumber !== visiblePageNumber) {
-            // Debounce updates to prevent flickering
-            const now = Date.now();
-            if (now - lastMouseUpdateTimeRef.current > 200) {
-              setVisiblePageNumber(newPageNumber);
-              onPageChange(newPageNumber);
-              lastMouseUpdateTimeRef.current = now;
-              // Store this as the previous external page to avoid scrolling on hover
-              previousExternalPageRef.current = newPageNumber;
-            }
-          }
-          return;
+      const containerRect = container.getBoundingClientRect();
+      const containerTop = containerRect.top;
+      const containerBottom = containerRect.bottom;
+      const containerCenter = containerTop + containerRect.height / 2;
+
+      let visiblePage = 1;
+      let maxVisibleArea = 0;
+      let closestToCenter = 1;
+      let closestDistance = Infinity;
+
+      // Find the page with the most visible area AND closest to center
+      pageRefs.current.forEach((pageRef, index) => {
+        if (!pageRef) return;
+
+        const pageRect = pageRef.getBoundingClientRect();
+        const pageTop = pageRect.top;
+        const pageBottom = pageRect.bottom;
+        const pageCenter = pageTop + pageRect.height / 2;
+
+        // Calculate visible area of this page
+        const visibleTop = Math.max(pageTop, containerTop);
+        const visibleBottom = Math.min(pageBottom, containerBottom);
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+        const visibleArea = visibleHeight * pageRect.width;
+
+        // Distance from page center to viewport center
+        const distanceToCenter = Math.abs(containerCenter - pageCenter);
+
+        // Update page with most visible area
+        if (visibleArea > maxVisibleArea) {
+          maxVisibleArea = visibleArea;
+          visiblePage = index + 1;
         }
+
+        // Track closest to center as backup
+        if (distanceToCenter < closestDistance) {
+          closestDistance = distanceToCenter;
+          closestToCenter = index + 1;
+        }
+      });
+
+      // Use the page with most visible area, fallback to closest to center
+      const newPage = maxVisibleArea > 0 ? visiblePage : closestToCenter;
+
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+        onPageChange(newPage);
       }
     };
 
-    const container = containerRef.current;
-    container.addEventListener('mousemove', handleMouseMove);
+    // Immediate update
+    updateVisiblePage();
 
-    return () => {
-      container.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, [isDragging, onPageChange, visiblePageNumber]);
-
-  const setPageRef = useCallback((node: HTMLDivElement | null, index: number) => {
-    if (node) {
-      pageRefs.current[index] = node;
-    }
-  }, []);
+    // Debounced update for final state
+    scrollTimeoutRef.current = setTimeout(() => {
+      updateVisiblePage();
+    }, 50);
+  }, [currentPage, onPageChange]);
 
   const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
+    setCurrentPage(Math.min(externalPageNumber, numPages));
     pageRefs.current = new Array(numPages).fill(null);
     onDocumentLoadSuccess({ numPages });
   };
@@ -179,38 +174,19 @@ export function PdfViewer({
     <PdfErrorBoundary>
       <div 
         ref={containerRef}
-        className="relative w-full h-full overflow-auto scroll-smooth"
+        className="relative w-full h-full overflow-auto"
+        onScroll={handleScroll}
         style={{
-          cursor: isDragging ? 'grabbing' : 'grab',
-          touchAction: isLiveZooming ? 'none' : 'auto'
-        }}
-        onScroll={() => {
-          if (!isScrollingRef.current) {
-            isScrollingRef.current = true;
-            // Reset scrolling flag after scroll ends
-            clearTimeout((containerRef.current as any).scrollTimeout);
-            (containerRef.current as any).scrollTimeout = setTimeout(() => {
-              isScrollingRef.current = false;
-            }, 150);
-          }
+          scrollBehavior: 'smooth'
         }}
       >
-        <div
-          className="min-h-full flex flex-col items-center py-8 gap-8"
-          onMouseDown={onMouseDown}
-          style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${displayScale / renderScale})`,
-            transformOrigin: 'center center',
-            transition: isDragging || isLiveZooming ? 'none' : 'transform 0.2s ease-out',
-            willChange: isLiveZooming ? 'transform' : 'auto',
-          }}
-        >
+        <div className="flex flex-col items-center py-4 space-y-4">
           <Document
             file={file}
             onLoadSuccess={handleDocumentLoadSuccess}
             onLoadError={onLoadError}
             loading={
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-64">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
               </div>
             }
@@ -218,18 +194,30 @@ export function PdfViewer({
             {Array.from(new Array(numPages), (_, index) => (
               <div
                 key={`page_${index + 1}`}
-                ref={(el) => setPageRef(el, index)}
-                className={`relative ${index + 1 === visiblePageNumber ? 'ring-2 ring-primary ring-offset-4' : ''}`}
+                ref={el => { pageRefs.current[index] = el; }}
+                className={`relative mb-4 transition-all duration-200 ${
+                  index + 1 === currentPage 
+                    ? 'ring-2 ring-primary shadow-lg' 
+                    : 'shadow-md hover:shadow-lg'
+                }`}
               >
                 <Page
                   pageNumber={index + 1}
-                  scale={renderScale}
+                  scale={scale}
                   rotate={rotation}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
-                  className="shadow-lg"
+                  className="rounded-lg overflow-hidden"
                   loading={
-                    <div className="w-[595px] h-[842px] bg-muted animate-pulse rounded-lg"></div>
+                    <div 
+                      className="bg-muted animate-pulse rounded-lg flex items-center justify-center"
+                      style={{
+                        width: Math.round(595 * scale),
+                        height: Math.round(842 * scale)
+                      }}
+                    >
+                      <div className="text-muted-foreground">Loading page {index + 1}...</div>
+                    </div>
                   }
                 />
               </div>
