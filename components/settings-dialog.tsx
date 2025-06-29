@@ -46,7 +46,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: user?.id,
+          id: user?.user_id,
           currentPassword,
           newPassword,
         }),
@@ -84,7 +84,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: user?.id,
+          id: user?.user_id,
           password: currentPassword,
         }),
       })
