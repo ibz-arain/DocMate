@@ -205,7 +205,7 @@ export function PdfViewer({
                   pageNumber={index + 1}
                   scale={scale}
                   rotate={rotation}
-                  renderTextLayer={false}
+                  renderTextLayer={true}
                   renderAnnotationLayer={false}
                   className="rounded-lg overflow-hidden"
                   loading={

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import Head from "next/head";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   PlusIcon,
   MinusIcon,
@@ -14,11 +13,13 @@ import {
   PenLine as PenLineIcon,
   FileSignature as SignatureIcon,
   Highlighter as HighlighterIcon,
-  Eye as EyeIcon,
   Scissors as ScissorsIcon,
   FileText as FileTextIcon,
+  BoxSelect as BoxSelectIcon,
   Upload,
+  MousePointer as MousePointerIcon,
 } from "lucide-react";
+import PdfHighlighterViewer from "@/components/pdf/pdf-highlighter-viewer";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -39,7 +40,10 @@ export default function DocumentPage() {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [rotation, setRotation] = useState<number>(0);
-  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [selectedTool, setSelectedTool] = useState<string | null>('highlight');
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [dropText, setDropText] = useState("Drag & drop your PDF here");
   const pdfContainerRef = useRef<HTMLDivElement>(null);
@@ -52,6 +56,9 @@ export default function DocumentPage() {
   const [isZooming, setIsZooming] = useState(false);
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingScaleRef = useRef<number>(scale);
+
+  const [menuPos, setMenuPos] = useState<{top:number;left:number} | null>(null);
+  const lastCursorRef = useRef<{x:number;y:number}|null>(null);
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -357,13 +364,161 @@ export default function DocumentPage() {
   };
 
   const tools = [
-    { id: 'view', label: 'View', icon: <EyeIcon className="h-5 w-5" /> },
-    { id: 'annotate', label: 'Annotate', icon: <PenLineIcon className="h-5 w-5" /> },
-    { id: 'sign', label: 'Sign', icon: <SignatureIcon className="h-5 w-5" /> },
-    { id: 'highlight', label: 'Highlight', icon: <HighlighterIcon className="h-5 w-5" /> },
-    { id: 'redact', label: 'Redact', icon: <ScissorsIcon className="h-5 w-5" /> },
-    { id: 'extract', label: 'Extract', icon: <FileTextIcon className="h-5 w-5" /> }
+    { id: 'highlight', label: 'Text Select', icon: <MousePointerIcon className="h-5 w-5" /> },
+    { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
   ];
+
+  const getViewportRect = (percentRect: any): {top:number;left:number;width:number;height:number} | null => {
+    const container = pdfContainerRef.current;
+    if(!container) return null;
+    const box = container.getBoundingClientRect();
+    const {top,left,width,height} = percentRect;
+    if([top,left,width,height].some(v=>typeof v!=='number')) return null;
+    return {
+      top: box.top + top * box.height,
+      left: box.left + left * box.width,
+      width: width * box.width,
+      height: height * box.height
+    };
+  };
+
+  const handleSelection = (text: string, rects: any, hide: () => void) => {
+    setSelectedText(text);
+    const pos = lastCursorRef.current;
+    if(pos){
+      // Ensure menu stays within viewport bounds
+      const menuWidth = 200; // Approximate menu width
+      const menuHeight = 50; // Approximate menu height
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      let left = pos.x + 8; // Small offset from cursor
+      let top = pos.y;
+      
+      // Adjust horizontal position if menu would go off-screen
+      if (left + menuWidth > viewportWidth) {
+        left = pos.x - menuWidth - 8; // Position to the left of cursor
+      }
+      
+      // Adjust vertical position if menu would go off-screen
+      if (top + menuHeight > viewportHeight) {
+        top = pos.y - menuHeight - 8; // Position above cursor
+      }
+      
+      // Ensure minimum distance from edges
+      left = Math.max(8, Math.min(left, viewportWidth - menuWidth - 8));
+      top = Math.max(8, Math.min(top, viewportHeight - menuHeight - 8));
+      
+      setMenuPos({top, left});
+    } else {
+      // fallback to bounding rect centre
+      if(rects?.boundingRect){
+        const r = getViewportRect(rects.boundingRect);
+        if(r) setMenuPos({top:r.top,left:r.left+r.width});
+      }
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedText("");
+    setAnalysisResult(null);
+    setMenuPos(null);
+  };
+
+  const analyzeWithPrompt = async (prompt: string) => {
+    if (!selectedText) return;
+    try {
+      setIsAnalyzing(true);
+      
+      // Check if this is a box selection
+      const isBoxSelection = selectedText === '[Box Selection]';
+      
+      if (isBoxSelection) {
+        // Box selections will be processed as images (base64)
+        // TODO: Implement image capture and base64 conversion
+        toast({ 
+          title: 'Box Selection', 
+          description: 'Box selection will be processed as image. Feature coming soon!', 
+          variant: 'default' 
+        });
+        setIsAnalyzing(false);
+        return;
+      }
+      
+      const base64 = btoa(unescape(encodeURIComponent(selectedText)));
+      const imageData = `data:text/plain;base64,${base64}`;
+
+      const res = await fetch('/api/analyze/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData,
+          mimeType: 'text/plain',
+          customPrompt: prompt
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        toast({ title: 'AI Analysis Failed', description: error.error || 'Unknown error', variant: 'destructive' });
+        setIsAnalyzing(false);
+        return;
+      }
+
+      const data = await res.json();
+      setAnalysisResult(data);
+      setIsAnalyzing(false);
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'AI Analysis Error', description: 'Something went wrong', variant: 'destructive' });
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSummarize = () => analyzeWithPrompt('Summarize the following text in concise bullet points.');
+  const handleStructured = () => analyzeWithPrompt('Please convert the following text into clean JSON capturing all facts.');
+  const handleAnalyzeDefault = () => analyzeWithPrompt('Analyze this selection and provide insights.');
+
+  // Capture last mouse position (works for both text select and box draw end)
+  useEffect(()=>{
+    const handleUp = (e: MouseEvent)=>{
+      // Store global coordinates for context menu positioning
+      lastCursorRef.current = {x:e.clientX,y:e.clientY};
+    };
+    
+    const handleMove = (e: MouseEvent)=>{
+      // Update cursor position during selection
+      if(e.buttons > 0) { // Only during drag
+        lastCursorRef.current = {x:e.clientX,y:e.clientY};
+      }
+    };
+    
+    window.addEventListener('mouseup',handleUp);
+    window.addEventListener('mousemove',handleMove);
+    return ()=>{
+      window.removeEventListener('mouseup',handleUp);
+      window.removeEventListener('mousemove',handleMove);
+    };
+  },[]);
+
+  // Click outside to dismiss context menu
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (selectedText && menuPos) {
+        const target = e.target as Element;
+        // Check if click is outside context menu
+        const contextMenu = document.querySelector('.fixed.z-40');
+        if (contextMenu && !contextMenu.contains(target)) {
+          clearSelection();
+        }
+      }
+    };
+
+    if (selectedText && menuPos) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [selectedText, menuPos]);
 
   return (
     <>
@@ -573,18 +728,78 @@ export default function DocumentPage() {
                     </AnimatePresence>
 
                     <div className="absolute inset-0">
-                      <PdfViewer
+                      {!selectedText && (
+                        <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md z-20 text-sm">
+                          {selectedTool === 'box' ? 'Drag a box to capture content' : 'Select text to capture content'}
+                        </div>
+                      )}
+
+                      <PdfHighlighterViewer
                         file={pdfUrl}
-                        pageNumber={pageNumber}
                         scale={scale}
                         rotation={rotation}
+                        onSelection={handleSelection}
+                        selectionMode={selectedTool === 'box' ? 'box':'text'}
                         onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                        onLoadError={(error) => {
+                        onLoadError={(error: any) => {
                           console.error("Error loading PDF:", error);
                           setIsLoading(false);
                         }}
-                        onPageChange={handlePageChange}
                       />
+
+                      {/* Selection Overlay */}
+                      {selectedText && menuPos && (
+                        <>
+                          {/* context menu near selection rect */}
+                          <div
+                            className="fixed z-40 bg-background border shadow-md rounded-lg p-2 flex gap-1"
+                            style={{
+                              top: menuPos.top,
+                              left: menuPos.left,
+                            }}
+                          >
+                            {/* Unified context menu for both text and box selections */}
+                            <Button title="Analyze" size="icon" variant="ghost" onClick={handleAnalyzeDefault} disabled={isAnalyzing}>
+                              <BoxSelectIcon className="h-4 w-4" />
+                            </Button>
+                            <Button title="Extract Text" size="icon" variant="ghost" onClick={handleStructured} disabled={isAnalyzing}>
+                              <FileTextIcon className="h-4 w-4" />
+                            </Button>
+                            <Button title="Clear" size="icon" variant="ghost" onClick={clearSelection}>
+                              ✕
+                            </Button>
+                          </div>
+
+                          {/* bottom panel preview */}
+                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-md border shadow-lg rounded-lg p-4 z-30 w-[min(90%,500px)]">
+                            {selectedText === '[Box Selection]' ? (
+                              <div className="text-sm mb-2">
+                                <div className="flex items-center gap-2 text-primary">
+                                  <BoxSelectIcon className="h-4 w-4" />
+                                  <span>Selection made</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm mb-2 max-h-28 overflow-y-auto whitespace-pre-wrap break-words">{selectedText}</p>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Analysis Result Modal */}
+                      {analysisResult && (
+                        <div className="absolute inset-0 flex items-center justify-center z-40 bg-background/80 backdrop-blur-sm">
+                          <div className="bg-background border rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-auto p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold">AI Structured Output</h3>
+                              <Button size="icon" variant="ghost" onClick={() => setAnalysisResult(null)}>
+                                ✕
+                              </Button>
+                            </div>
+                            <pre className="text-xs whitespace-pre-wrap break-all">{JSON.stringify(analysisResult, null, 2)}</pre>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -592,14 +807,14 @@ export default function DocumentPage() {
             </Card>
 
             {/* Tools Sidebar Card */}
-            <Card className="shadow-sm flex flex-col h-full w-[60px]">
-              <CardContent className=" flex flex-col h-full items-center gap-1">
+            <Card className="shadow-sm flex flex-col h-full w-[60px] pt-2">
+              <CardContent className=" flex flex-col h-full items-center gap-2">
                 <TooltipProvider delayDuration={0}>
                   {tools.map(tool => (
                     <Tooltip key={tool.id}>
                       <TooltipTrigger asChild>
                         <Button
-                          variant={selectedTool === tool.id ? "default" : "ghost"}
+                          variant={selectedTool === tool.id ? "secondary" : "ghost"}
                           size="icon"
                           className="h-10 w-10"
                           onClick={() => handleToolSelect(tool.id)}
@@ -657,4 +872,4 @@ export default function DocumentPage() {
       `}</style>
     </>
   );
-} 
+}
