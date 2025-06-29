@@ -47,6 +47,11 @@ export default function DocumentPage() {
   // Zoom feedback states
   const [showZoomFeedback, setShowZoomFeedback] = useState(false);
   const zoomFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Smooth zoom states
+  const [isZooming, setIsZooming] = useState(false);
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingScaleRef = useRef<number>(scale);
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -76,6 +81,9 @@ export default function DocumentPage() {
       if (zoomFeedbackTimeoutRef.current) {
         clearTimeout(zoomFeedbackTimeoutRef.current);
       }
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+      }
     };
   }, [pdfUrl]);
 
@@ -100,23 +108,30 @@ export default function DocumentPage() {
         e.preventDefault();
         setPageNumber(numPages || 1);
       }
-      // Zoom shortcuts
-      else if (e.key === '=' || e.key === '+') {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          zoomIn();
-        }
-      } else if (e.key === '-') {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          zoomOut();
-        }
-      } else if (e.key === '0') {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          resetZoom();
-        }
-      }
+             // Zoom shortcuts
+       else if (e.key === '=' || e.key === '+') {
+         if (e.ctrlKey || e.metaKey) {
+           e.preventDefault();
+           const currentScale = isZooming ? pendingScaleRef.current : scale;
+           const newScale = Math.min(currentScale * 1.2, 3.0);
+           updateZoomSmooth(newScale);
+           showZoomFeedbackBriefly();
+         }
+       } else if (e.key === '-') {
+         if (e.ctrlKey || e.metaKey) {
+           e.preventDefault();
+           const currentScale = isZooming ? pendingScaleRef.current : scale;
+           const newScale = Math.max(currentScale * 0.8, 0.5);
+           updateZoomSmooth(newScale);
+           showZoomFeedbackBriefly();
+         }
+       } else if (e.key === '0') {
+         if (e.ctrlKey || e.metaKey) {
+           e.preventDefault();
+           updateZoomSmooth(1.0);
+           showZoomFeedbackBriefly();
+         }
+       }
       // Rotation
       else if (e.key === 'r' || e.key === 'R') {
         if (e.ctrlKey || e.metaKey) {
@@ -130,6 +145,23 @@ export default function DocumentPage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [pdfUrl, numPages, pageNumber, scale]);
 
+  // Smooth zoom update function
+  const updateZoomSmooth = (newScale: number) => {
+    pendingScaleRef.current = newScale;
+    setIsZooming(true);
+    
+    // Clear existing timeout
+    if (zoomTimeoutRef.current) {
+      clearTimeout(zoomTimeoutRef.current);
+    }
+    
+    // Debounce the actual scale update to reduce re-renders
+    zoomTimeoutRef.current = setTimeout(() => {
+      setScale(pendingScaleRef.current);
+      setIsZooming(false);
+    }, 16); // ~60fps update rate
+  };
+
   // Native zoom functionality
   useEffect(() => {
     const container = pdfContainerRef.current;
@@ -141,9 +173,11 @@ export default function DocumentPage() {
         e.preventDefault();
         e.stopPropagation();
         
-        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-        const newScale = Math.max(0.5, Math.min(3.0, scale * zoomFactor));
-        setScale(newScale);
+        const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05; // Smaller increments for smoother zoom
+        const currentScale = pendingScaleRef.current;
+        const newScale = Math.max(0.5, Math.min(3.0, currentScale * zoomFactor));
+        
+        updateZoomSmooth(newScale);
         showZoomFeedbackBriefly();
       }
     };
@@ -151,6 +185,7 @@ export default function DocumentPage() {
     // Touch events for pinch-to-zoom
     let initialDistance = 0;
     let initialScale = scale;
+    let isGesturing = false;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
@@ -161,13 +196,14 @@ export default function DocumentPage() {
           touch2.clientX - touch1.clientX,
           touch2.clientY - touch1.clientY
         );
-        initialScale = scale;
+        initialScale = pendingScaleRef.current;
+        isGesturing = true;
         setShowZoomFeedback(true);
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
+      if (e.touches.length === 2 && isGesturing) {
         e.preventDefault();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
@@ -179,15 +215,23 @@ export default function DocumentPage() {
         if (initialDistance > 0) {
           const scaleMultiplier = currentDistance / initialDistance;
           const newScale = Math.max(0.5, Math.min(3.0, initialScale * scaleMultiplier));
-          setScale(newScale);
+          updateZoomSmooth(newScale);
         }
       }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) {
+        isGesturing = false;
         setShowZoomFeedback(false);
         initialDistance = 0;
+        
+        // Ensure final scale is committed
+        if (zoomTimeoutRef.current) {
+          clearTimeout(zoomTimeoutRef.current);
+          setScale(pendingScaleRef.current);
+          setIsZooming(false);
+        }
       }
     };
 
@@ -203,7 +247,7 @@ export default function DocumentPage() {
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [scale]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
@@ -290,14 +334,16 @@ export default function DocumentPage() {
   };
 
   const zoomIn = () => {
-    const newScale = Math.min(scale * 1.2, 3.0);
-    setScale(newScale);
+    const currentScale = isZooming ? pendingScaleRef.current : scale;
+    const newScale = Math.min(currentScale * 1.2, 3.0);
+    updateZoomSmooth(newScale);
     showZoomFeedbackBriefly();
   };
 
   const zoomOut = () => {
-    const newScale = Math.max(scale * 0.8, 0.5);
-    setScale(newScale);
+    const currentScale = isZooming ? pendingScaleRef.current : scale;
+    const newScale = Math.max(currentScale * 0.8, 0.5);
+    updateZoomSmooth(newScale);
     showZoomFeedbackBriefly();
   };
 
@@ -306,7 +352,7 @@ export default function DocumentPage() {
   };
 
   const resetZoom = () => {
-    setScale(1.0);
+    updateZoomSmooth(1.0);
     showZoomFeedbackBriefly();
   };
 
@@ -462,7 +508,7 @@ export default function DocumentPage() {
                                 "text-xs font-medium transition-colors",
                                 showZoomFeedback && "text-primary"
                               )}>
-                                {Math.round(scale * 100)}%
+                                {Math.round((isZooming ? pendingScaleRef.current : scale) * 100)}%
                               </span>
                             </Button>
                           </TooltipTrigger>
@@ -518,7 +564,7 @@ export default function DocumentPage() {
                                 <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
                               </div>
                               <span className="text-lg font-medium text-primary">
-                                {Math.round(scale * 100)}%
+                                {Math.round((isZooming ? pendingScaleRef.current : scale) * 100)}%
                               </span>
                             </div>
                           </div>
