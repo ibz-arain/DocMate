@@ -50,7 +50,7 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "@/components/ui/use-toast";
 
 export default function DocumentPage() {
-  const { history } = useHistory(); // Add this to track history changes
+  const { history, clearHistory } = useHistory(); // Add clearHistory to clear history when PDF is cleared
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfWorkerReady, setPdfWorkerReady] = useState<boolean>(false);
@@ -217,6 +217,22 @@ export default function DocumentPage() {
     setMenuPos(null);
     setIsLoading(false);
     
+    // Clear all popup states
+    setShowSummarizePopup(false);
+    setShowQuickFormatPopup(false);
+    setShowTemplateFormatPopup(false);
+    setShowFullDocSummarizePopup(false);
+    setShowFullDocQuickFormatPopup(false);
+    setShowFullDocTemplateFormatPopup(false);
+    setShowHistoryPopup(false);
+    
+    // Clear cached results
+    setCachedSummaryResult(null);
+    setCachedQuickFormatResult(null);
+    setCachedTemplateFormatResult(null);
+    setFullDocSummarizeResult(null);
+    setFullDocQuickFormatResult(null);
+    
     // Clear localStorage
     localStorage.removeItem('docmate-pdf-data');
     localStorage.removeItem('docmate-pdf-name');
@@ -224,9 +240,12 @@ export default function DocumentPage() {
     localStorage.removeItem('docmate-pdf-scale');
     localStorage.removeItem('docmate-pdf-rotation');
     
+    // Clear history when document is cleared
+    clearHistory();
+    
     toast({
       title: "Document cleared",
-      description: "PDF has been removed from the editor.",
+      description: "PDF, cache, and history have been cleared from the editor.",
     });
   };
 
@@ -256,11 +275,7 @@ export default function DocumentPage() {
         setPdfWorkerReady(true);
       } catch (error) {
         console.error('Failed to initialize PDF worker:', error);
-        toast({
-          title: "PDF Initialization Error",
-          description: "Failed to initialize PDF viewer. Please refresh the page.",
-          variant: "destructive"
-        });
+        // Only show toast for critical initialization failures
       }
     };
 
@@ -492,13 +507,7 @@ export default function DocumentPage() {
   const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setIsLoading(false);
-    
-    // Show helpful toast for first-time users
-    toast({
-      title: "PDF Loaded Successfully",
-      description: "Use Ctrl+Scroll to zoom, arrow keys to navigate, or scroll naturally",
-      duration: 5000,
-    });
+    // Document loaded - no toast needed, visual feedback is sufficient
   };
 
   const handleToolSelect = (tool: string) => {
@@ -693,12 +702,7 @@ export default function DocumentPage() {
       const isRightClickMenu = selectedText === '[Right-click menu]';
       
       if (isRightClickMenu) {
-        // Right-click menu without text selection - show message to user
-        toast({ 
-          title: 'No Text Selected', 
-          description: 'Please select text first to analyze.', 
-          variant: 'default' 
-        });
+        // Right-click menu without text selection - no need to show toast
         setIsAnalyzing(false);
         return;
       }
@@ -770,11 +774,7 @@ export default function DocumentPage() {
     const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
-      toast({
-        title: "No text selected",
-        description: "Please select text first to format.",
-        variant: "default"
-      });
+      // No toast needed - user can see no text is selected
       return;
     }
     
@@ -801,11 +801,7 @@ export default function DocumentPage() {
     const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
-      toast({
-        title: "No text selected",
-        description: "Please select text first to apply template.",
-        variant: "default"
-      });
+      // No toast needed - user can see no text is selected
       return;
     }
     
@@ -833,11 +829,7 @@ export default function DocumentPage() {
     const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
-      toast({
-        title: "No text selected",
-        description: "Please select text first to summarize.",
-        variant: "default"
-      });
+      // No toast needed - user can see no text is selected
       return;
     }
     
@@ -892,11 +884,7 @@ export default function DocumentPage() {
     const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
-      toast({
-        title: "No text selected",
-        description: "Please select text first to copy.",
-        variant: "default"
-      });
+      // No toast needed - user can see no text is selected
       return;
     }
     
@@ -919,10 +907,7 @@ export default function DocumentPage() {
             [blob.type]: blob
           })
         ]);
-        toast({
-          title: "Image copied to clipboard",
-          description: "Selected area has been copied as an image.",
-        });
+        // Image copied successfully - no toast needed for basic copy action
         clearSelection();
       } catch (error) {
         toast({
@@ -936,10 +921,7 @@ export default function DocumentPage() {
     
     try {
       await navigator.clipboard.writeText(selectedText);
-      toast({
-        title: "Copied to clipboard",
-        description: "Selected text has been copied to your clipboard.",
-      });
+      // Text copied successfully - no toast needed for basic copy action
       clearSelection();
     } catch (error) {
       toast({
@@ -1147,10 +1129,7 @@ export default function DocumentPage() {
 
       handleFullDocSummarizeComplete(result);
 
-      toast({
-        title: "Document summarized successfully",
-        description: "Summary completed.",
-      });
+      // Success handled by popup opening - no toast needed
 
     } catch (error) {
       console.error('Document summarization error:', error);
@@ -1295,10 +1274,7 @@ Focus on making the information easily accessible and well-organized.`;
 
       handleFullDocQuickFormatComplete(result);
 
-      toast({
-        title: "Document processed successfully",
-        description: "Formatting completed.",
-      });
+      // Success handled by popup opening - no toast needed
 
     } catch (error) {
       console.error('Document processing error:', error);
@@ -1429,6 +1405,13 @@ Focus on making the information easily accessible and well-organized.`;
       return () => document.removeEventListener('mousedown', handleHistoryClickOutside);
     }
   }, [showHistoryPopup]);
+
+  // Close history popup when PDF is cleared
+  useEffect(() => {
+    if (!pdfFile && showHistoryPopup) {
+      setShowHistoryPopup(false);
+    }
+  }, [pdfFile, showHistoryPopup]);
 
   const updateCurrentPageFromScroll = useCallback(() => {
     const container = pdfContainerRef.current;
@@ -1803,7 +1786,7 @@ Focus on making the information easily accessible and well-organized.`;
 
             {/* Tools Sidebar Card */}
             <Card className="shadow-sm flex flex-col h-full w-[60px] pt-2">
-              <CardContent className=" flex flex-col h-full items-center gap-2">
+              <CardContent className=" flex flex-col h-full items-center gap-2 pb-2">
                 <TooltipProvider delayDuration={0}>
                   {tools.map(tool => (
                     <Tooltip key={tool.id}>
@@ -1866,7 +1849,7 @@ Focus on making the information easily accessible and well-organized.`;
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left" align="center">
-                          <p>Quick Format</p>
+                          <p>Auto Format</p>
                         </TooltipContent>
                       </Tooltip>
 
@@ -1883,7 +1866,7 @@ Focus on making the information easily accessible and well-organized.`;
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left" align="center">
-                          <p>Template Format</p>
+                          <p>Apply Template</p>
                         </TooltipContent>
                       </Tooltip>
                     </>
@@ -1891,37 +1874,39 @@ Focus on making the information easily accessible and well-organized.`;
 
                   <div className="flex-1" />
 
-                  {/* History Button */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 relative"
-                        ref={historyButtonRef}
-                        onClick={() => {
-                          if (!showHistoryPopup && historyButtonRef.current) {
-                            const rect = historyButtonRef.current.getBoundingClientRect();
-                            setHistoryPopupPosition({
-                              top: rect.top, // Keep the button's top position
-                              left: rect.left // Keep the button's left position
-                            });
-                          }
-                          setShowHistoryPopup(!showHistoryPopup);
-                        }}
-                      >
-                        <History className="h-5 w-5" />
-                        {history.length > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                            {history.length > 9 ? '9+' : history.length}
-                          </span>
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" align="center">
-                      <p>View History ({history.length})</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  {/* History Button - Only show when PDF is loaded */}
+                  {pdfFile && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 relative"
+                          ref={historyButtonRef}
+                          onClick={() => {
+                            if (!showHistoryPopup && historyButtonRef.current) {
+                              const rect = historyButtonRef.current.getBoundingClientRect();
+                              setHistoryPopupPosition({
+                                top: rect.top, // Keep the button's top position
+                                left: rect.left // Keep the button's left position
+                              });
+                            }
+                            setShowHistoryPopup(!showHistoryPopup);
+                          }}
+                        >
+                          <History className="h-5 w-5" />
+                          {history.length > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                              {history.length > 9 ? '9+' : history.length}
+                            </span>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" align="center">
+                        <p>View Recent ({history.length})</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
 
                   {pdfFile && (
                     <div className="mt-auto pt-2 border-t border-border w-full flex flex-col items-center gap-2">
@@ -1948,14 +1933,14 @@ Focus on making the information easily accessible and well-organized.`;
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                            className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
                             onClick={clearPdf}
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>Clear document</p>
+                        <TooltipContent side="left" align="center" className=" text-red-600 dark:text-red-200 bg-red-50 dark:bg-red-950">
+                          <p>Clear Document</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>

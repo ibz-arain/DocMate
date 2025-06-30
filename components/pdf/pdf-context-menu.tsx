@@ -58,7 +58,7 @@ export function PdfContextMenu({
   }> = [
     {
       id: 'summarize-popup',
-      label: hasTextSelection ? 'Quick Summarize' : 'Summarize Selection',
+      label: 'Summarize Selection',
       icon: Sparkles,
       onClick: onSummarizePopup,
       disabled: isRightClickMenu,
@@ -66,7 +66,7 @@ export function PdfContextMenu({
     },
     {
       id: 'quick-format',
-      label: hasTextSelection ? 'Quick Format' : 'Format Selection',
+      label: 'Auto Format',
       icon: Table,
       onClick: onQuickFormat,
       disabled: isRightClickMenu,
@@ -74,7 +74,7 @@ export function PdfContextMenu({
     },
     {
       id: 'template-format',
-      label: hasTextSelection ? 'Template Format' : 'Apply Template',
+      label: 'Apply Template',
       icon: FileCode,
       onClick: onTemplateFormat,
       disabled: isRightClickMenu,
@@ -82,7 +82,7 @@ export function PdfContextMenu({
     },
     {
       id: 'copy',
-      label: hasTextSelection ? 'Copy' : 'Copy Selection',
+      label: 'Copy',
       icon: Copy,
       onClick: onCopy,
       disabled: isRightClickMenu,
