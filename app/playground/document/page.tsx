@@ -27,6 +27,7 @@ import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
 import { SummarizePopup } from "@/components/document/summarize-popup";
 import { QuickFormatPopup } from "@/components/document/quick-format-popup";
+import { TemplateFormatPopup } from "@/components/document/template-format-popup";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -79,6 +80,8 @@ export default function DocumentPage() {
   // Quick format popup state
   const [showQuickFormatPopup, setShowQuickFormatPopup] = useState(false);
   const [quickFormatSelectedText, setQuickFormatSelectedText] = useState("");
+  const [showTemplateFormatPopup, setShowTemplateFormatPopup] = useState(false);
+  const [templateFormatSelectedText, setTemplateFormatSelectedText] = useState("");
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -711,8 +714,9 @@ export default function DocumentPage() {
   };
   
   const handleTemplateFormat = () => {
-    // Start analysis in background
-    analyzeWithPrompt('Apply template formatting to structure this text with appropriate headings, sections, and formatting.');
+    setTemplateFormatSelectedText(selectedText); // Preserve the selected text
+    clearSelection(); // Close context menu
+    setShowTemplateFormatPopup(true);
   };
   
   // Summarize popup handlers
@@ -801,7 +805,7 @@ export default function DocumentPage() {
   // Click outside to dismiss context menu
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (selectedText && menuPos && !showQuickFormatPopup) {
+      if (selectedText && menuPos && !showQuickFormatPopup && !showTemplateFormatPopup) {
         const target = e.target as Element;
         // Check if click is outside context menu and popups
         const contextMenu = target.closest('.z-50');
@@ -811,11 +815,11 @@ export default function DocumentPage() {
       }
     };
 
-    if (selectedText && menuPos && !showQuickFormatPopup) {
+    if (selectedText && menuPos && !showQuickFormatPopup && !showTemplateFormatPopup) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [selectedText, menuPos, showQuickFormatPopup]);
+  }, [selectedText, menuPos, showQuickFormatPopup, showTemplateFormatPopup]);
 
   const updateCurrentPageFromScroll = useCallback(() => {
     const container = pdfContainerRef.current;
@@ -1273,6 +1277,16 @@ export default function DocumentPage() {
           setQuickFormatSelectedText(""); // Clear preserved text when closing
         }}
         selectedText={quickFormatSelectedText}
+      />
+
+      {/* Template Format Popup */}
+      <TemplateFormatPopup
+        isOpen={showTemplateFormatPopup}
+        onClose={() => {
+          setShowTemplateFormatPopup(false);
+          setTemplateFormatSelectedText(""); // Clear preserved text when closing
+        }}
+        selectedText={templateFormatSelectedText}
       />
 
       {/* CSS for animated gradient background */}

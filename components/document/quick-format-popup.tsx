@@ -9,6 +9,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface QuickFormatPopupProps {
   isOpen: boolean;
@@ -137,25 +139,51 @@ The goal is to make the information more readable and structured while preservin
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center z-50 bg-background/80 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-background border rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-auto p-6 m-4"
-        onClick={(e) => e.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
-        
-        <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: "spring", duration: 0.5 }}
+          className="w-full max-w-4xl max-h-[85vh] overflow-hidden"
+        >
+          <Card className="shadow-2xl border-0">
+            <CardContent className="space-y-4 pt-6">
+              
           {isAnalyzing && !analysisResult ? (
-            <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center py-12"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
+                <Table className="h-8 w-8 text-primary animate-pulse relative z-10" />
+              </div>
+              <p className="text-sm text-muted-foreground mt-4 animate-pulse">
                 Converting text to structured table format...
               </p>
-            </div>
+              <div className="flex items-center gap-1 mt-2">
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </motion.div>
           ) : analysisResult ? (
-            <>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
               {/* Special handling for Quick Format Table results */}
               {analysisResult?.analysis?.documentType === "Quick Format Table" && analysisResult?.analysis?.content?.formatted_data ? (
                 <div className="space-y-4">
@@ -350,10 +378,21 @@ The goal is to make the information more readable and structured while preservin
                   ))}
                 </div>
               )}
-            </>
+            </motion.div>
           ) : null}
-        </div>
-      </div>
-    </div>
+
+          {/* Cancel button during loading */}
+          {isAnalyzing && (
+            <div className="flex justify-center pt-4">
+              <Button variant="outline" onClick={onClose} size="sm">
+                Cancel
+              </Button>
+            </div>
+          )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 } 
