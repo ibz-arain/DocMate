@@ -1,21 +1,25 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { PublicUser, LoginRequest, RegisterRequest } from '@/types/auth';
 
 interface AuthContextType {
-  user: {
-    id: number;
-    username: string;
-    created_at: string;
-  } | null;
+  user: PublicUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<any>;
+  isAuthenticated: boolean;
+  login: (credentials: LoginRequest) => Promise<PublicUser>;
+  register: (userData: RegisterRequest) => Promise<PublicUser>;
   logout: () => Promise<void>;
-  register: (username: string, password: string) => Promise<any>;
+  updateUser: (updates: Partial<PublicUser>) => Promise<PublicUser>;
+  refreshAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const auth = useAuth();
 
   return (

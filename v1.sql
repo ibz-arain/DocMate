@@ -1,14 +1,22 @@
--- This file is used to create the database schema
 CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    password TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(20),
+    email_verified BOOLEAN NOT NULL DEFAULT 0,
+    phone_verified BOOLEAN NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    created_at DATE NOT NULL DEFAULT CURRENT_DATE,
+    updated_at DATE NOT NULL DEFAULT CURRENT_DATE
 );
+CREATE UNIQUE INDEX idx_users_email ON users(email);
+
 
 CREATE TABLE documents (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
   title TEXT NOT NULL,
   type TEXT NOT NULL,
   date TEXT NOT NULL,
@@ -16,7 +24,7 @@ CREATE TABLE documents (
   content_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE templates (
@@ -26,10 +34,9 @@ CREATE TABLE templates (
   tables TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- API Endpoints table (combined with settings)
 CREATE TABLE api_endpoints (
     id TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -50,11 +57,10 @@ CREATE TABLE api_endpoints (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_used DATETIME,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL
 );
 
--- API Usage table (for tracking individual requests)
 CREATE TABLE api_usage (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     endpoint_id TEXT NOT NULL,
@@ -68,10 +74,6 @@ CREATE TABLE api_usage (
     FOREIGN KEY (endpoint_id) REFERENCES api_endpoints(id) ON DELETE CASCADE
 );
 
--- Create indexes for better query performance
-
--- Users indexes (authentication is critical)
-CREATE UNIQUE INDEX idx_users_username ON users(username);
 
 -- Documents indexes (most important queries)
 CREATE INDEX idx_documents_user ON documents(user_id);

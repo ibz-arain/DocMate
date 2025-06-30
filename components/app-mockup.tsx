@@ -478,7 +478,7 @@ const AppMockup = () => {
                                     {value.map((item, i) => (
                                       <tr key={i} className={`border-b ${localTheme === 'dark' ? 'border-zinc-800/50' : 'border-zinc-200'} last:border-0`}>
                                         {Object.values(item).map((val: any, j) => (
-                                          <td key={j} className={`py-2 ${localTheme === 'dark' ? 'text-zinc-200' : 'text-zinc-700'}`}>
+                                          <td key={`${i}-${j}`} className={`py-2 ${localTheme === 'dark' ? 'text-zinc-200' : 'text-zinc-700'}`}>
                                             {typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val)}
                                           </td>
                                         ))}

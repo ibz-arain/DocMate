@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText } from "lucide-react";
+import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,12 @@ export function CustomSidebar({
   // Navigation items with routes
   const mainNavItems = [
     {
+      id: 'Document Editor',
+      name: 'Editor',
+      icon: <Edit className="h-5 w-5" />,
+      href: '/playground/document'
+    },
+    {
       id: 'document',
       name: 'Process Document',
       icon: <FileText className="h-5 w-5" />,
@@ -87,12 +93,12 @@ export function CustomSidebar({
       icon: <Layout className="h-5 w-5" />,
       href: '/playground/templates'
     },
-    {
-      id: 'api',
-      name: 'API Integration',
-      icon: <Code className="h-5 w-5" />,
-      href: '/playground/api'
-    }
+    // {
+    //   id: 'api',
+    //   name: 'API Integration',
+    //   icon: <Code className="h-5 w-5" />,
+    //   href: '/playground/api'
+    // }
   ];
 
   return (
@@ -225,7 +231,7 @@ export function CustomSidebar({
                 );
               })}
               
-              {/* History Section - Only visible for signed-in users */}
+              {/* History Section - Only visible for signed-in users
               {user && (
                 <>
                   <div className="h-px bg-border/50 my-4" />
@@ -277,7 +283,7 @@ export function CustomSidebar({
                     </Button>
                   )}
                 </>
-              )}
+              )} */}
             </nav>
           </div>
 
@@ -307,7 +313,7 @@ export function CustomSidebar({
                       }}
                       className="px-3 py-2 text-sm text-muted-foreground overflow-hidden whitespace-nowrap"
                     >
-                      <TypeWriter text={`Signed in as ${user.username}`} delay={50} />
+                      <TypeWriter text={`Signed in as ${user.first_name}`} delay={50} />
                     </motion.div>
                   )}
                 </AnimatePresence>

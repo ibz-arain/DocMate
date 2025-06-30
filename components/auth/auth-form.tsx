@@ -15,8 +15,13 @@ interface AuthFormProps {
 
 export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    password: '',
+    phone_number: '',
+  });
   const { login, register } = useAuthContext();
   const { toast } = useToast();
   const [typedText, setTypedText] = useState('');
@@ -38,20 +43,47 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     return () => clearInterval(interval);
   }, [mode]);
 
+  // Reset form when mode changes
+  useEffect(() => {
+    setFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      password: '',
+      phone_number: '',
+    });
+  }, [mode]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       if (mode === 'signin') {
-        await login(username, password);
+        await login({
+          email: formData.email,
+          password: formData.password
+        });
         toast({
           title: 'Welcome back!',
           description: 'You have successfully signed in.',
         });
       } else {
-        await register(username, password);
-        await login(username, password);
+        await register({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          password: formData.password,
+          phone_number: formData.phone_number || undefined
+        });
         toast({
           title: 'Account created!',
           description: 'Your account has been created and you are now signed in.',
@@ -86,84 +118,145 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
+          {mode === 'signup' && (
+            <>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="grid grid-cols-2 gap-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="first_name" className="font-mono text-sm font-medium">First Name</Label>
+                  <Input
+                    id="first_name"
+                    name="first_name"
+                    type="text"
+                    placeholder="John"
+                    value={formData.first_name}
+                    onChange={handleInputChange}
+                    required
+                    disabled={loading}
+                    className="bg-background/50 backdrop-blur-sm border-gray-200/20 focus:border-cyan-400 transition-all duration-300"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="last_name" className="font-mono text-sm font-medium">Last Name</Label>
+                  <Input
+                    id="last_name"
+                    name="last_name"
+                    type="text"
+                    placeholder="Doe"
+                    value={formData.last_name}
+                    onChange={handleInputChange}
+                    required
+                    disabled={loading}
+                    className="bg-background/50 backdrop-blur-sm border-gray-200/20 focus:border-cyan-400 transition-all duration-300"
+                  />
+                </div>
+              </motion.div>
+            </>
+          )}
+
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: mode === 'signup' ? 0.2 : 0.1 }}
             className="space-y-2"
           >
-            <Label htmlFor="username" className="font-mono text-sm font-medium">Username</Label>
+            <Label htmlFor="email" className="font-mono text-sm font-medium">Email</Label>
             <Input
-              id="username"
-              type="text"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              name="email"
+              type="email"
+              placeholder="john@example.com"
+              value={formData.email}
+              onChange={handleInputChange}
               required
               disabled={loading}
               className="bg-background/50 backdrop-blur-sm border-gray-200/20 focus:border-cyan-400 transition-all duration-300"
             />
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: mode === 'signup' ? 0.3 : 0.2 }}
             className="space-y-2"
           >
             <Label htmlFor="password" className="font-mono text-sm font-medium">Password</Label>
             <Input
               id="password"
+              name="password"
               type="password"
               placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={formData.password}
+              onChange={handleInputChange}
               required
               disabled={loading}
               className="bg-background/50 backdrop-blur-sm border-gray-200/20 focus:border-cyan-400 transition-all duration-300"
             />
+            {mode === 'signup' && (
+              <p className="text-xs text-gray-500 mt-1">
+                Password must be at least 8 characters with uppercase, lowercase, and number
+              </p>
+            )}
           </motion.div>
+
+          {mode === 'signup' && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-2"
+            >
+              <Label htmlFor="phone_number" className="font-mono text-sm font-medium">Phone Number (Optional)</Label>
+              <Input
+                id="phone_number"
+                name="phone_number"
+                type="tel"
+                placeholder="+1 (555) 123-4567"
+                value={formData.phone_number}
+                onChange={handleInputChange}
+                disabled={loading}
+                className="bg-background/50 backdrop-blur-sm border-gray-200/20 focus:border-cyan-400 transition-all duration-300"
+              />
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: mode === 'signup' ? 0.5 : 0.3 }}
+            className="space-y-4"
           >
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-mono transition-all duration-300"
               disabled={loading}
+              className="w-full h-12 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-mono font-semibold transition-all duration-300 transform hover:scale-105"
             >
               {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {mode === 'signin' ? 'Signing in...' : 'Creating account...'}
-                </>
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 mode === 'signin' ? 'Sign In' : 'Create Account'
               )}
             </Button>
+
+            {onToggleMode && (
+              <p className="text-center text-sm text-gray-600">
+                {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
+                <button
+                  type="button"
+                  onClick={onToggleMode}
+                  disabled={loading}
+                  className="font-semibold text-cyan-500 hover:text-cyan-600 transition-colors duration-200"
+                >
+                  {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                </button>
+              </p>
+            )}
           </motion.div>
         </form>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-6 text-center"
-        >
-          <Button
-            type="button"
-            variant="ghost"
-            className="font-mono text-sm text-gray-500 hover:text-gray-700 transition-colors duration-300"
-            onClick={onToggleMode}
-            disabled={loading}
-          >
-            {mode === 'signin'
-              ? "Don't have an account? Sign up"
-              : 'Already have an account? Sign in'}
-          </Button>
-        </motion.div>
       </motion.div>
     </div>
   );
