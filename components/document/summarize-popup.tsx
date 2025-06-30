@@ -392,7 +392,7 @@ The goal is to create a summary that demonstrates understanding of the content a
                   transition={{ duration: 0.4 }}
                   className="space-y-4"
                 >
-                  {/* Stats Header */}
+                  {/* Stats Header with Copy Button */}
                   <div className="flex items-center justify-between pb-2 border-b border-border">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 bg-primary/10 dark:bg-primary/10 rounded-full">
@@ -401,6 +401,24 @@ The goal is to create a summary that demonstrates understanding of the content a
                       <span className="font-medium text-sm">Summary Complete</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button 
+                        onClick={handleCopy} 
+                        variant="outline" 
+                        size="sm"
+                        className="h-7 px-2"
+                      >
+                        {copied ? (
+                          <>
+                            <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
                       <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/30">
                         {result.compressionRatio}% shorter
                       </Badge>
@@ -429,49 +447,6 @@ The goal is to create a summary that demonstrates understanding of the content a
                       {new Date(result.processedAt).toLocaleTimeString()}
                     </span>
                   </div>
-                </motion.div>
-              )}
-
-              {/* Action Buttons */}
-              {result && !isLoading && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex gap-3 pt-2"
-                >
-                  <Button 
-                    onClick={handleCopy} 
-                    variant="outline" 
-                    className="flex-1"
-                  >
-                    {copied ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Summary
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    onClick={resetPopup} 
-                    variant="outline"
-                    className="transition-all"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    New Summary
-                  </Button>
-                  <Button 
-                    onClick={handleClose}
-                    variant="secondary"
-                    className="transition-all"
-                  >
-                    Done
-                  </Button>
                 </motion.div>
               )}
 
