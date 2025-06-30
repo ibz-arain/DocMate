@@ -146,18 +146,40 @@ export function SummarizePopup({ isOpen, onClose, selectedText, selectionData, o
           body: JSON.stringify({
             imageData,
             mimeType: 'image/png',
-            customPrompt: 'Analyze the following image and create an intelligent summary. Choose the best format based on the content - you can use bullet points, paragraphs, numbered lists, or mix different formats as appropriate. Focus on clarity and usefulness, as well as keep it as short as possible. Be concise but comprehensive, highlight the most important information, use clear accessible language, and focus on what would be most useful to the reader. Return ONLY the summary text, no JSON structure.',
+            customPrompt: `Analyze the image content and create an intelligent, comprehensive summary. 
+
+Instructions:
+1. Examine all text, graphics, charts, tables, diagrams, and visual elements in the image
+2. Understand the context and meaning of the content, not just individual words
+3. Create a well-structured summary that captures the key information and insights
+4. Choose the best format based on the content - use bullet points, paragraphs, numbered lists, or mix formats as appropriate
+5. Focus on clarity, usefulness, and comprehensiveness while being concise
+6. Highlight the most important information and key takeaways
+7. Use clear, accessible language that would be useful to the reader
+8. Provide meaningful analysis and context, not just a list of words
+
+The goal is to create a summary that demonstrates understanding of the content and provides valuable insights to the reader.`,
             outputFormat: {
               documentType: "Image Summary",
               tables: [{
                 name: "summary_content",
-                description: "Summary of the image content",
+                description: "Comprehensive summary of the image content with analysis and insights",
                 type: "data" as const,
                 fields: [{
-                  name: "text",
+                  name: "summary",
                   type: "string",
-                  description: "The complete summary text",
+                  description: "The complete intelligent summary text with proper formatting and structure",
                   required: true
+                }, {
+                  name: "key_points",
+                  type: "string",
+                  description: "Main key points extracted from the content in bullet format",
+                  required: false
+                }, {
+                  name: "content_type",
+                  type: "string", 
+                  description: "Type of content analyzed (e.g., text document, chart, table, diagram, etc.)",
+                  required: false
                 }]
               }]
             }
@@ -174,9 +196,25 @@ export function SummarizePopup({ isOpen, onClose, selectedText, selectionData, o
         // Try to extract summary from various possible locations in the response
         let summary = '';
         
-        if (data?.analysis?.content?.summary_content?.text) {
+        if (data?.analysis?.content?.summary_content?.summary) {
+          summary = data.analysis.content.summary_content.summary;
+          
+          // Enhance with key points if available
+          if (data.analysis.content.summary_content.key_points) {
+            summary += '\n\n**Key Points:**\n' + data.analysis.content.summary_content.key_points;
+          }
+        } else if (data?.result?.content?.summary_content?.summary) {
+          summary = data.result.content.summary_content.summary;
+          
+          // Enhance with key points if available
+          if (data.result.content.summary_content.key_points) {
+            summary += '\n\n**Key Points:**\n' + data.result.content.summary_content.key_points;
+          }
+        } else if (data?.analysis?.content?.summary_content?.text) {
+          // Fallback to old field name for backwards compatibility
           summary = data.analysis.content.summary_content.text;
         } else if (data?.result?.content?.summary_content?.text) {
+          // Fallback to old field name for backwards compatibility
           summary = data.result.content.summary_content.text;
         } else if (data?.analysis?.analysis?.summary) {
           summary = data.analysis.analysis.summary;

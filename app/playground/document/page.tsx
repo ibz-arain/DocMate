@@ -749,7 +749,11 @@ export default function DocumentPage() {
   // Context menu action handlers
   const handleQuickSummarize = () => {
     // Start analysis in background
-    analyzeWithPrompt('Summarize the following text in concise bullet points.');
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and create a comprehensive summary in concise bullet points. Examine all text, graphics, charts, and visual elements. Focus on understanding the context and meaning, not just listing individual words. Provide meaningful insights and key takeaways.' :
+      'Summarize the following text in concise bullet points.';
+    analyzeWithPrompt(prompt);
   };
   
   const handleQuickFormat = () => {
@@ -929,13 +933,61 @@ export default function DocumentPage() {
   };
 
   // Legacy handlers (keeping for backward compatibility if needed)
-  const handleSummarize = () => analyzeWithPrompt('Summarize the following text in concise bullet points.');
-  const handleStructured = () => analyzeWithPrompt('Please convert the following text into clean JSON capturing all facts.');
-  const handleAnalyzeDefault = () => analyzeWithPrompt('Analyze this selection and provide insights.');
-  const handleExtractKeyPoints = () => analyzeWithPrompt('Extract the key points and important information from this text in bullet format.');
-  const handleTranslate = () => analyzeWithPrompt('Translate this text to English and provide the original language detected.');
-  const handleExplain = () => analyzeWithPrompt('Explain this text in simple terms, breaking down complex concepts.');
-  const handleQuestions = () => analyzeWithPrompt('Generate relevant questions that could be answered by this text content.');
+  const handleSummarize = () => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and create a comprehensive summary in concise bullet points. Examine all text, graphics, charts, and visual elements. Focus on understanding the context and meaning, not just listing individual words. Provide meaningful insights and key takeaways.' :
+      'Summarize the following text in concise bullet points.';
+    analyzeWithPrompt(prompt);
+  };
+
+  const handleStructured = () => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and convert it into clean, structured JSON format. Examine all text, graphics, tables, charts, and visual elements. Extract meaningful data points, relationships, and facts. Focus on understanding the context and content structure, not just parsing individual words. Create a well-organized JSON that captures the essence and important information from the image.' :
+      'Please convert the following text into clean JSON capturing all facts.';
+    analyzeWithPrompt(prompt);
+  };
+
+  const handleAnalyzeDefault = () => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and provide comprehensive insights. Examine all text, graphics, charts, tables, and visual elements. Understand the context and meaning of the content. Provide thoughtful analysis about what the content represents, its significance, patterns, trends, or important findings. Focus on meaningful interpretation rather than just describing individual words.' :
+      'Analyze this selection and provide insights.';
+    analyzeWithPrompt(prompt);
+  };
+
+  const handleExtractKeyPoints = () => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and extract the key points and important information in bullet format. Examine all text, graphics, charts, and visual elements. Focus on understanding the main ideas, critical information, and actionable insights. Present the most important takeaways that would be valuable to someone reviewing this content.' :
+      'Extract the key points and important information from this text in bullet format.';
+    analyzeWithPrompt(prompt);
+  };
+
+  const handleTranslate = () => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and translate any text to English. First identify the original language(s) detected in the image, then provide accurate translations. If the image contains graphics, charts, or other visual elements, describe them in English as well. Focus on understanding the meaning and context, not just word-by-word translation.' :
+      'Translate this text to English and provide the original language detected.';
+    analyzeWithPrompt(prompt);
+  };
+
+  const handleExplain = () => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and explain it in simple, clear terms. Examine all text, graphics, charts, and visual elements. Break down complex concepts, technical terms, or specialized information into easy-to-understand language. Focus on helping someone understand what this content means and why it might be important.' :
+      'Explain this text in simple terms, breaking down complex concepts.';
+    analyzeWithPrompt(prompt);
+  };
+
+  const handleQuestions = () => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const prompt = isBoxSelection ? 
+      'Analyze this image content and generate relevant, thoughtful questions that could be answered by the content. Examine all text, graphics, charts, and visual elements. Create questions that demonstrate understanding of the material and would help someone explore the topic deeper. Focus on meaningful questions about the content, not just about individual words or elements.' :
+      'Generate relevant questions that could be answered by this text content.';
+    analyzeWithPrompt(prompt);
+  };
 
   // Full document toolbar handlers
   const handleFullDocSummarizeComplete = (result: any) => {

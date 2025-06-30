@@ -99,7 +99,30 @@ export function TemplateFormatPopup({ isOpen, onClose, selectedText, selectionDa
         tables: templateTables
       };
 
-      const customPrompt = `Analyze the selected text and extract data according to the "${template.name}" template structure.
+      const customPrompt = isBoxSelection ? 
+        `Analyze the image content and extract data according to the "${template.name}" template structure.
+
+Instructions:
+1. Examine all text, graphics, tables, charts, and visual elements in the image
+2. Understand the context and meaning of the content, not just individual words
+3. Extract information that matches the defined template fields based on content understanding
+4. Follow the exact field names and types specified in the template
+5. For table-type sections, extract all matching instances found in the image content
+6. For data-type sections, extract single values that best represent the content
+7. If a field is not found in the image, use an empty string
+8. Maintain data accuracy and follow any specified formats
+9. Focus on extracting meaningful, contextual information rather than just parsing words
+10. If the image contains structured data (tables, forms, etc.), extract it appropriately
+
+Template: ${template.name}
+The template defines the following structure:
+${templateTables.map((table: any) => {
+  return `\n${table.name} (${table.type}):
+${table.fields.map((field: any) => `  - ${field.name} (${field.type}): ${field.description || 'No description'}`).join('\n')}`;
+}).join('\n')}
+
+The goal is to intelligently map the image content to the template structure while preserving meaning and context.` :
+        `Analyze the selected text and extract data according to the "${template.name}" template structure.
 
 Instructions:
 1. Extract information that matches the defined template fields

@@ -104,7 +104,23 @@ export function QuickFormatPopup({ isOpen, onClose, selectedText, selectionData 
         ]
       };
 
-      const customPrompt = `Analyze the selected text and convert it into a structured table format. 
+      const customPrompt = isBoxSelection ? 
+        `Analyze the image content and extract information into a structured table format.
+
+Instructions:
+1. Examine all text, graphics, tables, charts, and visual elements in the image
+2. Understand the context and meaning of the content, not just individual words  
+3. Identify key information and organize it into logical categories and values
+4. Extract meaningful data points, relationships, and insights from the content
+5. Create well-structured table entries with clear categories
+6. If the image contains tables or lists, extract and organize the data appropriately
+7. If the image contains charts or graphs, extract the key data points and insights
+8. If the image contains narrative text, extract the main points and organize them logically
+9. Focus on extracting actionable information and meaningful relationships
+10. Preserve important context and details that add value
+
+The goal is to transform visual content into a structured, searchable, and useful table format while maintaining the original meaning and context.` :
+        `Analyze the selected text and convert it into a structured table format. 
 
 Instructions:
 1. Identify the key information in the text
