@@ -21,6 +21,7 @@ interface PdfViewerProps {
   onPageChange: (pageNumber: number) => void;
   selectionMode?: 'text' | 'box' | null;
   onSelection?: (text: string, rects: any, hide: () => void) => void;
+  onScroll?: (scrollDistance: number) => void;
 }
 
 export function PdfViewer({
@@ -33,6 +34,7 @@ export function PdfViewer({
   onPageChange,
   selectionMode = null,
   onSelection = () => {},
+  onScroll = () => {},
 }: PdfViewerProps) {
   const [isWorkerInitialized, setIsWorkerInitialized] = useState(false);
   const [numPages, setNumPages] = useState<number>(0);
@@ -42,13 +44,28 @@ export function PdfViewer({
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const isExternalNavigationRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollStartPositionRef = useRef<{x: number; y: number} | null>(null);
 
-  // Selection state
-  const [selecting, setSelecting] = useState(false);
-  const [selectionStart, setSelectionStart] = useState<{x: number; y: number; page: number} | null>(null);
-  const [selectionEnd, setSelectionEnd] = useState<{x: number; y: number; page: number} | null>(null);
-  const [selectionBox, setSelectionBox] = useState<{left: number; top: number; width: number; height: number; page: number} | null>(null);
-  const [textSelection, setTextSelection] = useState<{text: string; rect: DOMRect; page: number} | null>(null);
+  // Simplified selection state
+  const [isBoxSelecting, setIsBoxSelecting] = useState(false);
+  const [boxStart, setBoxStart] = useState<{x: number; y: number; page: number} | null>(null);
+  const [currentBoxSelection, setCurrentBoxSelection] = useState<{left: number; top: number; width: number; height: number; page: number} | null>(null);
+  
+  // Live text selection tracking
+  const [liveTextSelection, setLiveTextSelection] = useState<{rects: DOMRect[]; page: number} | null>(null);
+  const [isTextSelecting, setIsTextSelecting] = useState(false);
+  
+  // Persistent selections (stored as percentages for proper scaling/scrolling)
+  const [persistentSelection, setPersistentSelection] = useState<{
+    type: 'text' | 'box';
+    top: number; 
+    left: number; 
+    width: number; 
+    height: number; 
+    page: number;
+    text?: string;
+    rects?: Array<{top: number; left: number; width: number; height: number}>;
+  } | null>(null);
 
   useEffect(() => {
     try {
@@ -90,6 +107,21 @@ export function PdfViewer({
 
   // Scroll-based page detection
   const handleScroll = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    // Calculate scroll distance for context menu dismissal
+    let scrollDistance = 0;
+    if (scrollStartPositionRef.current) {
+      // Calculate scroll distance from initial position (only if we have a stored position)
+      const deltaX = Math.abs(container.scrollLeft - scrollStartPositionRef.current.x);
+      const deltaY = Math.abs(container.scrollTop - scrollStartPositionRef.current.y);
+      scrollDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    }
+    
+    // Notify parent component about scroll event with distance
+    onScroll(scrollDistance);
+    
     if (isExternalNavigationRef.current || !containerRef.current || pageRefs.current.length === 0) {
       return;
     }
@@ -161,7 +193,7 @@ export function PdfViewer({
     scrollTimeoutRef.current = setTimeout(() => {
       updateVisiblePage();
     }, 50);
-  }, [currentPage, onPageChange]);
+  }, [currentPage, onPageChange, onScroll]);
 
   const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -173,103 +205,275 @@ export function PdfViewer({
   // Box selection logic
   useEffect(() => {
     if (selectionMode !== 'box') return;
+    
     const handleMouseDown = (e: MouseEvent) => {
       if (!containerRef.current) return;
-      // Only left click
-      if (e.button !== 0) return;
+      if (e.button !== 0) return; // Only left click
+      e.preventDefault(); // Prevent text selection
+      
       // Find which page
       const pageIdx = pageRefs.current.findIndex(ref => {
         if (!ref) return false;
         const rect = ref.getBoundingClientRect();
         return e.clientY >= rect.top && e.clientY <= rect.bottom && e.clientX >= rect.left && e.clientX <= rect.right;
       });
+      
       if (pageIdx === -1) return;
-      setSelecting(true);
-      setSelectionStart({ x: e.clientX, y: e.clientY, page: pageIdx });
-      setSelectionEnd(null);
-      setSelectionBox(null);
+      
+      setIsBoxSelecting(true);
+      setBoxStart({ x: e.clientX, y: e.clientY, page: pageIdx });
+      setCurrentBoxSelection(null);
+      setPersistentSelection(null); // Clear any existing selection
     };
+    
     const handleMouseMove = (e: MouseEvent) => {
-      if (!selecting || !selectionStart) return;
-      setSelectionEnd({ x: e.clientX, y: e.clientY, page: selectionStart.page });
-      // Calculate box
-      const sx = selectionStart.x;
-      const sy = selectionStart.y;
+      if (!isBoxSelecting || !boxStart) return;
+      
+      const sx = boxStart.x;
+      const sy = boxStart.y;
       const ex = e.clientX;
       const ey = e.clientY;
       const left = Math.min(sx, ex);
       const top = Math.min(sy, ey);
       const width = Math.abs(ex - sx);
       const height = Math.abs(ey - sy);
-      setSelectionBox({ left, top, width, height, page: selectionStart.page });
+      
+      setCurrentBoxSelection({ left, top, width, height, page: boxStart.page });
     };
+    
     const handleMouseUp = (e: MouseEvent) => {
-      if (!selecting || !selectionStart || !selectionEnd) return;
-      setSelecting(false);
-      // Only trigger if box is big enough
-      if (selectionBox && selectionBox.width > 10 && selectionBox.height > 10) {
-        // Convert to percent of page
-        const pageRef = pageRefs.current[selectionBox.page];
+      if (!isBoxSelecting || !boxStart) return;
+      
+      setIsBoxSelecting(false);
+      
+      if (currentBoxSelection && currentBoxSelection.width > 10 && currentBoxSelection.height > 10) {
+        const pageRef = pageRefs.current[currentBoxSelection.page];
         if (pageRef) {
-          const rect = pageRef.getBoundingClientRect();
+          const pageRect = pageRef.getBoundingClientRect();
           const percentRect = {
-            top: (selectionBox.top - rect.top) / rect.height,
-            left: (selectionBox.left - rect.left) / rect.width,
-            width: selectionBox.width / rect.width,
-            height: selectionBox.height / rect.height,
+            top: (currentBoxSelection.top - pageRect.top) / pageRect.height,
+            left: (currentBoxSelection.left - pageRect.left) / pageRect.width,
+            width: currentBoxSelection.width / pageRect.width,
+            height: currentBoxSelection.height / pageRect.height,
           };
-          onSelection('[Box Selection]', { boundingRect: percentRect, page: selectionBox.page + 1 }, () => setSelectionBox(null));
+          
+          // Store persistent selection
+          setPersistentSelection({
+            type: 'box',
+            top: percentRect.top,
+            left: percentRect.left,
+            width: percentRect.width,
+            height: percentRect.height,
+            page: currentBoxSelection.page
+          });
+          
+          // Store initial scroll position for distance tracking
+          const container = containerRef.current;
+          if (container) {
+            scrollStartPositionRef.current = {
+              x: container.scrollLeft,
+              y: container.scrollTop
+            };
+          }
+          
+          onSelection('[Box Selection]', { 
+            boundingRect: percentRect, 
+            page: currentBoxSelection.page + 1,
+            pageRelativePosition: {
+              top: percentRect.top,
+              left: percentRect.left + percentRect.width / 2, // Center of selection
+              page: currentBoxSelection.page
+            }
+          }, () => {
+            setPersistentSelection(null);
+            scrollStartPositionRef.current = null; // Reset scroll tracking
+          });
         }
-      } else {
-        setSelectionBox(null);
       }
+      
+      setCurrentBoxSelection(null);
+      setBoxStart(null);
     };
+    
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+    
     return () => {
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [selectionMode, selecting, selectionStart, selectionEnd, selectionBox, onSelection]);
+  }, [selectionMode, isBoxSelecting, boxStart, currentBoxSelection, onSelection]);
 
   // Text selection logic
   useEffect(() => {
     if (selectionMode !== 'text') return;
-    const handleSelectionChange = () => {
+    
+    const updateLiveSelection = () => {
+      if (!isTextSelecting) return;
+      
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed) return;
-      // Find which page
-      let anchorNode = sel.anchorNode as HTMLElement | null;
-      while (anchorNode && anchorNode.nodeType !== 1) anchorNode = anchorNode.parentElement;
-      if (!anchorNode) return;
-      const pageIdx = pageRefs.current.findIndex(ref => ref && ref.contains(anchorNode));
-      if (pageIdx === -1) return;
-      const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      const text = sel.toString();
-      if (text.trim().length > 0) {
-        setTextSelection({ text, rect, page: pageIdx });
-        onSelection(text, { boundingRect: {
-          top: (rect.top - pageRefs.current[pageIdx]!.getBoundingClientRect().top) / pageRefs.current[pageIdx]!.getBoundingClientRect().height,
-          left: (rect.left - pageRefs.current[pageIdx]!.getBoundingClientRect().left) / pageRefs.current[pageIdx]!.getBoundingClientRect().width,
-          width: rect.width / pageRefs.current[pageIdx]!.getBoundingClientRect().width,
-          height: rect.height / pageRefs.current[pageIdx]!.getBoundingClientRect().height,
-        }, page: pageIdx + 1 }, () => setTextSelection(null));
+      if (!sel || sel.isCollapsed) {
+        setLiveTextSelection(null);
+        return;
+      }
+      
+      // Find which page contains the selection
+      let anchorNode = sel.anchorNode;
+      let element = anchorNode?.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode as HTMLElement;
+      
+      while (element && element !== document.body) {
+        const pageIdx = pageRefs.current.findIndex(ref => ref && ref.contains(element));
+        if (pageIdx !== -1) {
+          const range = sel.getRangeAt(0);
+          
+          // Get all rects for multi-line selections
+          const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+          
+          if (rects.length > 0) {
+            setLiveTextSelection({ rects, page: pageIdx });
+            return;
+          }
+        }
+        element = element.parentElement;
       }
     };
+    
+    const processTextSelection = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      
+      const text = sel.toString().trim();
+      if (text.length === 0) return;
+      
+      // Find which page contains the selection
+      let anchorNode = sel.anchorNode;
+      let element = anchorNode?.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode as HTMLElement;
+      
+      while (element && element !== document.body) {
+        const pageIdx = pageRefs.current.findIndex(ref => ref && ref.contains(element));
+        if (pageIdx !== -1) {
+          const range = sel.getRangeAt(0);
+          const pageRef = pageRefs.current[pageIdx];
+          
+          if (pageRef) {
+            const pageRect = pageRef.getBoundingClientRect();
+            
+            // Get all rects for precise multi-line selection
+            const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+            
+            if (rects.length > 0) {
+              // Calculate bounding box of all rects for the callback
+              const minLeft = Math.min(...rects.map(r => r.left));
+              const maxRight = Math.max(...rects.map(r => r.right));
+              const minTop = Math.min(...rects.map(r => r.top));
+              const maxBottom = Math.max(...rects.map(r => r.bottom));
+              
+              const boundingRect = {
+                top: (minTop - pageRect.top) / pageRect.height,
+                left: (minLeft - pageRect.left) / pageRect.width,
+                width: (maxRight - minLeft) / pageRect.width,
+                height: (maxBottom - minTop) / pageRect.height,
+              };
+              
+              // Store persistent selection with multiple rects for precise highlighting
+              const persistentRects = rects.map(rect => ({
+                top: (rect.top - pageRect.top) / pageRect.height,
+                left: (rect.left - pageRect.left) / pageRect.width,
+                width: rect.width / pageRect.width,
+                height: rect.height / pageRect.height,
+              }));
+              
+              // Clear live selection and store persistent selection
+              setLiveTextSelection(null);
+              setPersistentSelection({
+                type: 'text',
+                top: boundingRect.top,
+                left: boundingRect.left,
+                width: boundingRect.width,
+                height: boundingRect.height,
+                page: pageIdx,
+                text: text,
+                rects: persistentRects // Store precise rectangles
+              });
+              
+              // Store initial scroll position for distance tracking
+              const container = containerRef.current;
+              if (container) {
+                scrollStartPositionRef.current = {
+                  x: container.scrollLeft,
+                  y: container.scrollTop
+                };
+              }
+              
+              onSelection(text, { 
+                boundingRect, 
+                page: pageIdx + 1,
+                pageRelativePosition: {
+                  top: boundingRect.top,
+                  left: boundingRect.left + boundingRect.width / 2, // Center of selection
+                  page: pageIdx
+                }
+              }, () => {
+                setPersistentSelection(null);
+                sel.removeAllRanges();
+                scrollStartPositionRef.current = null; // Reset scroll tracking
+              });
+              return;
+            }
+          }
+        }
+        element = element.parentElement;
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const textLayer = target.closest('.react-pdf__Page__textContent');
+      if (textLayer && selectionMode === 'text') {
+        setIsTextSelecting(true);
+        setLiveTextSelection(null);
+        setPersistentSelection(null); // Clear any existing selection
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (isTextSelecting && selectionMode === 'text') {
+        setIsTextSelecting(false);
+        setTimeout(() => {
+          processTextSelection();
+        }, 50); // Slightly longer delay for text selection to finalize
+      }
+    };
+
+    const handleSelectionChange = () => {
+      if (selectionMode === 'text') {
+        updateLiveSelection();
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('selectionchange', handleSelectionChange);
+    
     return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [selectionMode, onSelection]);
+  }, [selectionMode, isTextSelecting, onSelection]);
 
   // Hide selection on tool change
   useEffect(() => {
     if (!selectionMode) {
-      setSelectionBox(null);
-      setTextSelection(null);
+      setCurrentBoxSelection(null);
+      setIsBoxSelecting(false);
+      setBoxStart(null);
+      setLiveTextSelection(null);
+      setIsTextSelecting(false);
+      setPersistentSelection(null);
+      scrollStartPositionRef.current = null; // Reset scroll tracking
     }
   }, [selectionMode]);
 
@@ -290,21 +494,41 @@ export function PdfViewer({
     <PdfErrorBoundary>
       <div 
         ref={containerRef}
-        className="relative w-full h-full overflow-auto"
+        className={`relative w-full h-full overflow-auto ${
+          selectionMode === 'text' ? 'select-text' : 
+          selectionMode === 'box' ? 'select-none cursor-crosshair' : 
+          'select-none'
+        }`}
         onScroll={handleScroll}
         style={{
-          scrollBehavior: 'smooth'
+          scrollBehavior: 'smooth',
+          userSelect: selectionMode === 'text' ? 'text' : 'none'
         }}
       >
         <style jsx>{`
           :global(.react-pdf__Page__textContent) {
             opacity: 0 !important;
-            pointer-events: auto !important;
+            pointer-events: ${selectionMode === 'text' ? 'auto' : 'none'} !important;
+            user-select: ${selectionMode === 'text' ? 'text' : 'none'} !important;
+            cursor: ${selectionMode === 'text' ? 'text' : 'default'} !important;
           }
           :global(.react-pdf__Page__textContent span) {
             color: transparent !important;
             background: transparent !important;
-            user-select: text !important;
+            user-select: ${selectionMode === 'text' ? 'text' : 'none'} !important;
+            pointer-events: ${selectionMode === 'text' ? 'auto' : 'none'} !important;
+            cursor: ${selectionMode === 'text' ? 'text' : 'default'} !important;
+          }
+          :global(.react-pdf__Page__canvas) {
+            cursor: ${selectionMode === 'box' ? 'crosshair' : selectionMode === 'text' ? 'text' : 'default'} !important;
+          }
+          /* Hide native selection highlighting to avoid double highlight */
+          :global(.react-pdf__Page__textContent::selection) {
+            background: transparent !important;
+          }
+          :global(.react-pdf__Page__textContent span::selection) {
+            background: transparent !important;
+            color: transparent !important;
           }
         `}</style>
         <div className="flex flex-col items-center py-4 space-y-4">
@@ -347,31 +571,75 @@ export function PdfViewer({
                     </div>
                   }
                 />
-                {/* Box selection overlay */}
-                {selectionMode === 'box' && selectionBox && selectionBox.page === index && (
+                {/* Temporary box selection (during dragging) */}
+                {selectionMode === 'box' && currentBoxSelection && currentBoxSelection.page === index && (
                   <div
                     className="absolute border-2 border-primary bg-primary/10 pointer-events-none"
                     style={{
-                      left: selectionBox.left - pageRefs.current[index]!.getBoundingClientRect().left,
-                      top: selectionBox.top - pageRefs.current[index]!.getBoundingClientRect().top,
-                      width: selectionBox.width,
-                      height: selectionBox.height,
+                      left: currentBoxSelection.left - pageRefs.current[index]!.getBoundingClientRect().left,
+                      top: currentBoxSelection.top - pageRefs.current[index]!.getBoundingClientRect().top,
+                      width: currentBoxSelection.width,
+                      height: currentBoxSelection.height,
                       zIndex: 20,
                     }}
                   />
                 )}
-                {/* Text selection highlight (optional, for feedback) */}
-                {selectionMode === 'text' && textSelection && textSelection.page === index && (
-                  <div
-                    className="absolute bg-primary/20 pointer-events-none rounded"
-                    style={{
-                      left: textSelection.rect.left - pageRefs.current[index]!.getBoundingClientRect().left,
-                      top: textSelection.rect.top - pageRefs.current[index]!.getBoundingClientRect().top,
-                      width: textSelection.rect.width,
-                      height: textSelection.rect.height,
-                      zIndex: 20,
-                    }}
-                  />
+                
+                {/* Live text selection highlight (during text selection) */}
+                {selectionMode === 'text' && liveTextSelection && liveTextSelection.page === index && (
+                  <>
+                    {liveTextSelection.rects.map((rect, rectIndex) => (
+                      <div
+                        key={rectIndex}
+                        className="absolute bg-primary/30 pointer-events-none"
+                        style={{
+                          left: rect.left - pageRefs.current[index]!.getBoundingClientRect().left,
+                          top: rect.top - pageRefs.current[index]!.getBoundingClientRect().top,
+                          width: rect.width,
+                          height: rect.height,
+                          zIndex: 15,
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+                
+                {/* Persistent selection (stays with page content) */}
+                {persistentSelection && persistentSelection.page === index && pageRefs.current[index] && (
+                  <>
+                    {persistentSelection.type === 'text' && persistentSelection.rects ? (
+                      // Precise text selection with multiple rectangles
+                      persistentSelection.rects.map((rect, rectIndex) => (
+                        <div
+                          key={rectIndex}
+                          className="absolute bg-primary/20 pointer-events-none"
+                          style={{
+                            left: `${rect.left * 100}%`,
+                            top: `${rect.top * 100}%`,
+                            width: `${rect.width * 100}%`,
+                            height: `${rect.height * 100}%`,
+                            zIndex: 20,
+                          }}
+                        />
+                      ))
+                    ) : (
+                      // Box selection or fallback single rectangle
+                      <div
+                        className={`absolute pointer-events-none ${
+                          persistentSelection.type === 'box' 
+                            ? 'border-2 border-primary bg-primary/10' 
+                            : 'bg-primary/20 rounded'
+                        }`}
+                        style={{
+                          left: `${persistentSelection.left * 100}%`,
+                          top: `${persistentSelection.top * 100}%`,
+                          width: `${persistentSelection.width * 100}%`,
+                          height: `${persistentSelection.height * 100}%`,
+                          zIndex: 20,
+                        }}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             ))}

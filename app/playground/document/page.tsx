@@ -20,6 +20,7 @@ import {
   MousePointer as MousePointerIcon,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
+import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -40,7 +41,7 @@ export default function DocumentPage() {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [rotation, setRotation] = useState<number>(0);
-  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [selectedTool, setSelectedTool] = useState<string | null>('text');
   const [selectedText, setSelectedText] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -57,8 +58,9 @@ export default function DocumentPage() {
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingScaleRef = useRef<number>(scale);
 
-  const [menuPos, setMenuPos] = useState<{top:number;left:number} | null>(null);
+  const [menuPos, setMenuPos] = useState<{top:number;left:number;isPageRelative?:boolean} | null>(null);
   const lastCursorRef = useRef<{x:number;y:number}|null>(null);
+  const scrollStartPositionRef = useRef<{x: number; y: number} | null>(null);
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -390,7 +392,7 @@ export default function DocumentPage() {
   };
 
   const tools = [
-    { id: 'highlight', label: 'Text Select', icon: <MousePointerIcon className="h-5 w-5" /> },
+    { id: 'text', label: 'Text Select', icon: <MousePointerIcon className="h-5 w-5" /> },
     { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
   ];
 
@@ -410,6 +412,61 @@ export default function DocumentPage() {
 
   const handleSelection = (text: string, rects: any, hide: () => void) => {
     setSelectedText(text);
+    
+    // Store initial scroll position when context menu opens
+    const container = pdfContainerRef.current;
+    if (container) {
+      scrollStartPositionRef.current = {
+        x: container.scrollLeft,
+        y: container.scrollTop
+      };
+    }
+    
+    // Use page-relative positioning if available
+    if (rects?.pageRelativePosition && pdfContainerRef.current) {
+      const container = pdfContainerRef.current;
+      const pageIdx = rects.pageRelativePosition.page;
+      
+      // Find the page element using a more reliable approach
+      // Look for the page wrapper that contains the PDF page
+      const allDivs = Array.from(container.querySelectorAll('div'));
+      let pageElement: HTMLElement | null = null;
+      
+      // Find the div that contains a canvas (PDF page) at the correct index
+      let pageCount = 0;
+      for (const div of allDivs) {
+        const canvas = div.querySelector('canvas');
+        if (canvas) {
+          if (pageCount === pageIdx) {
+            pageElement = div as HTMLElement;
+            break;
+          }
+          pageCount++;
+        }
+      }
+      
+      if (pageElement) {
+        const containerRect = container.getBoundingClientRect();
+        const pageRect = pageElement.getBoundingClientRect();
+        
+        // Calculate position relative to the container
+        const relativeTop = (pageRect.top - containerRect.top) + container.scrollTop;
+        const relativeLeft = (pageRect.left - containerRect.left) + container.scrollLeft;
+        
+        // Position menu relative to the selection on the page
+        const menuTop = relativeTop + (rects.pageRelativePosition.top * pageRect.height) + 10;
+        const menuLeft = relativeLeft + (rects.pageRelativePosition.left * pageRect.width);
+        
+        setMenuPos({
+          top: menuTop,
+          left: menuLeft,
+          isPageRelative: true
+        });
+        return;
+      }
+    }
+    
+    // Fallback to cursor position (legacy behavior)
     const pos = lastCursorRef.current;
     if(pos){
       // Ensure menu stays within viewport bounds
@@ -435,13 +492,7 @@ export default function DocumentPage() {
       left = Math.max(8, Math.min(left, viewportWidth - menuWidth - 8));
       top = Math.max(8, Math.min(top, viewportHeight - menuHeight - 8));
       
-      setMenuPos({top, left});
-    } else {
-      // fallback to bounding rect centre
-      if(rects?.boundingRect){
-        const r = getViewportRect(rects.boundingRect);
-        if(r) setMenuPos({top:r.top,left:r.left+r.width});
-      }
+      setMenuPos({top, left, isPageRelative: false});
     }
   };
 
@@ -449,6 +500,7 @@ export default function DocumentPage() {
     setSelectedText("");
     setAnalysisResult(null);
     setMenuPos(null);
+    scrollStartPositionRef.current = null; // Reset scroll tracking
   };
 
   const analyzeWithPrompt = async (prompt: string) => {
@@ -501,6 +553,28 @@ export default function DocumentPage() {
     }
   };
 
+  // Context menu action handlers
+  const handleQuickSummarize = () => analyzeWithPrompt('Summarize the following text in concise bullet points.');
+  const handleQuickFormat = () => analyzeWithPrompt('Convert this text into a structured table format with clear headers and organized data.');
+  const handleTemplateFormat = () => analyzeWithPrompt('Apply template formatting to structure this text with appropriate headings, sections, and formatting.');
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(selectedText);
+      toast({
+        title: "Copied to clipboard",
+        description: "Selected text has been copied to your clipboard.",
+      });
+      clearSelection();
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy text to clipboard.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Legacy handlers (keeping for backward compatibility if needed)
   const handleSummarize = () => analyzeWithPrompt('Summarize the following text in concise bullet points.');
   const handleStructured = () => analyzeWithPrompt('Please convert the following text into clean JSON capturing all facts.');
   const handleAnalyzeDefault = () => analyzeWithPrompt('Analyze this selection and provide insights.');
@@ -536,9 +610,9 @@ export default function DocumentPage() {
     const handleClickOutside = (e: MouseEvent) => {
       if (selectedText && menuPos) {
         const target = e.target as Element;
-        // Check if click is outside context menu
-        const contextMenu = document.querySelector('.fixed.z-40');
-        if (contextMenu && !contextMenu.contains(target)) {
+        // Check if click is outside context menu (look for the z-50 class which is our context menu)
+        const contextMenu = target.closest('.z-50');
+        if (!contextMenu) {
           clearSelection();
         }
       }
@@ -597,18 +671,42 @@ export default function DocumentPage() {
     }
   }, [pageNumber, pdfUrl]);
 
-  // Attach scroll listener for page detection
+  // Attach scroll listener for page detection and context menu dismissal
   useEffect(() => {
     const container = pdfContainerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
       updateCurrentPageFromScroll();
+      
+      // Handle context menu dismissal based on scroll distance
+      if (selectedText && menuPos) {
+        if (!scrollStartPositionRef.current) {
+          // Store initial scroll position when context menu is open
+          scrollStartPositionRef.current = {
+            x: container.scrollLeft,
+            y: container.scrollTop
+          };
+        } else {
+          // Calculate scroll distance from initial position
+          const deltaX = Math.abs(container.scrollLeft - scrollStartPositionRef.current.x);
+          const deltaY = Math.abs(container.scrollTop - scrollStartPositionRef.current.y);
+          const scrollDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          
+          // Close context menu if scrolled more than 20 pixels
+          if (scrollDistance > 20) {
+            clearSelection();
+          }
+        }
+      } else {
+        // Reset scroll tracking when no context menu is open
+        scrollStartPositionRef.current = null;
+      }
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
-  }, [updateCurrentPageFromScroll]);
+  }, [updateCurrentPageFromScroll, selectedText, menuPos]);
 
   return (
     <>
@@ -821,7 +919,7 @@ export default function DocumentPage() {
                       {!selectedText && pdfWorkerReady && (
                         <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md z-20 text-sm">
                           {selectedTool === 'box' ? 'Drag a box to capture content' : 
-                           selectedTool === 'highlight' ? 'Select text to capture content' :
+                           selectedTool === 'text' ? 'Select text to capture content' :
                            'Select a tool from the sidebar to capture content'}
                         </div>
                       )}
@@ -852,65 +950,29 @@ export default function DocumentPage() {
                           }}
                           selectionMode={selectedTool as 'text' | 'box' | null}
                           onSelection={handleSelection}
+                          onScroll={(scrollDistance: number) => {
+                            // Close context menu when PDF viewer scrolls more than 20 pixels
+                            if (selectedText && menuPos && scrollDistance > 20) {
+                              clearSelection();
+                            }
+                          }}
                         />
                       )}
 
                       {/* Selection Overlay */}
                       {selectedText && menuPos && (
                         <>
-                          {/* AI-powered context menu */}
-                          <div
-                            className="fixed z-40 bg-background border shadow-md rounded-lg p-2 flex flex-wrap gap-1 max-w-[280px]"
-                            style={{
-                              top: menuPos.top,
-                              left: menuPos.left,
-                            }}
-                          >
-                            {/* Primary AI Actions */}
-                            <Button title="Summarize" size="icon" variant="ghost" onClick={handleSummarize} disabled={isAnalyzing}>
-                              <FileTextIcon className="h-4 w-4" />
-                            </Button>
-                            <Button title="Extract Key Points" size="icon" variant="ghost" onClick={handleExtractKeyPoints} disabled={isAnalyzing}>
-                              <HighlighterIcon className="h-4 w-4" />
-                            </Button>
-                            <Button title="Structure as JSON" size="icon" variant="ghost" onClick={handleStructured} disabled={isAnalyzing}>
-                              <BoxSelectIcon className="h-4 w-4" />
-                            </Button>
-                            
-                            {/* Secondary AI Actions */}
-                            <Button title="Analyze Content" size="icon" variant="ghost" onClick={handleAnalyzeDefault} disabled={isAnalyzing}>
-                              <PenLineIcon className="h-4 w-4" />
-                            </Button>
-                            <Button title="Explain Simply" size="icon" variant="ghost" onClick={handleExplain} disabled={isAnalyzing}>
-                              <ScissorsIcon className="h-4 w-4" />
-                            </Button>
-                            <Button title="Generate Questions" size="icon" variant="ghost" onClick={handleQuestions} disabled={isAnalyzing}>
-                              <SignatureIcon className="h-4 w-4" />
-                            </Button>
-                            <Button title="Translate" size="icon" variant="ghost" onClick={handleTranslate} disabled={isAnalyzing}>
-                              <RotateCw className="h-4 w-4" />
-                            </Button>
-                            
-                            {/* Separator and Clear */}
-                            <div className="w-full h-px bg-border my-1"></div>
-                            <Button title="Clear Selection" size="icon" variant="ghost" onClick={clearSelection} className="text-muted-foreground hover:text-foreground">
-                              ✕
-                            </Button>
-                          </div>
-
-                          {/* bottom panel preview */}
-                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-md border shadow-lg rounded-lg p-4 z-30 w-[min(90%,500px)]">
-                            {selectedText === '[Box Selection]' ? (
-                              <div className="text-sm mb-2">
-                                <div className="flex items-center gap-2 text-primary">
-                                  <BoxSelectIcon className="h-4 w-4" />
-                                  <span>Selection made</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-sm mb-2 max-h-28 overflow-y-auto whitespace-pre-wrap break-words">{selectedText}</p>
-                            )}
-                          </div>
+                          {/* Context menu */}
+                          <PdfContextMenu
+                            position={menuPos}
+                            selectedText={selectedText}
+                            isAnalyzing={isAnalyzing}
+                            onQuickSummarize={handleQuickSummarize}
+                            onQuickFormat={handleQuickFormat}
+                            onTemplateFormat={handleTemplateFormat}
+                            onCopy={handleCopy}
+                            onClose={clearSelection}
+                          />
                         </>
                       )}
 
