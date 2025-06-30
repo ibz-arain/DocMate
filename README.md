@@ -19,28 +19,6 @@
 
 ---
 
-## 📋 Table of Contents
-
-- [🎯 Overview](#-overview)
-- [✨ Key Features](#-key-features)
-- [🏗️ Architecture](#️-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [⚙️ Installation](#️-installation)
-- [🔧 Configuration](#-configuration)
-- [📚 Usage Guide](#-usage-guide)
-- [🔌 API Reference](#-api-reference)
-- [🗄️ Database Schema](#️-database-schema)
-- [🎨 UI Components](#-ui-components)
-- [🔐 Authentication](#-authentication)
-- [📱 Responsive Design](#-responsive-design)
-- [🧪 Testing](#-testing)
-- [🚢 Deployment](#-deployment)
-- [👥 Contributing](#-contributing)
-- [📄 License](#-license)
-- [🙏 Acknowledgments](#-acknowledgments)
-
----
-
 ## 🎯 Overview
 
 **DocMate** is an intelligent document processing platform that uses AI to automatically extract, analyze, and structure data from any document type. Born from a winning hackathon project at WinHacks 2025, DocMate transforms tedious manual document processing into seamless automation.
@@ -187,40 +165,6 @@ DocMate features a comprehensive component library built with Radix UI and Tailw
 - **SettingsDialog**: User preferences
 - **HistorySection**: Processing history
 - **APIPlayground**: Interactive API testing
-
----
-
-## 🔐 Authentication
-
-### 🔑 **JWT-Based Authentication**
-
-DocMate uses JSON Web Tokens for secure user authentication:
-
-```typescript
-// Token structure
-interface JWTPayload {
-  userId: number;
-  email: string;
-  iat: number;
-  exp: number;
-}
-```
-
-### 🛡️ **Security Features**
-
-- **Password Hashing**: bcrypt with salt rounds
-- **Secure Cookies**: HTTP-only, secure, SameSite
-- **Token Expiration**: Configurable expiry times
-- **Route Protection**: Middleware-based protection
-- **CSRF Protection**: Built-in Next.js protection
-
-### 🚪 **Authentication Flow**
-
-1. **Registration**: User creates account with email/password
-2. **Login**: Credentials verified, JWT token issued
-3. **Token Storage**: Secure HTTP-only cookie
-4. **Request Authorization**: Token validated on each request
-5. **Logout**: Token invalidated and cookie cleared
 
 ---
 
