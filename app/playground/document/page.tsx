@@ -56,6 +56,7 @@ export default function DocumentPage() {
   const [rotation, setRotation] = useState<number>(0);
   const [selectedTool, setSelectedTool] = useState<string | null>('text');
   const [selectedText, setSelectedText] = useState<string>("");
+  const [selectionData, setSelectionData] = useState<any>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -82,12 +83,15 @@ export default function DocumentPage() {
   // Summarize popup state
   const [showSummarizePopup, setShowSummarizePopup] = useState(false);
   const [popupSelectedText, setPopupSelectedText] = useState("");
+  const [popupSelectionData, setPopupSelectionData] = useState<any>(null);
   
   // Quick format popup state
   const [showQuickFormatPopup, setShowQuickFormatPopup] = useState(false);
   const [quickFormatSelectedText, setQuickFormatSelectedText] = useState("");
+  const [quickFormatSelectionData, setQuickFormatSelectionData] = useState<any>(null);
   const [showTemplateFormatPopup, setShowTemplateFormatPopup] = useState(false);
   const [templateFormatSelectedText, setTemplateFormatSelectedText] = useState("");
+  const [templateFormatSelectionData, setTemplateFormatSelectionData] = useState<any>(null);
 
   // Full document processing states
   const [showFullDocSummarizePopup, setShowFullDocSummarizePopup] = useState(false);
@@ -199,6 +203,7 @@ export default function DocumentPage() {
     setRotation(0);
     setNumPages(null);
     setSelectedText("");
+    setSelectionData(null);
     setAnalysisResult(null);
     setMenuPos(null);
     setIsLoading(false);
@@ -572,6 +577,7 @@ export default function DocumentPage() {
 
   const handleSelection = (text: string, rects: any, hide: () => void) => {
     setSelectedText(text);
+    setSelectionData(rects);
     
     // Store initial scroll position when context menu opens
     const container = pdfContainerRef.current;
@@ -662,6 +668,7 @@ export default function DocumentPage() {
 
   const clearSelection = () => {
     setSelectedText("");
+    setSelectionData(null);
     setAnalysisResult(null);
     setMenuPos(null);
     scrollStartPositionRef.current = null; // Reset scroll tracking
@@ -687,27 +694,37 @@ export default function DocumentPage() {
         return;
       }
       
-      if (isBoxSelection) {
-        // Box selections will be processed as images (base64)
-        // TODO: Implement image capture and base64 conversion
-        toast({ 
-          title: 'Box Selection', 
-          description: 'Box selection will be processed as image. Feature coming soon!', 
-          variant: 'default' 
-        });
-        setIsAnalyzing(false);
-        return;
-      }
+      let imageData: string;
+      let mimeType: string;
       
-      const base64 = btoa(unescape(encodeURIComponent(selectedText)));
-      const imageData = `data:text/plain;base64,${base64}`;
+      if (isBoxSelection) {
+        // Box selections are processed as images
+        if (!selectionData?.base64Image) {
+          toast({ 
+            title: 'Box Selection Error', 
+            description: 'Unable to extract image from selection area.', 
+            variant: 'destructive' 
+          });
+          setIsAnalyzing(false);
+          return;
+        }
+        
+        // Use the base64 image data directly
+        imageData = selectionData.base64Image.split(',')[1] || selectionData.base64Image;
+        mimeType = 'image/png';
+      } else {
+        // Text selections are encoded as base64 text
+        const base64 = btoa(unescape(encodeURIComponent(selectedText)));
+        imageData = base64;
+        mimeType = 'text/plain';
+      }
 
       const res = await fetch('/api/analyze/custom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageData,
-          mimeType: 'text/plain',
+          mimeType,
           customPrompt: prompt
         })
       });
@@ -737,6 +754,7 @@ export default function DocumentPage() {
   
   const handleQuickFormat = () => {
     const isRightClickMenu = selectedText === '[Right-click menu]';
+    const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
       toast({
@@ -747,13 +765,24 @@ export default function DocumentPage() {
       return;
     }
     
+    if (isBoxSelection && !selectionData?.base64Image) {
+      toast({
+        title: "Box Selection Error",
+        description: "Unable to extract image from selection area.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setQuickFormatSelectedText(selectedText); // Preserve the selected text
+    setQuickFormatSelectionData(selectionData); // Preserve the selection data
     clearSelection(); // Close context menu
     setShowQuickFormatPopup(true);
   };
   
   const handleTemplateFormat = () => {
     const isRightClickMenu = selectedText === '[Right-click menu]';
+    const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
       toast({
@@ -764,7 +793,17 @@ export default function DocumentPage() {
       return;
     }
     
+    if (isBoxSelection && !selectionData?.base64Image) {
+      toast({
+        title: "Box Selection Error",
+        description: "Unable to extract image from selection area.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setTemplateFormatSelectedText(selectedText); // Preserve the selected text
+    setTemplateFormatSelectionData(selectionData); // Preserve the selection data
     clearSelection(); // Close context menu
     setShowTemplateFormatPopup(true);
   };
@@ -772,6 +811,7 @@ export default function DocumentPage() {
   // Summarize popup handlers
   const handleSummarizePopup = () => {
     const isRightClickMenu = selectedText === '[Right-click menu]';
+    const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
       toast({
@@ -782,7 +822,17 @@ export default function DocumentPage() {
       return;
     }
     
+    if (isBoxSelection && !selectionData?.base64Image) {
+      toast({
+        title: "Box Selection Error",
+        description: "Unable to extract image from selection area.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setPopupSelectedText(selectedText); // Preserve the selected text
+    setPopupSelectionData(selectionData); // Preserve the selection data
     clearSelection(); // Close context menu
     setShowSummarizePopup(true);
   };
@@ -817,6 +867,7 @@ export default function DocumentPage() {
   };
   const handleCopy = async () => {
     const isRightClickMenu = selectedText === '[Right-click menu]';
+    const isBoxSelection = selectedText === '[Box Selection]';
     
     if (isRightClickMenu) {
       toast({
@@ -824,6 +875,40 @@ export default function DocumentPage() {
         description: "Please select text first to copy.",
         variant: "default"
       });
+      return;
+    }
+    
+    if (isBoxSelection) {
+      if (!selectionData?.base64Image) {
+        toast({
+          title: "Box Selection Error",
+          description: "Unable to extract image from selection area.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      try {
+        // For box selections, copy the image to clipboard
+        const response = await fetch(selectionData.base64Image);
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [blob.type]: blob
+          })
+        ]);
+        toast({
+          title: "Image copied to clipboard",
+          description: "Selected area has been copied as an image.",
+        });
+        clearSelection();
+      } catch (error) {
+        toast({
+          title: "Copy failed",
+          description: "Unable to copy image to clipboard.",
+          variant: "destructive"
+        });
+      }
       return;
     }
     
@@ -1723,34 +1808,40 @@ Focus on making the information easily accessible and well-organized.`;
       </div>
 
       {/* Summarize Popup */}
-      <SummarizePopup
-        isOpen={showSummarizePopup}
-        onClose={() => {
-          setShowSummarizePopup(false);
-          setPopupSelectedText(""); // Clear preserved text when closing
-        }}
-        selectedText={popupSelectedText}
+              <SummarizePopup
+          isOpen={showSummarizePopup}
+          onClose={() => {
+            setShowSummarizePopup(false);
+            setPopupSelectedText(""); // Clear preserved text when closing
+            setPopupSelectionData(null); // Clear preserved data when closing
+          }}
+          selectedText={popupSelectedText}
+          selectionData={popupSelectionData}
         onSummarize={handleSummarizeRequest}
       />
 
       {/* Quick Format Popup */}
-      <QuickFormatPopup
-        isOpen={showQuickFormatPopup}
-        onClose={() => {
-          setShowQuickFormatPopup(false);
-          setQuickFormatSelectedText(""); // Clear preserved text when closing
-        }}
-        selectedText={quickFormatSelectedText}
+              <QuickFormatPopup
+          isOpen={showQuickFormatPopup}
+          onClose={() => {
+            setShowQuickFormatPopup(false);
+            setQuickFormatSelectedText(""); // Clear preserved text when closing
+            setQuickFormatSelectionData(null); // Clear preserved data when closing
+          }}
+          selectedText={quickFormatSelectedText}
+          selectionData={quickFormatSelectionData}
       />
 
       {/* Template Format Popup */}
-      <TemplateFormatPopup
-        isOpen={showTemplateFormatPopup}
-        onClose={() => {
-          setShowTemplateFormatPopup(false);
-          setTemplateFormatSelectedText(""); // Clear preserved text when closing
-        }}
-        selectedText={templateFormatSelectedText}
+              <TemplateFormatPopup
+          isOpen={showTemplateFormatPopup}
+          onClose={() => {
+            setShowTemplateFormatPopup(false);
+            setTemplateFormatSelectedText(""); // Clear preserved text when closing
+            setTemplateFormatSelectionData(null); // Clear preserved data when closing
+          }}
+          selectedText={templateFormatSelectedText}
+          selectionData={templateFormatSelectionData}
       />
 
       {/* Full Document Popups */}

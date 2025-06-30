@@ -100,6 +100,7 @@ interface SummarizePopupProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
+  selectionData?: any;
   onSummarize: (text: string) => Promise<SummaryResult | null>;
 }
 
@@ -112,7 +113,7 @@ interface SummaryResult {
   processedAt: string;
 }
 
-export function SummarizePopup({ isOpen, onClose, selectedText, onSummarize }: SummarizePopupProps) {
+export function SummarizePopup({ isOpen, onClose, selectedText, selectionData, onSummarize }: SummarizePopupProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SummaryResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -130,15 +131,87 @@ export function SummarizePopup({ isOpen, onClose, selectedText, onSummarize }: S
     
     setIsLoading(true);
     try {
-      const summaryResult = await onSummarize(selectedText);
-      if (summaryResult) {
+      const isBoxSelection = selectedText === '[Box Selection]';
+      
+      if (isBoxSelection) {
+        // Handle box selection using the custom API endpoint
+        if (!selectionData?.base64Image) {
+          throw new Error('Unable to extract image from selection area.');
+        }
+        
+        const imageData = selectionData.base64Image.split(',')[1] || selectionData.base64Image;
+        const response = await fetch('/api/analyze/custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData,
+            mimeType: 'image/png',
+            customPrompt: 'Analyze the following image and create an intelligent summary. Choose the best format based on the content - you can use bullet points, paragraphs, numbered lists, or mix different formats as appropriate. Focus on clarity and usefulness, as well as keep it as short as possible. Be concise but comprehensive, highlight the most important information, use clear accessible language, and focus on what would be most useful to the reader. Return ONLY the summary text, no JSON structure.',
+            outputFormat: {
+              documentType: "Image Summary",
+              tables: [{
+                name: "summary_content",
+                description: "Summary of the image content",
+                type: "data" as const,
+                fields: [{
+                  name: "text",
+                  type: "string",
+                  description: "The complete summary text",
+                  required: true
+                }]
+              }]
+            }
+          })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to summarize image');
+        }
+        
+        const data = await response.json();
+        
+        // Try to extract summary from various possible locations in the response
+        let summary = '';
+        
+        if (data?.analysis?.content?.summary_content?.text) {
+          summary = data.analysis.content.summary_content.text;
+        } else if (data?.result?.content?.summary_content?.text) {
+          summary = data.result.content.summary_content.text;
+        } else if (data?.analysis?.analysis?.summary) {
+          summary = data.analysis.analysis.summary;
+        } else if (data?.analysis?.summary) {
+          summary = data.analysis.summary;
+        } else if (data?.rawText) {
+          // Fallback to raw text if JSON parsing failed
+          summary = data.rawText;
+        } else {
+          summary = 'No summary available';
+        }
+        
+        // Format the result to match the expected SummaryResult interface
+        const summaryResult = {
+          success: true,
+          summary,
+          originalLength: 0, // Can't measure image length
+          summaryLength: summary.length,
+          compressionRatio: 0,
+          processedAt: new Date().toISOString()
+        };
+        
         setResult(summaryResult);
+      } else {
+        // Handle text selection using the original method
+        const summaryResult = await onSummarize(selectedText);
+        if (summaryResult) {
+          setResult(summaryResult);
+        }
       }
     } catch (error) {
       console.error('Error summarizing:', error);
       toast({
         title: "Summarization failed",
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive"
       });
     } finally {

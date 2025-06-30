@@ -16,9 +16,10 @@ interface QuickFormatPopupProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
+  selectionData?: any;
 }
 
-export function QuickFormatPopup({ isOpen, onClose, selectedText }: QuickFormatPopupProps) {
+export function QuickFormatPopup({ isOpen, onClose, selectedText, selectionData }: QuickFormatPopupProps) {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -46,20 +47,30 @@ export function QuickFormatPopup({ isOpen, onClose, selectedText }: QuickFormatP
       // Check if this is a box selection
       const isBoxSelection = selectedText === '[Box Selection]';
       
-      if (isBoxSelection) {
-        toast({ 
-          title: 'Box Selection', 
-          description: 'Box selection formatting will be processed as image. Feature coming soon!', 
-          variant: 'default' 
-        });
-        setIsAnalyzing(false);
-        onClose();
-        return;
-      }
+      let imageData: string;
+      let mimeType: string;
       
-      // Create a base64 encoded text for the API
-      const base64 = btoa(unescape(encodeURIComponent(selectedText)));
-      const imageData = `data:text/plain;base64,${base64}`;
+      if (isBoxSelection) {
+        if (!selectionData?.base64Image) {
+          toast({ 
+            title: 'Box Selection Error', 
+            description: 'Unable to extract image from selection area.', 
+            variant: 'destructive' 
+          });
+          setIsAnalyzing(false);
+          onClose();
+          return;
+        }
+        
+        // Use the base64 image data directly
+        imageData = selectionData.base64Image.split(',')[1] || selectionData.base64Image;
+        mimeType = 'image/png';
+      } else {
+        // Create a base64 encoded text for the API
+        const base64 = btoa(unescape(encodeURIComponent(selectedText)));
+        imageData = base64;
+        mimeType = 'text/plain';
+      }
 
       // Define a dynamic table structure for Quick Format
       const outputFormat = {
@@ -111,7 +122,7 @@ The goal is to make the information more readable and structured while preservin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageData,
-          mimeType: 'text/plain',
+          mimeType,
           customPrompt,
           outputFormat
         })

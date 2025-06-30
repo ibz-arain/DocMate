@@ -21,6 +21,7 @@ interface TemplateFormatPopupProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
+  selectionData?: any;
 }
 
 interface Template {
@@ -31,7 +32,7 @@ interface Template {
   updated_at: string;
 }
 
-export function TemplateFormatPopup({ isOpen, onClose, selectedText }: TemplateFormatPopupProps) {
+export function TemplateFormatPopup({ isOpen, onClose, selectedText, selectionData }: TemplateFormatPopupProps) {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -63,19 +64,29 @@ export function TemplateFormatPopup({ isOpen, onClose, selectedText }: TemplateF
       // Check if this is a box selection
       const isBoxSelection = selectedText === '[Box Selection]';
       
-      if (isBoxSelection) {
-        toast({ 
-          title: 'Box Selection', 
-          description: 'Box selection formatting will be processed as image. Feature coming soon!', 
-          variant: 'default' 
-        });
-        setIsAnalyzing(false);
-        return;
-      }
+      let imageData: string;
+      let mimeType: string;
       
-      // Create a base64 encoded text for the API
-      const base64 = btoa(unescape(encodeURIComponent(selectedText)));
-      const imageData = `data:text/plain;base64,${base64}`;
+      if (isBoxSelection) {
+        if (!selectionData?.base64Image) {
+          toast({ 
+            title: 'Box Selection Error', 
+            description: 'Unable to extract image from selection area.', 
+            variant: 'destructive' 
+          });
+          setIsAnalyzing(false);
+          return;
+        }
+        
+        // Use the base64 image data directly
+        imageData = selectionData.base64Image.split(',')[1] || selectionData.base64Image;
+        mimeType = 'image/png';
+      } else {
+        // Create a base64 encoded text for the API
+        const base64 = btoa(unescape(encodeURIComponent(selectedText)));
+        imageData = base64;
+        mimeType = 'text/plain';
+      }
 
       // Parse template tables
       const templateTables = typeof template.tables === 'string' 
@@ -110,7 +121,7 @@ ${table.fields.map((field: any) => `  - ${field.name} (${field.type}): ${field.d
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageData,
-          mimeType: 'text/plain',
+          mimeType,
           customPrompt,
           outputFormat
         })

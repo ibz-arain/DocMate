@@ -272,6 +272,9 @@ export function PdfViewer({
             height: currentBoxSelection.height / pageRect.height,
           };
           
+          // Extract base64 image from the selected area
+          const base64Image = extractBoxSelectionImage(percentRect, currentBoxSelection.page);
+          
           // Store persistent selection
           setPersistentSelection({
             type: 'box',
@@ -299,7 +302,8 @@ export function PdfViewer({
               top: percentRect.top + percentRect.height, // Bottom of selection
               left: percentRect.left + percentRect.width, // Right of selection  
               page: currentBoxSelection.page
-            }
+            },
+            base64Image: base64Image // Include the extracted image
           }, () => {
             setPersistentSelection(null);
             scrollStartPositionRef.current = null; // Reset scroll tracking
@@ -342,6 +346,14 @@ export function PdfViewer({
             const pageRelativeTop = (e.clientY - pageRect.top) / pageRect.height;
             const pageRelativeLeft = (e.clientX - pageRect.left) / pageRect.width;
             
+            // Extract base64 image from the persistent selection
+            const base64Image = extractBoxSelectionImage({
+              top: persistentSelection.top,
+              left: persistentSelection.left,
+              width: persistentSelection.width,
+              height: persistentSelection.height,
+            }, persistentSelection.page);
+            
             // Store initial scroll position for distance tracking
             scrollStartPositionRef.current = {
               x: container.scrollLeft,
@@ -361,7 +373,8 @@ export function PdfViewer({
                 top: Math.max(0, Math.min(1, pageRelativeTop)),
                 left: Math.max(0, Math.min(1, pageRelativeLeft)),
                 page: persistentSelection.page
-              }
+              },
+              base64Image: base64Image // Include the extracted image
             }, () => {
               setPersistentSelection(null);
               scrollStartPositionRef.current = null;
@@ -597,6 +610,59 @@ export function PdfViewer({
         selection.removeAllRanges();
       }
     };
+  }, []);
+
+  // Function to extract base64 image from box selection
+  const extractBoxSelectionImage = useCallback((boundingRect: any, pageIndex: number): string | null => {
+    try {
+      const pageRef = pageRefs.current[pageIndex];
+      if (!pageRef) return null;
+
+      // Find the canvas element within the page
+      const canvas = pageRef.querySelector('canvas') as HTMLCanvasElement;
+      if (!canvas) return null;
+
+      // Calculate the selection area relative to the canvas
+      const canvasRelativeRect = {
+        left: boundingRect.left * canvas.width,
+        top: boundingRect.top * canvas.height,
+        width: boundingRect.width * canvas.width,
+        height: boundingRect.height * canvas.height
+      };
+
+      // Validate the selection area
+      if (canvasRelativeRect.width <= 0 || canvasRelativeRect.height <= 0) {
+        return null;
+      }
+
+      // Create a temporary canvas to extract the selected area
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) return null;
+
+      // Set the temporary canvas size to match the selection
+      tempCanvas.width = Math.max(1, Math.round(canvasRelativeRect.width));
+      tempCanvas.height = Math.max(1, Math.round(canvasRelativeRect.height));
+
+      // Draw the selected area from the original canvas to the temporary canvas
+      tempCtx.drawImage(
+        canvas,
+        canvasRelativeRect.left,
+        canvasRelativeRect.top,
+        canvasRelativeRect.width,
+        canvasRelativeRect.height,
+        0,
+        0,
+        tempCanvas.width,
+        tempCanvas.height
+      );
+
+      // Convert to base64
+      return tempCanvas.toDataURL('image/png');
+    } catch (error) {
+      console.error('Error extracting box selection image:', error);
+      return null;
+    }
   }, []);
 
   if (!isWorkerInitialized) {
