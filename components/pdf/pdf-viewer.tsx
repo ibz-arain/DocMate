@@ -294,13 +294,15 @@ export function PdfViewer({
             };
           }
           
-          // Position menu at bottom-right corner of the box selection (like end of text selection)
+          // Calculate smart menu position
+          const smartPosition = calculateSmartMenuPosition(percentRect, currentBoxSelection.page);
+          
           onSelection('[Box Selection]', { 
             boundingRect: percentRect, 
             page: currentBoxSelection.page + 1,
-            pageRelativePosition: {
-              top: percentRect.top + percentRect.height, // Bottom of selection
-              left: percentRect.left + percentRect.width, // Right of selection  
+            pageRelativePosition: smartPosition || {
+              top: percentRect.top + percentRect.height, // Fallback to bottom of selection
+              left: percentRect.left + percentRect.width, // Fallback to right of selection  
               page: currentBoxSelection.page
             },
             base64Image: base64Image // Include the extracted image
@@ -342,10 +344,6 @@ export function PdfViewer({
           if (e.clientX >= selectionLeft && e.clientX <= selectionRight &&
               e.clientY >= selectionTop && e.clientY <= selectionBottom) {
             
-            // Calculate cursor position as percentage of page for consistent positioning
-            const pageRelativeTop = (e.clientY - pageRect.top) / pageRect.height;
-            const pageRelativeLeft = (e.clientX - pageRect.left) / pageRect.width;
-            
             // Extract base64 image from the persistent selection
             const base64Image = extractBoxSelectionImage({
               top: persistentSelection.top,
@@ -360,7 +358,20 @@ export function PdfViewer({
               y: container.scrollTop
             };
             
-            // Use cursor position for menu location
+            // Calculate smart menu position using cursor location as preference
+            const smartPosition = calculateSmartMenuPosition(
+              {
+                top: persistentSelection.top,
+                left: persistentSelection.left,
+                width: persistentSelection.width,
+                height: persistentSelection.height,
+              },
+              persistentSelection.page,
+              'cursor',
+              e.clientX,
+              e.clientY
+            );
+            
             onSelection('[Box Selection]', {
               boundingRect: {
                 top: persistentSelection.top,
@@ -369,9 +380,9 @@ export function PdfViewer({
                 height: persistentSelection.height,
               },
               page: persistentSelection.page + 1,
-              pageRelativePosition: {
-                top: Math.max(0, Math.min(1, pageRelativeTop)),
-                left: Math.max(0, Math.min(1, pageRelativeLeft)),
+              pageRelativePosition: smartPosition || {
+                top: Math.max(0, Math.min(1, (e.clientY - pageRect.top) / pageRect.height)),
+                left: Math.max(0, Math.min(1, (e.clientX - pageRect.left) / pageRect.width)),
                 page: persistentSelection.page
               },
               base64Image: base64Image // Include the extracted image
@@ -455,33 +466,26 @@ export function PdfViewer({
         const pageRef = pageRefs.current[pageIdx];
         if (pageRef && container) {
           const pageRect = pageRef.getBoundingClientRect();
-          const containerRect = container.getBoundingClientRect();
           
-          // Position menu at the end of the selection
-          const menuX = lastRect.right;
-          const menuY = lastRect.bottom + 5; // Small offset below selection
+          // Create bounding rect for the selection
+          const selectionBoundingRect = {
+            top: (firstRect.top - pageRect.top) / pageRect.height,
+            left: (firstRect.left - pageRect.left) / pageRect.width,
+            width: (lastRect.right - firstRect.left) / pageRect.width,
+            height: (lastRect.bottom - firstRect.top) / pageRect.height,
+          };
           
-          // Convert to page-relative coordinates
-          const relativeTop = (menuY - containerRect.top) + container.scrollTop;
-          const relativeLeft = (menuX - containerRect.left) + container.scrollLeft;
-          
-          // Calculate as percentage of page for consistent positioning
-          const pageRelativeTop = (menuY - pageRect.top) / pageRect.height;
-          const pageRelativeLeft = (menuX - pageRect.left) / pageRect.width;
+          // Calculate smart menu position
+          const smartPosition = calculateSmartMenuPosition(selectionBoundingRect, pageIdx);
           
           onSelection(text, {
             page: pageIdx + 1,
-            pageRelativePosition: {
-              top: Math.max(0, Math.min(1, pageRelativeTop)),
-              left: Math.max(0, Math.min(1, pageRelativeLeft)),
+            pageRelativePosition: smartPosition || {
+              top: Math.max(0, Math.min(1, (lastRect.bottom + 5 - pageRect.top) / pageRect.height)),
+              left: Math.max(0, Math.min(1, (lastRect.right - pageRect.left) / pageRect.width)),
               page: pageIdx
             },
-            boundingRect: {
-              top: (firstRect.top - pageRect.top) / pageRect.height,
-              left: (firstRect.left - pageRect.left) / pageRect.width,
-              width: (lastRect.right - firstRect.left) / pageRect.width,
-              height: (lastRect.bottom - firstRect.top) / pageRect.height,
-            }
+            boundingRect: selectionBoundingRect
           }, () => {
             // Clear selection when context menu closes
             sel.removeAllRanges();
@@ -525,15 +529,6 @@ export function PdfViewer({
         const pageRef = pageRefs.current[pageIdx];
         if (pageRef && container) {
           const pageRect = pageRef.getBoundingClientRect();
-          const containerRect = container.getBoundingClientRect();
-          
-          // Use cursor position for menu location
-          const menuX = e.clientX;
-          const menuY = e.clientY;
-          
-          // Calculate as percentage of page for consistent positioning
-          const pageRelativeTop = (menuY - pageRect.top) / pageRect.height;
-          const pageRelativeLeft = (menuX - pageRect.left) / pageRect.width;
           
           // Store initial scroll position for distance tracking
           scrollStartPositionRef.current = {
@@ -541,11 +536,38 @@ export function PdfViewer({
             y: container.scrollTop
           };
           
+          // Get selection bounds for smart positioning
+          const range = sel?.getRangeAt(0);
+          let selectionRect = { top: 0, left: 0, width: 0, height: 0 };
+          
+          if (range) {
+            const rects = range.getClientRects();
+            if (rects.length > 0) {
+              const firstRect = rects[0];
+              const lastRect = rects[rects.length - 1];
+              selectionRect = {
+                top: (firstRect.top - pageRect.top) / pageRect.height,
+                left: (firstRect.left - pageRect.left) / pageRect.width,
+                width: (lastRect.right - firstRect.left) / pageRect.width,
+                height: (lastRect.bottom - firstRect.top) / pageRect.height,
+              };
+            }
+          }
+          
+          // Calculate smart menu position using cursor location as preference
+          const smartPosition = calculateSmartMenuPosition(
+            selectionRect,
+            pageIdx,
+            'cursor',
+            e.clientX,
+            e.clientY
+          );
+          
           onSelection(selectedText, {
             page: pageIdx + 1,
-            pageRelativePosition: {
-              top: Math.max(0, Math.min(1, pageRelativeTop)),
-              left: Math.max(0, Math.min(1, pageRelativeLeft)),
+            pageRelativePosition: smartPosition || {
+              top: Math.max(0, Math.min(1, (e.clientY - pageRect.top) / pageRect.height)),
+              left: Math.max(0, Math.min(1, (e.clientX - pageRect.left) / pageRect.width)),
               page: pageIdx
             }
           }, () => {
@@ -568,21 +590,19 @@ export function PdfViewer({
 
   // Hide selection on tool change
   useEffect(() => {
-    if (!selectionMode) {
-      // Clear all selection states
-      setCurrentBoxSelection(null);
-      setIsBoxSelecting(false);
-      setBoxStart(null);
-      setLiveTextSelection(null);
-      setIsTextSelecting(false);
-      setPersistentSelection(null);
-      scrollStartPositionRef.current = null;
-      
-      // Clear any browser text selection to prevent residual highlighting
-      const selection = window.getSelection();
-      if (selection) {
-        selection.removeAllRanges();
-      }
+    // Clear all selection states when changing modes or disabling selection
+    setCurrentBoxSelection(null);
+    setIsBoxSelecting(false);
+    setBoxStart(null);
+    setLiveTextSelection(null);
+    setIsTextSelecting(false);
+    setPersistentSelection(null);
+    scrollStartPositionRef.current = null;
+    
+    // Clear any browser text selection to prevent residual highlighting
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
     }
   }, [selectionMode]);
 
@@ -609,6 +629,89 @@ export function PdfViewer({
       if (selection) {
         selection.removeAllRanges();
       }
+    };
+  }, []);
+
+  // Function to calculate smart menu positioning that keeps it visible
+  const calculateSmartMenuPosition = useCallback((
+    selectionRect: { top: number; left: number; width: number; height: number },
+    pageIndex: number,
+    preferredCorner: 'bottom-right' | 'cursor' = 'bottom-right',
+    cursorX?: number,
+    cursorY?: number
+  ) => {
+    const container = containerRef.current;
+    const pageRef = pageRefs.current[pageIndex];
+    if (!container || !pageRef) return null;
+
+    const pageRect = pageRef.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    // Convert selection from percentage to absolute coordinates
+    const selectionLeft = pageRect.left + (selectionRect.left * pageRect.width);
+    const selectionTop = pageRect.top + (selectionRect.top * pageRect.height);
+    const selectionRight = selectionLeft + (selectionRect.width * pageRect.width);
+    const selectionBottom = selectionTop + (selectionRect.height * pageRect.height);
+    
+    // Menu dimensions (approximate)
+    const menuWidth = 200;
+    const menuHeight = 150;
+    const padding = 10;
+    
+    let menuX: number, menuY: number;
+    
+    if (preferredCorner === 'cursor' && cursorX !== undefined && cursorY !== undefined) {
+      // Start with cursor position
+      menuX = cursorX;
+      menuY = cursorY;
+    } else {
+      // Start with bottom-right corner of selection
+      menuX = selectionRight;
+      menuY = selectionBottom + 5;
+    }
+    
+    // Adjust horizontal position if menu would be cut off
+    if (menuX + menuWidth > containerRect.right - padding) {
+      // Try placing to the left of the selection
+      const leftPosition = selectionLeft - menuWidth;
+      if (leftPosition >= containerRect.left + padding) {
+        menuX = leftPosition;
+      } else {
+        // Place at the rightmost visible position
+        menuX = containerRect.right - menuWidth - padding;
+      }
+    }
+    
+    // Adjust vertical position if menu would be cut off
+    if (menuY + menuHeight > containerRect.bottom - padding) {
+      // Try placing above the selection
+      const topPosition = selectionTop - menuHeight - 5;
+      if (topPosition >= containerRect.top + padding) {
+        menuY = topPosition;
+      } else {
+        // Place at the bottommost visible position
+        menuY = containerRect.bottom - menuHeight - padding;
+      }
+    }
+    
+    // Ensure menu doesn't go beyond the left edge
+    if (menuX < containerRect.left + padding) {
+      menuX = containerRect.left + padding;
+    }
+    
+    // Ensure menu doesn't go beyond the top edge
+    if (menuY < containerRect.top + padding) {
+      menuY = containerRect.top + padding;
+    }
+    
+    // Convert back to page-relative coordinates
+    const pageRelativeTop = (menuY - pageRect.top) / pageRect.height;
+    const pageRelativeLeft = (menuX - pageRect.left) / pageRect.width;
+    
+    return {
+      top: Math.max(0, Math.min(1, pageRelativeTop)),
+      left: Math.max(0, Math.min(1, pageRelativeLeft)),
+      page: pageIndex
     };
   }, []);
 
