@@ -539,21 +539,25 @@ export default function DocumentPage() {
       const container = pdfContainerRef.current;
       const pageIdx = rects.pageRelativePosition.page;
       
-      // Find the page element using a more reliable approach
-      // Look for the page wrapper that contains the PDF page
-      const allDivs = Array.from(container.querySelectorAll('div'));
+      // Find the page element using the data-page-index attribute we added
       let pageElement: HTMLElement | null = null;
       
-      // Find the div that contains a canvas (PDF page) at the correct index
-      let pageCount = 0;
-      for (const div of allDivs) {
-        const canvas = div.querySelector('canvas');
-        if (canvas) {
-          if (pageCount === pageIdx) {
-            pageElement = div as HTMLElement;
-            break;
-          }
-          pageCount++;
+      // Primary strategy: Use data-page-index attribute (most reliable)
+      pageElement = container.querySelector(`[data-page-index="${pageIdx}"]`) as HTMLElement;
+      
+      if (!pageElement) {
+        // Fallback 1: Look for page wrapper divs with specific classes
+        const pageWrappers = Array.from(container.querySelectorAll('div.relative.mb-4'));
+        if (pageWrappers.length > pageIdx) {
+          pageElement = pageWrappers[pageIdx] as HTMLElement;
+        }
+      }
+      
+      if (!pageElement) {
+        // Fallback 2: Look for react-pdf__Page elements
+        const reactPdfPages = Array.from(container.querySelectorAll('.react-pdf__Page'));
+        if (reactPdfPages.length > pageIdx) {
+          pageElement = reactPdfPages[pageIdx] as HTMLElement;
         }
       }
       

@@ -559,6 +559,8 @@ export function PdfViewer({
               <div
                 key={`page_${index + 1}`}
                 ref={el => { pageRefs.current[index] = el; }}
+                data-page-number={index + 1}
+                data-page-index={index}
                 className={`relative mb-4 transition-all duration-200 ${
                   index + 1 === currentPage 
                     ? 'ring-2 ring-primary shadow-lg' 
