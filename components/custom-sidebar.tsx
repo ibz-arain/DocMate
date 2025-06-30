@@ -76,7 +76,7 @@ export function CustomSidebar({
   // Navigation items with routes
   const mainNavItems = [
     {
-      id: 'Editor',
+      id: 'Document Editor',
       name: 'Editor',
       icon: <Edit className="h-5 w-5" />,
       href: '/playground/document'
@@ -93,12 +93,12 @@ export function CustomSidebar({
       icon: <Layout className="h-5 w-5" />,
       href: '/playground/templates'
     },
-    {
-      id: 'api',
-      name: 'API Integration',
-      icon: <Code className="h-5 w-5" />,
-      href: '/playground/api'
-    }
+    // {
+    //   id: 'api',
+    //   name: 'API Integration',
+    //   icon: <Code className="h-5 w-5" />,
+    //   href: '/playground/api'
+    // }
   ];
 
   return (
@@ -231,7 +231,7 @@ export function CustomSidebar({
                 );
               })}
               
-              {/* History Section - Only visible for signed-in users */}
+              {/* History Section - Only visible for signed-in users
               {user && (
                 <>
                   <div className="h-px bg-border/50 my-4" />
@@ -283,7 +283,7 @@ export function CustomSidebar({
                     </Button>
                   )}
                 </>
-              )}
+              )} */}
             </nav>
           </div>
 
