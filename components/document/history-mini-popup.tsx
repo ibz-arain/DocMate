@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { useHistory, HistoryEntry } from '@/components/history-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -27,9 +28,6 @@ interface HistoryMiniPopupProps {
 export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: HistoryMiniPopupProps) {
   const { history, removeHistoryEntry } = useHistory();
   const { toast } = useToast();
-
-  // Show latest 5 entries
-  const recentHistory = history.slice(0, 5);
 
   const getTypeIcon = (type: HistoryEntry['type'], selectedText?: string) => {
     const isFullDocument = selectedText === '[Full Document]';
@@ -51,10 +49,6 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
     return isFullDocument ? `${baseColor} ring-1 ring-current` : baseColor;
   };
 
-
-
-
-
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -71,8 +65,6 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
     return date.toLocaleDateString();
   };
 
-
-
   if (!isOpen) return null;
 
   return (
@@ -85,26 +77,27 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
           transition={{ type: "spring", duration: 0.2 }}
           className="fixed z-50 w-72"
           style={{
-            bottom: `${window.innerHeight - position.top - 50}px`, // Position at the same level as the button (40px is button height)
-            left: position.left - 305, // Position to the left of the button with small gap
+            bottom: `${window.innerHeight - position.top - 50}px`,
+            left: position.left - 305,
           }}
         >
-            <Card className="shadow-lg border-2">
-              <CardContent className="p-0">
-                {history.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
-                    <History className="h-6 w-6 mb-2 opacity-50" />
-                    <p className="text-xs font-medium">No results yet</p>
-                    <p className="text-xs opacity-75">Use analysis tools to see results here</p>
-                  </div>
-                ) : (
-                  <div className="max-h-80 overflow-y-auto">
-                    <div className="p-2 space-y-1">
-                    {recentHistory.map((entry) => (
+          <Card className="shadow-lg border-2">
+            <CardContent className="p-0">
+              {history.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+                  <History className="h-6 w-6 mb-2 opacity-50" />
+                  <p className="text-xs font-medium">No results yet</p>
+                  <p className="text-xs opacity-75">Use analysis tools to see results here</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[320px]">
+                  <div className="p-2 space-y-1">
+                    {history.map((entry, index) => (
                       <motion.div
                         key={entry.id}
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
                         className="p-2 bg-muted/20 hover:bg-muted/40 transition-colors rounded-md cursor-pointer"
                         onClick={() => onOpenEntry(entry)}
                       >
@@ -144,16 +137,14 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
                           </Button>
                         </div>
                       </motion.div>
-                                          ))}
-                    </div>
+                    ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
         </motion.div>
       </AnimatePresence>
-
-
     </>
   );
 } 
