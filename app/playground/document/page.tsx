@@ -19,10 +19,14 @@ import {
   Upload,
   MousePointer as MousePointerIcon,
   X,
+  Table,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
 import { SummarizePopup } from "@/components/document/summarize-popup";
+import { QuickFormatPopup } from "@/components/document/quick-format-popup";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -71,6 +75,10 @@ export default function DocumentPage() {
   // Summarize popup state
   const [showSummarizePopup, setShowSummarizePopup] = useState(false);
   const [popupSelectedText, setPopupSelectedText] = useState("");
+  
+  // Quick format popup state
+  const [showQuickFormatPopup, setShowQuickFormatPopup] = useState(false);
+  const [quickFormatSelectedText, setQuickFormatSelectedText] = useState("");
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -691,9 +699,21 @@ export default function DocumentPage() {
   };
 
   // Context menu action handlers
-  const handleQuickSummarize = () => analyzeWithPrompt('Summarize the following text in concise bullet points.');
-  const handleQuickFormat = () => analyzeWithPrompt('Convert this text into a structured table format with clear headers and organized data.');
-  const handleTemplateFormat = () => analyzeWithPrompt('Apply template formatting to structure this text with appropriate headings, sections, and formatting.');
+  const handleQuickSummarize = () => {
+    // Start analysis in background
+    analyzeWithPrompt('Summarize the following text in concise bullet points.');
+  };
+  
+  const handleQuickFormat = () => {
+    setQuickFormatSelectedText(selectedText); // Preserve the selected text
+    clearSelection(); // Close context menu
+    setShowQuickFormatPopup(true);
+  };
+  
+  const handleTemplateFormat = () => {
+    // Start analysis in background
+    analyzeWithPrompt('Apply template formatting to structure this text with appropriate headings, sections, and formatting.');
+  };
   
   // Summarize popup handlers
   const handleSummarizePopup = () => {
@@ -781,9 +801,9 @@ export default function DocumentPage() {
   // Click outside to dismiss context menu
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (selectedText && menuPos) {
+      if (selectedText && menuPos && !showQuickFormatPopup) {
         const target = e.target as Element;
-        // Check if click is outside context menu (look for the z-50 class which is our context menu)
+        // Check if click is outside context menu and popups
         const contextMenu = target.closest('.z-50');
         if (!contextMenu) {
           clearSelection();
@@ -791,11 +811,11 @@ export default function DocumentPage() {
       }
     };
 
-    if (selectedText && menuPos) {
+    if (selectedText && menuPos && !showQuickFormatPopup) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [selectedText, menuPos]);
+  }, [selectedText, menuPos, showQuickFormatPopup]);
 
   const updateCurrentPageFromScroll = useCallback(() => {
     const container = pdfContainerRef.current;
@@ -1149,7 +1169,6 @@ export default function DocumentPage() {
                           <PdfContextMenu
                             position={menuPos}
                             selectedText={selectedText}
-                            isAnalyzing={isAnalyzing}
                             onQuickSummarize={handleQuickSummarize}
                             onSummarizePopup={handleSummarizePopup}
                             onQuickFormat={handleQuickFormat}
@@ -1160,53 +1179,7 @@ export default function DocumentPage() {
                         </>
                       )}
 
-                      {/* Analysis Result Modal */}
-                      {analysisResult && (
-                        <div className="absolute inset-0 flex items-center justify-center z-40 bg-background/80 backdrop-blur-sm">
-                          <div className="bg-background border rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-auto p-6 m-4">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold">AI Analysis Result</h3>
-                              <div className="flex items-center gap-2">
-                                <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(JSON.stringify(analysisResult, null, 2))}>
-                                  Copy
-                                </Button>
-                                <Button size="icon" variant="ghost" onClick={() => setAnalysisResult(null)}>
-                                  ✕
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="space-y-4">
-                              {/* Display formatted analysis result */}
-                              {typeof analysisResult === 'string' ? (
-                                <div className="prose prose-sm max-w-none">
-                                  <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-md">{analysisResult}</pre>
-                                </div>
-                              ) : (
-                                <div className="space-y-2">
-                                  {Object.entries(analysisResult).map(([key, value]) => (
-                                    <div key={key} className="border rounded-md p-3">
-                                      <h4 className="font-medium text-sm text-primary mb-2 capitalize">{key.replace(/_/g, ' ')}</h4>
-                                      <div className="text-sm">
-                                        {typeof value === 'string' ? (
-                                          <p className="whitespace-pre-wrap">{value}</p>
-                                        ) : Array.isArray(value) ? (
-                                          <ul className="list-disc list-inside space-y-1">
-                                            {value.map((item, idx) => (
-                                              <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>
-                                            ))}
-                                          </ul>
-                                        ) : (
-                                          <pre className="text-xs bg-muted/50 p-2 rounded overflow-auto">{JSON.stringify(value, null, 2)}</pre>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
+
                     </div>
                   </div>
                 )}
@@ -1290,6 +1263,16 @@ export default function DocumentPage() {
         }}
         selectedText={popupSelectedText}
         onSummarize={handleSummarizeRequest}
+      />
+
+      {/* Quick Format Popup */}
+      <QuickFormatPopup
+        isOpen={showQuickFormatPopup}
+        onClose={() => {
+          setShowQuickFormatPopup(false);
+          setQuickFormatSelectedText(""); // Clear preserved text when closing
+        }}
+        selectedText={quickFormatSelectedText}
       />
 
       {/* CSS for animated gradient background */}

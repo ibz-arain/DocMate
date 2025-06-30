@@ -19,7 +19,6 @@ interface PdfContextMenuProps {
     isPageRelative?: boolean;
   };
   selectedText: string;
-  isAnalyzing: boolean;
   onQuickSummarize: () => void;
   onSummarizePopup: () => void;
   onQuickFormat: () => void;
@@ -31,7 +30,6 @@ interface PdfContextMenuProps {
 export function PdfContextMenu({
   position,
   selectedText,
-  isAnalyzing,
   onQuickSummarize,
   onSummarizePopup,
   onQuickFormat,
@@ -52,14 +50,14 @@ export function PdfContextMenu({
       label: 'Quick Format',
       icon: Table,
       onClick: onQuickFormat,
-      disabled: isAnalyzing
+      disabled: false
     },
     {
       id: 'template-format',
       label: 'Template Format',
       icon: FileCode,
       onClick: onTemplateFormat,
-      disabled: isAnalyzing
+      disabled: false
     },
     {
       id: 'copy',
@@ -98,11 +96,7 @@ export function PdfContextMenu({
             onClick={item.onClick}
             disabled={item.disabled}
           >
-            {isAnalyzing && (item.id === 'quick-summarize' || item.id === 'quick-format' || item.id === 'template-format') ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <IconComponent className="h-4 w-4" />
-            )}
+            <IconComponent className="h-4 w-4" />
             <span className="font-medium">{item.label}</span>
           </Button>
         );

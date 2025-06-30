@@ -1,0 +1,359 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  Sparkles,
+  Loader2,
+  X,
+} from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+
+interface QuickFormatPopupProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedText: string;
+}
+
+export function QuickFormatPopup({ isOpen, onClose, selectedText }: QuickFormatPopupProps) {
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Start analysis when popup opens
+  useEffect(() => {
+    if (isOpen && selectedText) {
+      performQuickFormat();
+    }
+  }, [isOpen, selectedText]);
+
+  // Reset state when popup closes
+  useEffect(() => {
+    if (!isOpen) {
+      setAnalysisResult(null);
+      setIsAnalyzing(false);
+    }
+  }, [isOpen]);
+
+  const performQuickFormat = async () => {
+    if (!selectedText) return;
+    
+    try {
+      setIsAnalyzing(true);
+      
+      // Check if this is a box selection
+      const isBoxSelection = selectedText === '[Box Selection]';
+      
+      if (isBoxSelection) {
+        toast({ 
+          title: 'Box Selection', 
+          description: 'Box selection formatting will be processed as image. Feature coming soon!', 
+          variant: 'default' 
+        });
+        setIsAnalyzing(false);
+        onClose();
+        return;
+      }
+      
+      // Create a base64 encoded text for the API
+      const base64 = btoa(unescape(encodeURIComponent(selectedText)));
+      const imageData = `data:text/plain;base64,${base64}`;
+
+      // Define a dynamic table structure for Quick Format
+      const outputFormat = {
+        documentType: "Quick Format Table",
+        tables: [
+          {
+            name: "formatted_data",
+            description: "Automatically formatted table from selected text",
+            type: "table" as const,
+            fields: [
+              {
+                name: "category",
+                type: "string",
+                description: "Main category or header for this data point",
+                required: true
+              },
+              {
+                name: "value",
+                type: "string", 
+                description: "The actual value or description",
+                required: true
+              },
+              {
+                name: "details",
+                type: "string",
+                description: "Additional details or sub-information",
+                required: false
+              }
+            ]
+          }
+        ]
+      };
+
+      const customPrompt = `Analyze the selected text and convert it into a structured table format. 
+
+Instructions:
+1. Identify the key information in the text
+2. Organize it into logical categories and values
+3. Extract any additional details that provide context
+4. Create a well-structured table with clear headers
+5. If the text contains lists, convert each item to a table row
+6. If the text contains key-value pairs, organize them appropriately
+7. If the text is narrative, extract the main points and organize them
+
+The goal is to make the information more readable and structured while preserving all important details.`;
+
+      const res = await fetch('/api/analyze/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData,
+          mimeType: 'text/plain',
+          customPrompt,
+          outputFormat
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        toast({ title: 'Quick Format Failed', description: error.error || 'Unknown error', variant: 'destructive' });
+        setIsAnalyzing(false);
+        onClose();
+        return;
+      }
+
+      const data = await res.json();
+      setAnalysisResult(data);
+      setIsAnalyzing(false);
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Quick Format Error', description: 'Something went wrong', variant: 'destructive' });
+      setIsAnalyzing(false);
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50 bg-background/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-background border rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-auto p-6 m-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        
+        <div className="space-y-4">
+          {isAnalyzing && !analysisResult ? (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Converting text to structured table format...
+              </p>
+            </div>
+          ) : analysisResult ? (
+            <>
+              {/* Special handling for Quick Format Table results */}
+              {analysisResult?.analysis?.documentType === "Quick Format Table" && analysisResult?.analysis?.content?.formatted_data ? (
+                <div className="space-y-4">
+                  <div className="bg-muted/30 rounded-lg overflow-hidden">
+                    {/* Fixed Header with Title and Copy Buttons */}
+                    <div className="p-4 border-b border-border bg-background/50 backdrop-blur-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <Table className="h-4 w-4 text-primary" />
+                          <h4 className="font-medium text-primary">Formatted Table Data</h4>
+                          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                            {analysisResult.analysis.content.formatted_data.length} rows
+                          </span>
+                        </div>
+                        
+                        {/* Copy Options */}
+                        <div className="flex flex-wrap gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-3 text-xs"
+                            onClick={() => {
+                              const tableData = analysisResult.analysis.content.formatted_data;
+                              const csvContent = "Category,Value,Details\n" + 
+                                tableData.map((row: any) => `"${row.category || ''}","${row.value || ''}","${row.details || ''}"`).join('\n');
+                              navigator.clipboard.writeText(csvContent);
+                              toast({
+                                title: "Copied to clipboard",
+                                description: "Table data copied as CSV format.",
+                              });
+                            }}
+                          >
+                            Copy CSV
+                          </Button>
+                          
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-3 text-xs"
+                            onClick={() => {
+                              const tableData = analysisResult.analysis.content.formatted_data;
+                              const jsonContent = JSON.stringify(tableData, null, 2);
+                              navigator.clipboard.writeText(jsonContent);
+                              toast({
+                                title: "Copied to clipboard",
+                                description: "Table data copied as JSON format.",
+                              });
+                            }}
+                          >
+                            Copy JSON
+                          </Button>
+                          
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-3 text-xs"
+                            onClick={() => {
+                              const tableData = analysisResult.analysis.content.formatted_data;
+                              let markdownContent = "| Category | Value | Details |\n|----------|-------|----------|\n";
+                              markdownContent += tableData.map((row: any) => 
+                                `| ${(row.category || '').replace(/\|/g, '\\|')} | ${(row.value || '').replace(/\|/g, '\\|')} | ${(row.details || '').replace(/\|/g, '\\|')} |`
+                              ).join('\n');
+                              navigator.clipboard.writeText(markdownContent);
+                              toast({
+                                title: "Copied to clipboard",
+                                description: "Table data copied as Markdown format.",
+                              });
+                            }}
+                          >
+                            Copy Markdown
+                          </Button>
+                          
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-3 text-xs"
+                            onClick={async () => {
+                              const tableData = analysisResult.analysis.content.formatted_data;
+                              
+                              // Create HTML table for rich text copying
+                              let htmlTable = '<table border="1" style="border-collapse: collapse; width: 100%;">';
+                              htmlTable += '<thead><tr style="background-color: #f5f5f5;">';
+                              htmlTable += '<th style="padding: 8px; text-align: left; font-weight: bold;">Category</th>';
+                              htmlTable += '<th style="padding: 8px; text-align: left; font-weight: bold;">Value</th>';
+                              htmlTable += '<th style="padding: 8px; text-align: left; font-weight: bold;">Details</th>';
+                              htmlTable += '</tr></thead><tbody>';
+                              
+                              tableData.forEach((row: any) => {
+                                htmlTable += '<tr>';
+                                htmlTable += `<td style="padding: 8px; border: 1px solid #ddd;">${row.category || ''}</td>`;
+                                htmlTable += `<td style="padding: 8px; border: 1px solid #ddd;">${row.value || ''}</td>`;
+                                htmlTable += `<td style="padding: 8px; border: 1px solid #ddd;">${row.details || ''}</td>`;
+                                htmlTable += '</tr>';
+                              });
+                              
+                              htmlTable += '</tbody></table>';
+                              
+                              // Create plain text fallback
+                              const textTable = `Category\tValue\tDetails\n${tableData.map((row: any) => 
+                                `${row.category || ''}\t${row.value || ''}\t${row.details || ''}`
+                              ).join('\n')}`;
+                              
+                              try {
+                                // Try to write both HTML and text to clipboard
+                                await navigator.clipboard.write([
+                                  new ClipboardItem({
+                                    'text/html': new Blob([htmlTable], { type: 'text/html' }),
+                                    'text/plain': new Blob([textTable], { type: 'text/plain' })
+                                  })
+                                ]);
+                                toast({
+                                  title: "Copied to clipboard",
+                                  description: "Table copied as formatted table (paste into Word, Google Docs, etc.)",
+                                });
+                              } catch (error) {
+                                // Fallback to plain text if rich clipboard fails
+                                await navigator.clipboard.writeText(textTable);
+                                toast({
+                                  title: "Copied to clipboard",
+                                  description: "Table copied as tab-separated text.",
+                                });
+                              }
+                            }}
+                          >
+                            Copy Table
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Scrollable Table Container */}
+                    <div className="max-h-96 overflow-auto">
+                      <table className="w-full border-collapse">
+                        <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                          <tr>
+                            <th className="border-b border-border px-4 py-3 text-left font-medium text-sm">Category</th>
+                            <th className="border-b border-border px-4 py-3 text-left font-medium text-sm">Value</th>
+                            <th className="border-b border-border px-4 py-3 text-left font-medium text-sm">Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analysisResult.analysis.content.formatted_data.map((row: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                              <td className="border-b border-border/50 px-4 py-3 text-sm font-medium">{row.category || '-'}</td>
+                              <td className="border-b border-border/50 px-4 py-3 text-sm">{row.value || '-'}</td>
+                              <td className="border-b border-border/50 px-4 py-3 text-sm text-muted-foreground">{row.details || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  {/* Analysis insights if available */}
+                  {analysisResult?.analysis?.analysis?.insights && analysisResult.analysis.analysis.insights.length > 0 && (
+                    <div className="bg-blue-50/50 dark:bg-blue-950/30 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        AI Insights
+                      </h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-blue-600 dark:text-blue-400">
+                        {analysisResult.analysis.analysis.insights.map((insight: string, idx: number) => (
+                          <li key={idx}>{insight}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : typeof analysisResult === 'string' ? (
+                <div className="prose prose-sm max-w-none">
+                  <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-md">{analysisResult}</pre>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(analysisResult).map(([key, value]) => (
+                    <div key={key} className="border rounded-md p-3">
+                      <h4 className="font-medium text-sm text-primary mb-2 capitalize">{key.replace(/_/g, ' ')}</h4>
+                      <div className="text-sm">
+                        {typeof value === 'string' ? (
+                          <p className="whitespace-pre-wrap">{value}</p>
+                        ) : Array.isArray(value) ? (
+                          <ul className="list-disc list-inside space-y-1">
+                            {value.map((item, idx) => (
+                              <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <pre className="text-xs bg-muted/50 p-2 rounded overflow-auto">{JSON.stringify(value, null, 2)}</pre>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+} 
