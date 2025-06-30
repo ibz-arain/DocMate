@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useHistory } from '@/components/history-provider';
 
 // Component to render formatted text content
 const FormattedContent = ({ content }: { content: string }) => {
@@ -112,6 +113,25 @@ export function FullDocumentSummarizePopup({
 }: FullDocumentSummarizePopupProps) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { addHistoryEntry } = useHistory();
+
+  // Add to history when result is available
+  React.useEffect(() => {
+    if (isOpen && result) {
+      const summaryText = result?.analysis?.content || result?.analysis?.summary || '';
+      if (summaryText) {
+        addHistoryEntry({
+          type: 'summary',
+          title: `Full Document Summary: ${documentName}`,
+          content: summaryText,
+          selectedText: '[Full Document]',
+          selectionData: null,
+          documentName,
+          pageNumber: undefined,
+        });
+      }
+    }
+  }, [isOpen, result, documentName, addHistoryEntry]);
 
   const handleCopy = async () => {
     const summaryText = result?.analysis?.content || result?.analysis?.summary || '';

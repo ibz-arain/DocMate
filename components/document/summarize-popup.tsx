@@ -128,10 +128,8 @@ export function SummarizePopup({ isOpen, onClose, selectedText, selectionData, o
   useEffect(() => {
     if (isOpen && selectedText.trim() && !result && !isLoading) {
       if (cachedResult) {
-        console.log('📋 Using cached result, NOT adding to history');
         setResult(cachedResult);
       } else {
-        console.log('🔍 No cached result, will analyze and add to history');
         handleSummarize();
       }
     }
@@ -251,7 +249,6 @@ The goal is to create a summary that demonstrates understanding of the content a
         setResult(summaryResult);
         
         // Add to history
-        console.log('🔄 Summarize popup: Adding to history...');
         addHistoryEntry({
           type: 'summary',
           title: selectedText.length > 50 ? `${selectedText.substring(0, 47)}...` : selectedText,
@@ -268,7 +265,6 @@ The goal is to create a summary that demonstrates understanding of the content a
           setResult(summaryResult);
           
           // Add to history
-          console.log('🔄 Summarize popup: Adding to history (text method)...');
           addHistoryEntry({
             type: 'summary',
             title: selectedText.length > 50 ? `${selectedText.substring(0, 47)}...` : selectedText,

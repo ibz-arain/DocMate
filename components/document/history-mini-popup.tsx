@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   History, 
@@ -11,10 +11,8 @@ import {
   X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { useHistory, HistoryEntry } from '@/components/history-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -33,20 +31,24 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
   // Show latest 5 entries
   const recentHistory = history.slice(0, 5);
 
-  const getTypeIcon = (type: HistoryEntry['type']) => {
+  const getTypeIcon = (type: HistoryEntry['type'], selectedText?: string) => {
+    const isFullDocument = selectedText === '[Full Document]';
     switch (type) {
-      case 'summary': return <Brain className="h-3 w-3" />;
-      case 'quick-format': return <Table className="h-3 w-3" />;
-      case 'template-format': return <FileText className="h-3 w-3" />;
+      case 'summary': return <Brain className={`h-3 w-3 ${isFullDocument ? 'text-blue-600' : ''}`} />;
+      case 'quick-format': return <Table className={`h-3 w-3 ${isFullDocument ? 'text-green-600' : ''}`} />;
+      case 'template-format': return <FileText className={`h-3 w-3 ${isFullDocument ? 'text-purple-600' : ''}`} />;
     }
   };
 
-  const getTypeColor = (type: HistoryEntry['type']) => {
-    switch (type) {
-      case 'summary': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'quick-format': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'template-format': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-    }
+  const getTypeColor = (type: HistoryEntry['type'], selectedText?: string) => {
+    const isFullDocument = selectedText === '[Full Document]';
+    const baseColor = {
+      'summary': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'quick-format': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'template-format': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+    }[type];
+    
+    return isFullDocument ? `${baseColor} ring-1 ring-current` : baseColor;
   };
 
 
@@ -110,7 +112,7 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-1">
-                                {getTypeIcon(entry.type)}
+                                {getTypeIcon(entry.type, entry.selectedText)}
                                 <span className="text-xs font-medium truncate" title={entry.title}>
                                   {entry.title.length > 25 ? `${entry.title.substring(0, 25)}...` : entry.title}
                                 </span>
@@ -119,9 +121,9 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
                             <div className="flex items-center justify-between mt-1">
                               <Badge 
                                 variant="secondary" 
-                                className={`text-xs px-1 py-0 ${getTypeColor(entry.type)}`}
+                                className={`text-xs px-1 py-0 ${getTypeColor(entry.type, entry.selectedText)}`}
                               >
-                                {entry.type}
+                                {entry.selectedText === '[Full Document]' ? `Full ${entry.type}` : entry.type}
                               </Badge>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
