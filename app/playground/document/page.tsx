@@ -674,6 +674,18 @@ export default function DocumentPage() {
       
       // Check if this is a box selection
       const isBoxSelection = selectedText === '[Box Selection]';
+      const isRightClickMenu = selectedText === '[Right-click menu]';
+      
+      if (isRightClickMenu) {
+        // Right-click menu without text selection - show message to user
+        toast({ 
+          title: 'No Text Selected', 
+          description: 'Please select text first to analyze.', 
+          variant: 'default' 
+        });
+        setIsAnalyzing(false);
+        return;
+      }
       
       if (isBoxSelection) {
         // Box selections will be processed as images (base64)
@@ -724,12 +736,34 @@ export default function DocumentPage() {
   };
   
   const handleQuickFormat = () => {
+    const isRightClickMenu = selectedText === '[Right-click menu]';
+    
+    if (isRightClickMenu) {
+      toast({
+        title: "No text selected",
+        description: "Please select text first to format.",
+        variant: "default"
+      });
+      return;
+    }
+    
     setQuickFormatSelectedText(selectedText); // Preserve the selected text
     clearSelection(); // Close context menu
     setShowQuickFormatPopup(true);
   };
   
   const handleTemplateFormat = () => {
+    const isRightClickMenu = selectedText === '[Right-click menu]';
+    
+    if (isRightClickMenu) {
+      toast({
+        title: "No text selected",
+        description: "Please select text first to apply template.",
+        variant: "default"
+      });
+      return;
+    }
+    
     setTemplateFormatSelectedText(selectedText); // Preserve the selected text
     clearSelection(); // Close context menu
     setShowTemplateFormatPopup(true);
@@ -737,6 +771,17 @@ export default function DocumentPage() {
   
   // Summarize popup handlers
   const handleSummarizePopup = () => {
+    const isRightClickMenu = selectedText === '[Right-click menu]';
+    
+    if (isRightClickMenu) {
+      toast({
+        title: "No text selected",
+        description: "Please select text first to summarize.",
+        variant: "default"
+      });
+      return;
+    }
+    
     setPopupSelectedText(selectedText); // Preserve the selected text
     clearSelection(); // Close context menu
     setShowSummarizePopup(true);
@@ -771,6 +816,17 @@ export default function DocumentPage() {
     }
   };
   const handleCopy = async () => {
+    const isRightClickMenu = selectedText === '[Right-click menu]';
+    
+    if (isRightClickMenu) {
+      toast({
+        title: "No text selected",
+        description: "Please select text first to copy.",
+        variant: "default"
+      });
+      return;
+    }
+    
     try {
       await navigator.clipboard.writeText(selectedText);
       toast({
@@ -1079,13 +1135,68 @@ Focus on making the information easily accessible and well-organized.`;
       }
     };
     
+    const handleRightClick = (e: MouseEvent) => {
+      // Only handle right clicks on the PDF container
+      const pdfContainer = pdfContainerRef.current;
+      if (!pdfContainer || !pdfUrl) return;
+      
+      const target = e.target as Element;
+      if (!pdfContainer.contains(target)) return;
+      
+      // Prevent default context menu
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Store cursor position
+      lastCursorRef.current = {x: e.clientX, y: e.clientY};
+      
+      // Check if there's currently selected text
+      const selection = window.getSelection();
+      const selectedTextContent = selection?.toString().trim();
+      
+      if (selectedTextContent && selectedTextContent.length > 0) {
+        // Use existing selected text
+        setSelectedText(selectedTextContent);
+      } else {
+        // No text selected, use placeholder for general context menu
+        setSelectedText("[Right-click menu]");
+      }
+      
+      // Position menu at cursor location
+      const menuWidth = 200;
+      const menuHeight = 50;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      let left = e.clientX + 8;
+      let top = e.clientY;
+      
+      // Adjust horizontal position if menu would go off-screen
+      if (left + menuWidth > viewportWidth) {
+        left = e.clientX - menuWidth - 8;
+      }
+      
+      // Adjust vertical position if menu would go off-screen
+      if (top + menuHeight > viewportHeight) {
+        top = e.clientY - menuHeight - 8;
+      }
+      
+      // Ensure minimum distance from edges
+      left = Math.max(8, Math.min(left, viewportWidth - menuWidth - 8));
+      top = Math.max(8, Math.min(top, viewportHeight - menuHeight - 8));
+      
+      setMenuPos({top, left, isPageRelative: false});
+    };
+    
     window.addEventListener('mouseup',handleUp);
     window.addEventListener('mousemove',handleMove);
+    window.addEventListener('contextmenu', handleRightClick);
     return ()=>{
       window.removeEventListener('mouseup',handleUp);
       window.removeEventListener('mousemove',handleMove);
+      window.removeEventListener('contextmenu', handleRightClick);
     };
-  },[]);
+  },[pdfUrl]);
 
   // Click outside to dismiss context menu
   useEffect(() => {
@@ -1542,7 +1653,7 @@ Focus on making the information easily accessible and well-organized.`;
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left" align="center">
-                          <p>Quick Format Document</p>
+                          <p>Quick Format</p>
                         </TooltipContent>
                       </Tooltip>
 
@@ -1559,7 +1670,7 @@ Focus on making the information easily accessible and well-organized.`;
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left" align="center">
-                          <p>Template Format Document</p>
+                          <p>Template Format</p>
                         </TooltipContent>
                       </Tooltip>
                     </>
