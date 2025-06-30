@@ -75,6 +75,8 @@ export default function DocumentPage() {
   const [isZooming, setIsZooming] = useState(false);
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingScaleRef = useRef<number>(scale);
+  const lastScaleUpdateRef = useRef<number>(Date.now());
+  const lastWheelEventRef = useRef<number>(0);
 
   // Tool tooltip states
   const [showToolTooltip, setShowToolTooltip] = useState(false);
@@ -191,6 +193,8 @@ export default function DocumentPage() {
     if (pdfFile) {
       localStorage.setItem('docmate-pdf-scale', scale.toString());
     }
+    // Keep pendingScaleRef in sync when scale changes externally
+    pendingScaleRef.current = scale;
   }, [scale, pdfFile]);
 
   useEffect(() => {
@@ -297,6 +301,9 @@ export default function DocumentPage() {
       if (toolTooltipTimeoutRef.current) {
         clearTimeout(toolTooltipTimeoutRef.current);
       }
+      if (lastWheelEventRef.current) {
+        lastWheelEventRef.current = 0;
+      }
     };
   }, [pdfUrl]);
 
@@ -325,15 +332,15 @@ export default function DocumentPage() {
        else if (e.key === '=' || e.key === '+') {
          if (e.ctrlKey || e.metaKey) {
            e.preventDefault();
-           const currentScale = isZooming ? pendingScaleRef.current : scale;
-           const newScale = Math.min(currentScale * 1.2, 3.0);
+           const currentScale = pendingScaleRef.current;
+           const newScale = Math.min(currentScale * 1.25, 3.0);
            updateZoomSmooth(newScale);
            showZoomFeedbackBriefly();
          }
        } else if (e.key === '-') {
          if (e.ctrlKey || e.metaKey) {
            e.preventDefault();
-           const currentScale = isZooming ? pendingScaleRef.current : scale;
+           const currentScale = pendingScaleRef.current;
            const newScale = Math.max(currentScale * 0.8, 0.5);
            updateZoomSmooth(newScale);
            showZoomFeedbackBriefly();
@@ -368,11 +375,18 @@ export default function DocumentPage() {
       clearTimeout(zoomTimeoutRef.current);
     }
     
-    // Debounce the actual scale update to reduce re-renders
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastScaleUpdateRef.current;
+    
+    // Immediate update if it's been more than 100ms since last update (for responsive feel)
+    // Otherwise, debounce to reduce re-renders during continuous zooming
+    const delay = timeSinceLastUpdate > 100 ? 0 : 150;
+    
     zoomTimeoutRef.current = setTimeout(() => {
       setScale(pendingScaleRef.current);
       setIsZooming(false);
-    }, 16); // ~60fps update rate
+      lastScaleUpdateRef.current = Date.now();
+    }, delay);
   };
 
   // Native zoom functionality
@@ -386,7 +400,19 @@ export default function DocumentPage() {
         e.preventDefault();
         e.stopPropagation();
         
-        const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05; // Smaller increments for smoother zoom
+        // Throttle wheel events to prevent excessive zoom updates
+        const now = Date.now();
+        if (now - lastWheelEventRef.current < 16) { // ~60fps throttling
+          return;
+        }
+        lastWheelEventRef.current = now;
+        
+        // Adjust zoom factor based on wheel delta for more natural feel
+        const delta = Math.abs(e.deltaY);
+        const baseFactor = 1.08; // Slightly larger increments for smoother feel
+        const adjustedFactor = delta > 100 ? baseFactor * 1.1 : baseFactor;
+        const zoomFactor = e.deltaY > 0 ? 1 / adjustedFactor : adjustedFactor;
+        
         const currentScale = pendingScaleRef.current;
         const newScale = Math.max(0.5, Math.min(3.0, currentScale * zoomFactor));
         
@@ -418,6 +444,14 @@ export default function DocumentPage() {
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 2 && isGesturing) {
         e.preventDefault();
+        
+        // Throttle touch move events
+        const now = Date.now();
+        if (now - lastWheelEventRef.current < 32) { // ~30fps for touch events
+          return;
+        }
+        lastWheelEventRef.current = now;
+        
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const currentDistance = Math.hypot(
@@ -550,14 +584,14 @@ export default function DocumentPage() {
   };
 
   const zoomIn = () => {
-    const currentScale = isZooming ? pendingScaleRef.current : scale;
-    const newScale = Math.min(currentScale * 1.2, 3.0);
+    const currentScale = pendingScaleRef.current;
+    const newScale = Math.min(currentScale * 1.25, 3.0); // Slightly larger increment
     updateZoomSmooth(newScale);
     showZoomFeedbackBriefly();
   };
 
   const zoomOut = () => {
-    const currentScale = isZooming ? pendingScaleRef.current : scale;
+    const currentScale = pendingScaleRef.current;
     const newScale = Math.max(currentScale * 0.8, 0.5);
     updateZoomSmooth(newScale);
     showZoomFeedbackBriefly();
@@ -1640,7 +1674,7 @@ Focus on making the information easily accessible and well-organized.`;
                                 "text-xs font-medium transition-colors",
                                 showZoomFeedback && "text-primary"
                               )}>
-                                {Math.round((isZooming ? pendingScaleRef.current : scale) * 100)}%
+                                {Math.round(pendingScaleRef.current * 100)}%
                               </span>
                             </Button>
                           </TooltipTrigger>
@@ -1696,7 +1730,7 @@ Focus on making the information easily accessible and well-organized.`;
                                 <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
                               </div>
                               <span className="text-lg font-medium text-primary">
-                                {Math.round((isZooming ? pendingScaleRef.current : scale) * 100)}%
+                                {Math.round(pendingScaleRef.current * 100)}%
                               </span>
                             </div>
                           </div>

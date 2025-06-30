@@ -36,6 +36,17 @@ export function PdfViewer({
   onSelection = () => {},
   onScroll = () => {},
 }: PdfViewerProps) {
+  // Memoize scale to reduce unnecessary re-renders
+  const memoizedScale = useRef(scale);
+  const [renderScale, setRenderScale] = useState(scale);
+  
+  // Update render scale with throttling to reduce re-renders during zoom
+  useEffect(() => {
+    if (Math.abs(scale - memoizedScale.current) > 0.01) { // Only update if significant change
+      memoizedScale.current = scale;
+      setRenderScale(scale);
+    }
+  }, [scale]);
   const [isWorkerInitialized, setIsWorkerInitialized] = useState(false);
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -895,7 +906,7 @@ export function PdfViewer({
               >
                 <Page
                   pageNumber={index + 1}
-                  scale={scale}
+                  scale={renderScale}
                   rotate={rotation}
                   renderTextLayer={true}
                   renderAnnotationLayer={false}
@@ -904,8 +915,8 @@ export function PdfViewer({
                     <div 
                       className="bg-muted animate-pulse rounded-lg flex items-center justify-center"
                       style={{
-                        width: Math.round(595 * scale),
-                        height: Math.round(842 * scale)
+                        width: Math.round(595 * renderScale),
+                        height: Math.round(842 * renderScale)
                       }}
                     >
                       <div className="text-muted-foreground">Loading page {index + 1}...</div>
