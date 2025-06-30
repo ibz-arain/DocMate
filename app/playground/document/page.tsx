@@ -15,6 +15,7 @@ import {
   Highlighter as HighlighterIcon,
   Scissors as ScissorsIcon,
   FileText as FileTextIcon,
+  FileText,
   BoxSelect as BoxSelectIcon,
   Upload,
   MousePointer as MousePointerIcon,
@@ -28,6 +29,11 @@ import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
 import { SummarizePopup } from "@/components/document/summarize-popup";
 import { QuickFormatPopup } from "@/components/document/quick-format-popup";
 import { TemplateFormatPopup } from "@/components/document/template-format-popup";
+import { DocumentToolbar } from "@/components/document/document-toolbar";
+import { FullDocumentSummarizePopup } from "@/components/document/full-document-summarize-popup";
+import { FullDocumentQuickFormatPopup } from "@/components/document/full-document-quick-format-popup";
+import { FullDocumentTemplateFormatPopup } from "@/components/document/full-document-template-format-popup";
+import { convertFileToBase64 } from "@/components/document/document-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -82,6 +88,14 @@ export default function DocumentPage() {
   const [quickFormatSelectedText, setQuickFormatSelectedText] = useState("");
   const [showTemplateFormatPopup, setShowTemplateFormatPopup] = useState(false);
   const [templateFormatSelectedText, setTemplateFormatSelectedText] = useState("");
+
+  // Full document processing states
+  const [showFullDocSummarizePopup, setShowFullDocSummarizePopup] = useState(false);
+  const [showFullDocQuickFormatPopup, setShowFullDocQuickFormatPopup] = useState(false);
+  const [showFullDocTemplateFormatPopup, setShowFullDocTemplateFormatPopup] = useState(false);
+  const [fullDocSummarizeResult, setFullDocSummarizeResult] = useState<any>(null);
+  const [fullDocQuickFormatResult, setFullDocQuickFormatResult] = useState<any>(null);
+  const [processingAction, setProcessingAction] = useState<'summarize' | 'quickformat' | null>(null);
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -540,6 +554,8 @@ export default function DocumentPage() {
     { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
   ];
 
+
+
   const getViewportRect = (percentRect: any): {top:number;left:number;width:number;height:number} | null => {
     const container = pdfContainerRef.current;
     if(!container) return null;
@@ -779,6 +795,275 @@ export default function DocumentPage() {
   const handleTranslate = () => analyzeWithPrompt('Translate this text to English and provide the original language detected.');
   const handleExplain = () => analyzeWithPrompt('Explain this text in simple terms, breaking down complex concepts.');
   const handleQuestions = () => analyzeWithPrompt('Generate relevant questions that could be answered by this text content.');
+
+  // Full document toolbar handlers
+  const handleFullDocSummarizeComplete = (result: any) => {
+    setFullDocSummarizeResult(result);
+    setShowFullDocSummarizePopup(true);
+  };
+
+  const handleFullDocQuickFormatComplete = (result: any) => {
+    setFullDocQuickFormatResult(result);
+    setShowFullDocQuickFormatPopup(true);
+  };
+
+  const handleFullDocTemplateFormatStart = () => {
+    setShowFullDocTemplateFormatPopup(true);
+  };
+
+  // Document processing functions for toolbar
+  const handleDocumentSummarize = async () => {
+    if (!pdfFile) {
+      toast({
+        title: "No document loaded",
+        description: "Please load a PDF document first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      setProcessingAction('summarize');
+
+      // First, extract text from the PDF using the custom endpoint
+      let base64Data = await convertFileToBase64(pdfFile);
+      if (!base64Data || typeof base64Data !== 'string') {
+        throw new Error('Failed to convert file to base64');
+      }
+      base64Data = base64Data.split(',')[1] || base64Data;
+
+      // Extract text from the PDF
+      const extractResponse = await fetch('/api/analyze/custom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          imageData: base64Data,
+          mimeType: pdfFile.type || 'application/pdf',
+          customPrompt: 'Extract all text content from this document. Preserve the structure and formatting as much as possible. Include all readable text from all pages.',
+          outputFormat: {
+            documentType: "Text Extraction",
+            tables: [{
+              name: "extracted_text",
+              description: "All text content from the document",
+              type: "data" as const,
+              fields: [{
+                name: "content",
+                type: "string",
+                description: "The complete text content of the document",
+                required: true
+              }]
+            }]
+          }
+        }),
+      });
+
+      if (!extractResponse.ok) {
+        throw new Error('Failed to extract text from document');
+      }
+
+      const extractResult = await extractResponse.json();
+      const extractedText = extractResult?.analysis?.content?.extracted_text?.content || 
+                           extractResult?.result?.extracted_text?.content ||
+                           'Unable to extract text from document';
+
+      // Now summarize the extracted text using the dedicated summarize endpoint
+      const summarizeResponse = await fetch('/api/analyze/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: extractedText
+        }),
+      });
+
+      if (!summarizeResponse.ok) {
+        const errorData = await summarizeResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to summarize document');
+      }
+
+      const summaryResult = await summarizeResponse.json();
+
+      // Format the result to match expected structure
+      const result = {
+        analysis: {
+          content: summaryResult.summary,
+          summary: summaryResult.summary
+        }
+      };
+
+      handleFullDocSummarizeComplete(result);
+
+      toast({
+        title: "Document summarized successfully",
+        description: "Summary completed.",
+      });
+
+    } catch (error) {
+      console.error('Document summarization error:', error);
+      toast({
+        title: "Summarization failed",
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+      setProcessingAction(null);
+    }
+  };
+
+  const handleDocumentQuickFormat = async () => {
+    if (!pdfFile) {
+      toast({
+        title: "No document loaded",
+        description: "Please load a PDF document first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      setProcessingAction('quickformat');
+
+      // Convert file to base64
+      let base64Data = await convertFileToBase64(pdfFile);
+      if (!base64Data || typeof base64Data !== 'string') {
+        throw new Error('Failed to convert file to base64');
+      }
+      base64Data = base64Data.split(',')[1] || base64Data;
+
+      const outputFormat = {
+        documentType: "Full Document Quick Format",
+        tables: [
+          {
+            name: "document_structure",
+            description: "Main structural elements of the document",
+            type: "table" as const,
+            fields: [
+              {
+                name: "section",
+                type: "string",
+                description: "Section or chapter name",
+                required: true
+              },
+              {
+                name: "content_type",
+                type: "string", 
+                description: "Type of content (text, table, list, etc.)",
+                required: true
+              },
+              {
+                name: "key_points",
+                type: "string",
+                description: "Main points or summary of this section",
+                required: false
+              }
+            ]
+          },
+          {
+            name: "key_data",
+            description: "Important data points found in the document",
+            type: "table" as const,
+            fields: [
+              {
+                name: "category",
+                type: "string",
+                description: "Data category or type",
+                required: true
+              },
+              {
+                name: "value",
+                type: "string",
+                description: "The actual data value",
+                required: true
+              },
+              {
+                name: "context",
+                type: "string",
+                description: "Context or additional information",
+                required: false
+              }
+            ]
+          }
+        ]
+      };
+
+      const prompt = `Analyze this entire document and extract its structure and key data points. 
+
+Instructions:
+1. Identify the main sections, chapters, or logical divisions
+2. Extract key data points, numbers, dates, names, and important information
+3. Organize the content into a structured format
+4. Preserve important context and relationships
+5. Create a comprehensive overview of the document's content
+
+Focus on making the information easily accessible and well-organized.`;
+
+      const requestData = {
+        imageData: base64Data,
+        mimeType: pdfFile.type || 'application/pdf',
+        customPrompt: prompt,
+        outputFormat
+      };
+
+      const response = await fetch('/api/analyze/custom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        let errorMessage;
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || 'Server processing error';
+        } else {
+          errorMessage = response.statusText || 'Server processing error';
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response data from server');
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Processing failed');
+      }
+
+      handleFullDocQuickFormatComplete(result);
+
+      toast({
+        title: "Document processed successfully",
+        description: "Formatting completed.",
+      });
+
+    } catch (error) {
+      console.error('Document processing error:', error);
+      toast({
+        title: "Processing failed",
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+      setProcessingAction(null);
+    }
+  };
 
   // Capture last mouse position (works for both text select and box draw end)
   useEffect(()=>{
@@ -1112,6 +1397,8 @@ export default function DocumentPage() {
                       )}
                     </AnimatePresence>
 
+
+
                     <div className="absolute inset-0">
                       <AnimatePresence>
                         {!selectedText && pdfWorkerReady && showToolTooltip && (
@@ -1212,6 +1499,72 @@ export default function DocumentPage() {
                     </Tooltip>
                   ))}
 
+                  {/* Document Analysis Tools */}
+                  {pdfFile && (
+                    <>
+                      <div className="w-full h-px bg-border my-2" />
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10"
+                            onClick={handleDocumentSummarize}
+                            disabled={isAnalyzing || isLoading}
+                          >
+                            {processingAction === 'summarize' ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-5 w-5" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="center">
+                          <p>Summarize Document</p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10"
+                            onClick={handleDocumentQuickFormat}
+                            disabled={isAnalyzing || isLoading}
+                          >
+                            {processingAction === 'quickformat' ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Table className="h-5 w-5" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="center">
+                          <p>Quick Format Document</p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10"
+                            onClick={handleFullDocTemplateFormatStart}
+                            disabled={isAnalyzing || isLoading}
+                          >
+                            <FileText className="h-5 w-5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="center">
+                          <p>Template Format Document</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </>
+                  )}
+
                   <div className="flex-1" />
 
                   {pdfFile && (
@@ -1287,6 +1640,36 @@ export default function DocumentPage() {
           setTemplateFormatSelectedText(""); // Clear preserved text when closing
         }}
         selectedText={templateFormatSelectedText}
+      />
+
+      {/* Full Document Popups */}
+      <FullDocumentSummarizePopup
+        isOpen={showFullDocSummarizePopup}
+        onClose={() => {
+          setShowFullDocSummarizePopup(false);
+          setFullDocSummarizeResult(null);
+        }}
+        result={fullDocSummarizeResult}
+        documentName={pdfFile?.name}
+      />
+
+      <FullDocumentQuickFormatPopup
+        isOpen={showFullDocQuickFormatPopup}
+        onClose={() => {
+          setShowFullDocQuickFormatPopup(false);
+          setFullDocQuickFormatResult(null);
+        }}
+        result={fullDocQuickFormatResult}
+        documentName={pdfFile?.name}
+      />
+
+      <FullDocumentTemplateFormatPopup
+        isOpen={showFullDocTemplateFormatPopup}
+        onClose={() => {
+          setShowFullDocTemplateFormatPopup(false);
+        }}
+        pdfFile={pdfFile}
+        documentName={pdfFile?.name}
       />
 
       {/* CSS for animated gradient background */}
