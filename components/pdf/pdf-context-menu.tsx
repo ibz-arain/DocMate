@@ -7,7 +7,8 @@ import {
   Table, 
   FileCode, 
   Copy,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ interface PdfContextMenuProps {
   selectedText: string;
   isAnalyzing: boolean;
   onQuickSummarize: () => void;
+  onSummarizePopup: () => void;
   onQuickFormat: () => void;
   onTemplateFormat: () => void;
   onCopy: () => void;
@@ -31,12 +33,20 @@ export function PdfContextMenu({
   selectedText,
   isAnalyzing,
   onQuickSummarize,
+  onSummarizePopup,
   onQuickFormat,
   onTemplateFormat,
   onCopy,
   onClose
 }: PdfContextMenuProps) {
   const menuItems = [
+    {
+      id: 'summarize-popup',
+      label: 'Smart Summarize',
+      icon: Sparkles,
+      onClick: onSummarizePopup,
+      disabled: false
+    },
     {
       id: 'quick-summarize',
       label: 'Quick Summarize',

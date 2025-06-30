@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
+import { SummarizePopup } from "@/components/document/summarize-popup";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -59,9 +60,17 @@ export default function DocumentPage() {
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingScaleRef = useRef<number>(scale);
 
+  // Tool tooltip states
+  const [showToolTooltip, setShowToolTooltip] = useState(false);
+  const toolTooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [menuPos, setMenuPos] = useState<{top:number;left:number;isPageRelative?:boolean} | null>(null);
   const lastCursorRef = useRef<{x:number;y:number}|null>(null);
   const scrollStartPositionRef = useRef<{x: number; y: number} | null>(null);
+  
+  // Summarize popup state
+  const [showSummarizePopup, setShowSummarizePopup] = useState(false);
+  const [popupSelectedText, setPopupSelectedText] = useState("");
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -230,6 +239,9 @@ export default function DocumentPage() {
       }
       if (zoomTimeoutRef.current) {
         clearTimeout(zoomTimeoutRef.current);
+      }
+      if (toolTooltipTimeoutRef.current) {
+        clearTimeout(toolTooltipTimeoutRef.current);
       }
     };
   }, [pdfUrl]);
@@ -452,6 +464,15 @@ export default function DocumentPage() {
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
+    
+    // Show tooltip briefly when tool is selected
+    setShowToolTooltip(true);
+    if (toolTooltipTimeoutRef.current) {
+      clearTimeout(toolTooltipTimeoutRef.current);
+    }
+    toolTooltipTimeoutRef.current = setTimeout(() => {
+      setShowToolTooltip(false);
+    }, 2000); // Show for 2 seconds
   };
 
   const handlePageChange = (newPage: number) => {
@@ -673,6 +694,42 @@ export default function DocumentPage() {
   const handleQuickSummarize = () => analyzeWithPrompt('Summarize the following text in concise bullet points.');
   const handleQuickFormat = () => analyzeWithPrompt('Convert this text into a structured table format with clear headers and organized data.');
   const handleTemplateFormat = () => analyzeWithPrompt('Apply template formatting to structure this text with appropriate headings, sections, and formatting.');
+  
+  // Summarize popup handlers
+  const handleSummarizePopup = () => {
+    setPopupSelectedText(selectedText); // Preserve the selected text
+    clearSelection(); // Close context menu
+    setShowSummarizePopup(true);
+  };
+
+  const handleSummarizeRequest = async (text: string) => {
+    try {
+      const response = await fetch('/api/analyze/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to summarize text');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Summarization error:', error);
+      toast({
+        title: 'Summarization failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive'
+      });
+      return null;
+    }
+  };
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(selectedText);
@@ -1032,13 +1089,23 @@ export default function DocumentPage() {
                     </AnimatePresence>
 
                     <div className="absolute inset-0">
-                      {!selectedText && pdfWorkerReady && (
-                        <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md z-20 text-sm">
-                          {selectedTool === 'box' ? 'Drag a box to capture content' : 
-                           selectedTool === 'text' ? 'Select text to capture content' :
-                           'Select a tool from the sidebar to capture content'}
-                        </div>
-                      )}
+                      <AnimatePresence>
+                        {!selectedText && pdfWorkerReady && showToolTooltip && (
+                          <div className="absolute top-12 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                            <motion.div
+                              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                              transition={{ duration: 0.2, ease: "easeOut" }}
+                              className="bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md text-sm whitespace-nowrap"
+                            >
+                              {selectedTool === 'box' ? 'Drag a box to capture content' : 
+                               selectedTool === 'text' ? 'Select text to capture content' :
+                               'Select a tool from the sidebar to capture content'}
+                            </motion.div>
+                          </div>
+                        )}
+                      </AnimatePresence>
 
                       {!pdfWorkerReady ? (
                         <div className="flex items-center justify-center h-full">
@@ -1084,6 +1151,7 @@ export default function DocumentPage() {
                             selectedText={selectedText}
                             isAnalyzing={isAnalyzing}
                             onQuickSummarize={handleQuickSummarize}
+                            onSummarizePopup={handleSummarizePopup}
                             onQuickFormat={handleQuickFormat}
                             onTemplateFormat={handleTemplateFormat}
                             onCopy={handleCopy}
@@ -1212,6 +1280,17 @@ export default function DocumentPage() {
           </div>
         </main>
       </div>
+
+      {/* Summarize Popup */}
+      <SummarizePopup
+        isOpen={showSummarizePopup}
+        onClose={() => {
+          setShowSummarizePopup(false);
+          setPopupSelectedText(""); // Clear preserved text when closing
+        }}
+        selectedText={popupSelectedText}
+        onSummarize={handleSummarizeRequest}
+      />
 
       {/* CSS for animated gradient background */}
       <style jsx global>{`
