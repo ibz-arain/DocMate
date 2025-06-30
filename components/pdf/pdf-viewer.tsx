@@ -793,7 +793,10 @@ export function PdfViewer({
         onScroll={handleScroll}
         style={{
           scrollBehavior: 'smooth',
-          userSelect: selectionMode === 'text' ? 'text' : 'none'
+          userSelect: selectionMode === 'text' ? 'text' : 'none',
+          // Ensure proper scroll behavior for zoomed content
+          overflowX: 'auto',
+          overflowY: 'auto'
         }}
       >
         <style jsx global>{`
@@ -849,18 +852,35 @@ export function PdfViewer({
             background: hsl(var(--primary) / 0.3) !important;
             color: transparent !important;
           }
+          
+          /* Fix scroll behavior for zoomed content */
+          .react-pdf__Document {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            min-width: fit-content !important;
+          }
+          
+          .react-pdf__Page {
+            margin-bottom: 1rem !important;
+          }
         `}</style>
-        <div className="flex flex-col items-center py-4 space-y-4">
-          <Document
-            file={file}
-            onLoadSuccess={handleDocumentLoadSuccess}
-            onLoadError={onLoadError}
-            loading={
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin h-8 w-8 rounded-full"></div>
-              </div>
-            }
-          >
+        <div className="w-full py-4 flex justify-center" style={{
+          minWidth: 'fit-content'
+        }}>
+          <div className="flex flex-col space-y-4" style={{
+            minWidth: 'fit-content'
+          }}>
+            <Document
+              file={file}
+              onLoadSuccess={handleDocumentLoadSuccess}
+              onLoadError={onLoadError}
+              loading={
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin h-8 w-8 rounded-full"></div>
+                </div>
+              }
+            >
             {Array.from(new Array(numPages), (_, index) => (
               <div
                 key={`page_${index + 1}`}
@@ -952,6 +972,7 @@ export function PdfViewer({
               </div>
             ))}
           </Document>
+          </div>
         </div>
       </div>
     </PdfErrorBoundary>
