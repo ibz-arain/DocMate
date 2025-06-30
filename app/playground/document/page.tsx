@@ -18,6 +18,7 @@ import {
   BoxSelect as BoxSelectIcon,
   Upload,
   MousePointer as MousePointerIcon,
+  X,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
@@ -69,6 +70,117 @@ export default function DocumentPage() {
     "Your PDF's new home",
     "Ready when you are"
   ];
+
+  // Load PDF from localStorage on component mount
+  useEffect(() => {
+    const loadStoredPdf = async () => {
+      try {
+        const storedPdfData = localStorage.getItem('docmate-pdf-data');
+        const storedPdfName = localStorage.getItem('docmate-pdf-name');
+        
+        if (storedPdfData && storedPdfName) {
+          // Convert base64 back to File
+          const response = await fetch(storedPdfData);
+          const blob = await response.blob();
+          const file = new File([blob], storedPdfName, { type: 'application/pdf' });
+          
+          setPdfFile(file);
+          const newUrl = URL.createObjectURL(file);
+          setPdfUrl(newUrl);
+          setIsLoading(true);
+          
+          // Restore other state if available
+          const storedPageNumber = localStorage.getItem('docmate-pdf-page');
+          const storedScale = localStorage.getItem('docmate-pdf-scale');
+          const storedRotation = localStorage.getItem('docmate-pdf-rotation');
+          
+          if (storedPageNumber) setPageNumber(parseInt(storedPageNumber));
+          if (storedScale) setScale(parseFloat(storedScale));
+          if (storedRotation) setRotation(parseInt(storedRotation));
+        }
+      } catch (error) {
+        console.error('Failed to load stored PDF:', error);
+        // Clear corrupted data
+        localStorage.removeItem('docmate-pdf-data');
+        localStorage.removeItem('docmate-pdf-name');
+        localStorage.removeItem('docmate-pdf-page');
+        localStorage.removeItem('docmate-pdf-scale');
+        localStorage.removeItem('docmate-pdf-rotation');
+      }
+    };
+
+    loadStoredPdf();
+  }, []);
+
+  // Save PDF state to localStorage whenever it changes
+  useEffect(() => {
+    if (pdfFile && pdfUrl) {
+      const savePdfToStorage = async () => {
+        try {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64Data = reader.result as string;
+            localStorage.setItem('docmate-pdf-data', base64Data);
+            localStorage.setItem('docmate-pdf-name', pdfFile.name);
+          };
+          reader.readAsDataURL(pdfFile);
+        } catch (error) {
+          console.error('Failed to save PDF to storage:', error);
+        }
+      };
+      
+      savePdfToStorage();
+    }
+  }, [pdfFile, pdfUrl]);
+
+  // Save state changes to localStorage
+  useEffect(() => {
+    if (pdfFile) {
+      localStorage.setItem('docmate-pdf-page', pageNumber.toString());
+    }
+  }, [pageNumber, pdfFile]);
+
+  useEffect(() => {
+    if (pdfFile) {
+      localStorage.setItem('docmate-pdf-scale', scale.toString());
+    }
+  }, [scale, pdfFile]);
+
+  useEffect(() => {
+    if (pdfFile) {
+      localStorage.setItem('docmate-pdf-rotation', rotation.toString());
+    }
+  }, [rotation, pdfFile]);
+
+  // Clear PDF and localStorage
+  const clearPdf = () => {
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+    }
+    
+    setPdfFile(null);
+    setPdfUrl(null);
+    setPageNumber(1);
+    setScale(1.0);
+    setRotation(0);
+    setNumPages(null);
+    setSelectedText("");
+    setAnalysisResult(null);
+    setMenuPos(null);
+    setIsLoading(false);
+    
+    // Clear localStorage
+    localStorage.removeItem('docmate-pdf-data');
+    localStorage.removeItem('docmate-pdf-name');
+    localStorage.removeItem('docmate-pdf-page');
+    localStorage.removeItem('docmate-pdf-scale');
+    localStorage.removeItem('docmate-pdf-rotation');
+    
+    toast({
+      title: "Document cleared",
+      description: "PDF has been removed from the editor.",
+    });
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1051,8 +1163,10 @@ export default function DocumentPage() {
                     </Tooltip>
                   ))}
 
+                  <div className="flex-1" />
+
                   {pdfFile && (
-                    <div className="mt-auto pt-2 border-t border-border w-full flex justify-center">
+                    <div className="mt-auto pt-2 border-t border-border w-full flex flex-col items-center gap-2">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1068,6 +1182,22 @@ export default function DocumentPage() {
                           <p className="text-xs text-muted-foreground">
                             {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
                           </p>
+                        </TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                            onClick={clearPdf}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="center">
+                          <p>Clear document</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>

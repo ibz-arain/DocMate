@@ -200,6 +200,19 @@ export function PdfViewer({
     setCurrentPage(Math.min(externalPageNumber, numPages));
     pageRefs.current = new Array(numPages).fill(null);
     onDocumentLoadSuccess({ numPages });
+
+    // Ensure we scroll to the correct page after the pages have actually rendered
+    // We use a small timeout to wait for refs to be attached.
+    setTimeout(() => {
+      const targetPage = pageRefs.current[externalPageNumber - 1];
+      const container = containerRef.current;
+      if (targetPage && container) {
+        const containerRect = container.getBoundingClientRect();
+        const pageRect = targetPage.getBoundingClientRect();
+        const scrollTop = container.scrollTop + pageRect.top - containerRect.top - (containerRect.height - pageRect.height) / 2;
+        container.scrollTo({ top: Math.max(0, scrollTop) });
+      }
+    }, 100);
   };
 
   // Box selection logic
