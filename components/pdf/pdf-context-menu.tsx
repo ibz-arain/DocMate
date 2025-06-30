@@ -42,17 +42,10 @@ export function PdfContextMenu({
   const menuItems = [
     {
       id: 'summarize-popup',
-      label: 'Smart Summarize',
+      label: 'Quick Summarize',
       icon: Sparkles,
       onClick: onSummarizePopup,
       disabled: false
-    },
-    {
-      id: 'quick-summarize',
-      label: 'Quick Summarize',
-      icon: FileText,
-      onClick: onQuickSummarize,
-      disabled: isAnalyzing
     },
     {
       id: 'quick-format',

@@ -155,7 +155,7 @@ export const generateFormattedView = (data: any): React.ReactNode => {
                         {value.map((item, index) => (
                           <tr key={index} className="border-b last:border-0">
                             {Object.values(item).map((cellValue, cellIndex) => (
-                              <td key={cellIndex} className="py-2">
+                              <td key={`${index}-${cellIndex}`} className="py-2">
                                 {String(cellValue)}
                               </td>
                             ))}

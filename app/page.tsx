@@ -391,7 +391,7 @@ export default function HomePage() {
                               <div className="w-2/3 h-3 bg-primary/10 rounded mb-6"></div>
                               <div className="flex-1 grid grid-cols-2 gap-2">
                                 {Array.from({ length: 6 }).map((_, j) => (
-                                  <div key={j} className="h-8 bg-primary/5 rounded"></div>
+                                  <div key={`${i}-${j}`} className="h-8 bg-primary/5 rounded"></div>
                                 ))}
                               </div>
                             </CardContent>

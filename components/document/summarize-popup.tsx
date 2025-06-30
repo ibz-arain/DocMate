@@ -219,24 +219,7 @@ export function SummarizePopup({ isOpen, onClose, selectedText, onSummarize }: S
           className="w-full max-w-3xl max-h-[85vh] overflow-hidden"
         >
           <Card className="shadow-2xl border-0">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  Smart Summary
-                </CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleClose}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
               {/* Loading State */}
               {isLoading && (
                 <motion.div 
@@ -270,8 +253,8 @@ export function SummarizePopup({ isOpen, onClose, selectedText, onSummarize }: S
                   {/* Stats Header */}
                   <div className="flex items-center justify-between pb-2 border-b border-border">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
-                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <div className="p-1.5 bg-primary/10 dark:bg-primary/10 rounded-full">
+                        <CheckCircle className="h-4 w-4 text-primary dark:text-primary" />
                       </div>
                       <span className="font-medium text-sm">Summary Complete</span>
                     </div>
@@ -318,7 +301,7 @@ export function SummarizePopup({ isOpen, onClose, selectedText, onSummarize }: S
                   <Button 
                     onClick={handleCopy} 
                     variant="outline" 
-                    className="flex-1 transition-all hover:scale-105"
+                    className="flex-1"
                   >
                     {copied ? (
                       <>
@@ -335,14 +318,15 @@ export function SummarizePopup({ isOpen, onClose, selectedText, onSummarize }: S
                   <Button 
                     onClick={resetPopup} 
                     variant="outline"
-                    className="transition-all hover:scale-105"
+                    className="transition-all"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     New Summary
                   </Button>
                   <Button 
                     onClick={handleClose}
-                    className="transition-all hover:scale-105"
+                    variant="secondary"
+                    className="transition-all"
                   >
                     Done
                   </Button>
