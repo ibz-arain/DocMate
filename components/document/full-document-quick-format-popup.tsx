@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table as TableIcon,
@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useHistory } from '@/components/history-provider';
 
 interface FullDocumentQuickFormatPopupProps {
   isOpen: boolean;
@@ -38,6 +39,22 @@ export function FullDocumentQuickFormatPopup({
   documentName = "Document" 
 }: FullDocumentQuickFormatPopupProps) {
   const [copied, setCopied] = useState<string | null>(null);
+  const { addHistoryEntry } = useHistory();
+
+  // Add to history when result is available
+  React.useEffect(() => {
+    if (isOpen && result) {
+      addHistoryEntry({
+        type: 'quick-format',
+        title: `Full Document Quick Format: ${documentName}`,
+        content: result,
+        selectedText: '[Full Document]',
+        selectionData: null,
+        documentName,
+        pageNumber: undefined,
+      });
+    }
+  }, [isOpen, result, documentName, addHistoryEntry]);
 
   const formatResult = result?.analysis || result;
   const content = formatResult?.content || {};

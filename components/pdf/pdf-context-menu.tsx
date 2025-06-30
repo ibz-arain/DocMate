@@ -47,6 +47,9 @@ export function PdfContextMenu({
   const isRightClickMenu = selectedText === "[Right-click menu]";
   const isBoxSelection = selectedText === "[Box Selection]";
   const hasTextSelection = !isRightClickMenu && !isBoxSelection && selectedText.trim().length > 0;
+  
+  // Format options should work for both text and box selections
+  const hasValidSelection = hasTextSelection || isBoxSelection;
 
   const menuItems: Array<{
     id: string;
@@ -58,35 +61,35 @@ export function PdfContextMenu({
   }> = [
     {
       id: 'summarize-popup',
-      label: hasTextSelection ? 'Quick Summarize' : 'Summarize Selection',
+      label: 'Summarize Selection',
       icon: Sparkles,
       onClick: onSummarizePopup,
-      disabled: isRightClickMenu,
-      tooltip: isRightClickMenu ? 'Select text first to summarize' : undefined
+      disabled: !hasValidSelection,
+      tooltip: !hasValidSelection ? 'Select text or an area first to summarize' : undefined
     },
     {
       id: 'quick-format',
-      label: hasTextSelection ? 'Quick Format' : 'Format Selection',
+      label: 'Auto Format',
       icon: Table,
       onClick: onQuickFormat,
-      disabled: isRightClickMenu,
-      tooltip: isRightClickMenu ? 'Select text first to format' : undefined
+      disabled: !hasValidSelection,
+      tooltip: !hasValidSelection ? 'Select text or an area first to format' : undefined
     },
     {
       id: 'template-format',
-      label: hasTextSelection ? 'Template Format' : 'Apply Template',
+      label: 'Apply Template',
       icon: FileCode,
       onClick: onTemplateFormat,
-      disabled: isRightClickMenu,
-      tooltip: isRightClickMenu ? 'Select text first to apply template' : undefined
+      disabled: !hasValidSelection,
+      tooltip: !hasValidSelection ? 'Select text or an area first to apply template' : undefined
     },
     {
       id: 'copy',
-      label: hasTextSelection ? 'Copy' : 'Copy Selection',
+      label: 'Copy',
       icon: Copy,
       onClick: onCopy,
-      disabled: isRightClickMenu,
-      tooltip: isRightClickMenu ? 'Select text first to copy' : undefined
+      disabled: !hasTextSelection, // Copy only works for actual text selections
+      tooltip: !hasTextSelection ? 'Select text first to copy' : undefined
     }
   ];
 

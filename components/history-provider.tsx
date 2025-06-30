@@ -45,7 +45,6 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
         const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
         if (stored) {
           const parsedHistory = JSON.parse(stored);
-          console.log('📚 Context Provider - Loaded history from localStorage:', parsedHistory.length, 'entries');
           setHistory(parsedHistory);
         }
       } catch (error) {
@@ -61,7 +60,6 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
   // Save history to localStorage whenever it changes (except during initial load)
   useEffect(() => {
     if (!isLoading) {
-      console.log('💾 Context Provider - Saving history to localStorage, length:', history.length);
       try {
         localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
       } catch (error) {
@@ -77,14 +75,10 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
       timestamp: Date.now(),
     };
 
-    console.log('🎯 Context Provider - Adding history entry:', newEntry);
-
     setHistory(prev => {
       const updated = [newEntry, ...prev];
-      console.log('📝 Context Provider - Previous history length:', prev.length, 'New length:', updated.length);
       // Keep only the most recent entries
       const trimmed = updated.slice(0, MAX_HISTORY_ENTRIES);
-      console.log('📝 Context Provider - Returning trimmed history with length:', trimmed.length);
       return trimmed;
     });
 
@@ -92,16 +86,13 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
   }, []);
 
   const removeHistoryEntry = useCallback((id: string) => {
-    console.log('🗑️ Context Provider - Removing history entry with id:', id);
     setHistory(prev => {
       const filtered = prev.filter(entry => entry.id !== id);
-      console.log('📝 Context Provider - History after removal:', prev.length, '->', filtered.length, 'entries');
       return filtered;
     });
   }, []);
 
   const clearHistory = useCallback(() => {
-    console.log('🧹 Context Provider - Clearing all history');
     setHistory([]);
     localStorage.removeItem(HISTORY_STORAGE_KEY);
   }, []);

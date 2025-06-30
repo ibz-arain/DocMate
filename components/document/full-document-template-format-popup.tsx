@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useHistory } from '@/components/history-provider';
 
 interface Template {
   id: string;
@@ -53,6 +54,7 @@ export function FullDocumentTemplateFormatPopup({
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const { templates, isLoading: templatesLoading } = useTemplates();
+  const { addHistoryEntry } = useHistory();
 
   // Filter templates based on search query
   const filteredTemplates = templates.filter(template =>
@@ -131,9 +133,20 @@ ${table.fields.map((field: any) => `  - ${field.name} (${field.type}): ${field.d
       }
 
       const data = await res.json();
-      console.log('Full Document Template Format API Response:', data);
       setAnalysisResult(data);
       setIsAnalyzing(false);
+      
+      // Add to history
+      addHistoryEntry({
+        type: 'template-format',
+        title: `Full Document Template: ${template.name} - ${documentName}`,
+        content: data,
+        selectedText: '[Full Document]',
+        selectionData: null,
+        documentName,
+        templateName: template.name,
+        pageNumber: undefined,
+      });
       
       toast({
         title: "Document processed successfully",

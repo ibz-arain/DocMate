@@ -41,10 +41,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { imageData, mimeType = 'image/jpeg', customPrompt, outputFormat } = RequestSchema.parse(body);
 
+    // Handle different MIME types appropriately
+    const isText = mimeType === 'text/plain';
     const isPDF = imageData.startsWith('data:application/pdf') || mimeType === 'application/pdf';
     const fileType = isPDF ? 'application/pdf' : 'image/jpeg';
 
-    let prompt = `Analyze this document and extract information in the following format:\n\n`;
+    let prompt = `${customPrompt}\n\n`;
     
     if (outputFormat) {
       outputFormat.tables.forEach((table, index) => {
@@ -120,14 +122,28 @@ export async function POST(req: NextRequest) {
 6. Store all metadata in the analysis.metadata section, not in the main content`;
     }
 
+    // Build message content based on data type
+    let messageContent: any[];
+    
+    if (isText) {
+      // For text data, decode base64 and include as text
+      const decodedText = atob(imageData);
+      messageContent = [
+        { type: 'text', text: `${prompt}\n\nText to analyze:\n\n${decodedText}` }
+      ];
+    } else {
+      // For image/PDF data, include as file
+      messageContent = [
+        { type: 'text', text: prompt },
+        { type: 'file', data: imageData, mimeType: fileType }
+      ];
+    }
+
     const result = await generateText({
       model: google('gemini-2.0-flash'),
       messages: [{
         role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'file', data: imageData, mimeType: fileType }
-        ]
+        content: messageContent
       }]
     });
 
