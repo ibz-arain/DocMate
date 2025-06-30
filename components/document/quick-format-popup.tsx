@@ -11,24 +11,33 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { useHistory } from "@/hooks/use-history";
 
 interface QuickFormatPopupProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
   selectionData?: any;
+  documentName?: string;
+  currentPageNumber?: number;
+  cachedResult?: any;
 }
 
-export function QuickFormatPopup({ isOpen, onClose, selectedText, selectionData }: QuickFormatPopupProps) {
+export function QuickFormatPopup({ isOpen, onClose, selectedText, selectionData, documentName, currentPageNumber, cachedResult }: QuickFormatPopupProps) {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { addHistoryEntry } = useHistory();
 
-  // Start analysis when popup opens
+  // Start analysis when popup opens or use cached result
   useEffect(() => {
     if (isOpen && selectedText) {
-      performQuickFormat();
+      if (cachedResult) {
+        setAnalysisResult(cachedResult);
+      } else {
+        performQuickFormat();
+      }
     }
-  }, [isOpen, selectedText]);
+  }, [isOpen, selectedText, cachedResult]);
 
   // Reset state when popup closes
   useEffect(() => {
@@ -154,6 +163,18 @@ The goal is to make the information more readable and structured while preservin
 
       const data = await res.json();
       setAnalysisResult(data);
+      
+      // Add to history
+      addHistoryEntry({
+        type: 'quick-format',
+        title: selectedText.length > 50 ? `${selectedText.substring(0, 47)}...` : selectedText,
+        content: data,
+        selectedText,
+        selectionData,
+        documentName,
+        pageNumber: currentPageNumber,
+      });
+      
       setIsAnalyzing(false);
     } catch (error) {
       console.error(error);

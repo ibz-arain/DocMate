@@ -23,6 +23,7 @@ import {
   Table,
   Sparkles,
   Loader2,
+  History,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
@@ -33,6 +34,8 @@ import { DocumentToolbar } from "@/components/document/document-toolbar";
 import { FullDocumentSummarizePopup } from "@/components/document/full-document-summarize-popup";
 import { FullDocumentQuickFormatPopup } from "@/components/document/full-document-quick-format-popup";
 import { FullDocumentTemplateFormatPopup } from "@/components/document/full-document-template-format-popup";
+import { HistoryMiniPopup } from "@/components/document/history-mini-popup";
+import { useHistory } from "@/hooks/use-history";
 import { convertFileToBase64 } from "@/components/document/document-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -47,6 +50,7 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "@/components/ui/use-toast";
 
 export default function DocumentPage() {
+  const { history } = useHistory(); // Add this to track history changes
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfWorkerReady, setPdfWorkerReady] = useState<boolean>(false);
@@ -100,6 +104,11 @@ export default function DocumentPage() {
   const [fullDocSummarizeResult, setFullDocSummarizeResult] = useState<any>(null);
   const [fullDocQuickFormatResult, setFullDocQuickFormatResult] = useState<any>(null);
   const [processingAction, setProcessingAction] = useState<'summarize' | 'quickformat' | null>(null);
+  
+  // History popup state
+  const [showHistoryPopup, setShowHistoryPopup] = useState(false);
+  const [historyPopupPosition, setHistoryPopupPosition] = useState({ top: 0, left: 0 });
+  const historyButtonRef = useRef<HTMLButtonElement>(null);
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -778,6 +787,9 @@ export default function DocumentPage() {
       return;
     }
     
+    // Clear cached results for new analysis
+    setCachedQuickFormatResult(null);
+    
     setQuickFormatSelectedText(selectedText); // Preserve the selected text
     setQuickFormatSelectionData(selectionData); // Preserve the selection data
     clearSelection(); // Close context menu
@@ -805,6 +817,9 @@ export default function DocumentPage() {
       });
       return;
     }
+    
+    // Clear cached results for new analysis
+    setCachedTemplateFormatResult(null);
     
     setTemplateFormatSelectedText(selectedText); // Preserve the selected text
     setTemplateFormatSelectionData(selectionData); // Preserve the selection data
@@ -834,6 +849,9 @@ export default function DocumentPage() {
       });
       return;
     }
+    
+    // Clear cached results for new analysis
+    setCachedSummaryResult(null);
     
     setPopupSelectedText(selectedText); // Preserve the selected text
     setPopupSelectionData(selectionData); // Preserve the selection data
@@ -1002,6 +1020,43 @@ export default function DocumentPage() {
 
   const handleFullDocTemplateFormatStart = () => {
     setShowFullDocTemplateFormatPopup(true);
+  };
+
+  // State for cached results when opening from history
+  const [cachedSummaryResult, setCachedSummaryResult] = useState<any>(null);
+  const [cachedQuickFormatResult, setCachedQuickFormatResult] = useState<any>(null);
+  const [cachedTemplateFormatResult, setCachedTemplateFormatResult] = useState<any>(null);
+
+  // Handle opening history entries in their respective popups
+  const handleOpenHistoryEntry = (entry: any) => {
+    setShowHistoryPopup(false); // Close history popup first
+    
+    if (entry.type === 'summary') {
+      // Create cached summary result format
+      const summaryResult = {
+        success: true,
+        summary: typeof entry.content === 'string' ? entry.content : entry.content?.summary || 'No summary available',
+        originalLength: entry.selectedText.length,
+        summaryLength: typeof entry.content === 'string' ? entry.content.length : (entry.content?.summary || '').length,
+        compressionRatio: Math.round((1 - (typeof entry.content === 'string' ? entry.content.length : (entry.content?.summary || '').length) / entry.selectedText.length) * 100),
+        processedAt: new Date(entry.timestamp).toISOString()
+      };
+      
+      setCachedSummaryResult(summaryResult);
+      setPopupSelectedText(entry.selectedText);
+      setPopupSelectionData(entry.selectionData);
+      setShowSummarizePopup(true);
+    } else if (entry.type === 'quick-format') {
+      setCachedQuickFormatResult(entry.content);
+      setQuickFormatSelectedText(entry.selectedText);
+      setQuickFormatSelectionData(entry.selectionData);
+      setShowQuickFormatPopup(true);
+    } else if (entry.type === 'template-format') {
+      setCachedTemplateFormatResult(entry.content);
+      setTemplateFormatSelectedText(entry.selectedText);
+      setTemplateFormatSelectionData(entry.selectionData);
+      setShowTemplateFormatPopup(true);
+    }
   };
 
   // Document processing functions for toolbar
@@ -1353,6 +1408,27 @@ Focus on making the information easily accessible and well-organized.`;
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [selectedText, menuPos, showQuickFormatPopup, showTemplateFormatPopup]);
+
+  // Click outside to dismiss history popup
+  useEffect(() => {
+    const handleHistoryClickOutside = (e: MouseEvent) => {
+      if (showHistoryPopup) {
+        const target = e.target as Element;
+        // Check if click is outside history popup and history button
+        const historyPopup = target.closest('.z-50');
+        const historyButton = historyButtonRef.current;
+        
+        if (!historyPopup && !historyButton?.contains(target)) {
+          setShowHistoryPopup(false);
+        }
+      }
+    };
+
+    if (showHistoryPopup) {
+      document.addEventListener('mousedown', handleHistoryClickOutside);
+      return () => document.removeEventListener('mousedown', handleHistoryClickOutside);
+    }
+  }, [showHistoryPopup]);
 
   const updateCurrentPageFromScroll = useCallback(() => {
     const container = pdfContainerRef.current;
@@ -1815,6 +1891,38 @@ Focus on making the information easily accessible and well-organized.`;
 
                   <div className="flex-1" />
 
+                  {/* History Button */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 relative"
+                        ref={historyButtonRef}
+                        onClick={() => {
+                          if (!showHistoryPopup && historyButtonRef.current) {
+                            const rect = historyButtonRef.current.getBoundingClientRect();
+                            setHistoryPopupPosition({
+                              top: rect.top, // Keep the button's top position
+                              left: rect.left // Keep the button's left position
+                            });
+                          }
+                          setShowHistoryPopup(!showHistoryPopup);
+                        }}
+                      >
+                        <History className="h-5 w-5" />
+                        {history.length > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                            {history.length > 9 ? '9+' : history.length}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" align="center">
+                      <p>View History ({history.length})</p>
+                    </TooltipContent>
+                  </Tooltip>
+
                   {pdfFile && (
                     <div className="mt-auto pt-2 border-t border-border w-full flex flex-col items-center gap-2">
                       <Tooltip>
@@ -1866,10 +1974,14 @@ Focus on making the information easily accessible and well-organized.`;
             setShowSummarizePopup(false);
             setPopupSelectedText(""); // Clear preserved text when closing
             setPopupSelectionData(null); // Clear preserved data when closing
+            setCachedSummaryResult(null); // Clear cached result
           }}
           selectedText={popupSelectedText}
           selectionData={popupSelectionData}
-        onSummarize={handleSummarizeRequest}
+          documentName={pdfFile?.name}
+          currentPageNumber={pageNumber}
+          cachedResult={cachedSummaryResult}
+          onSummarize={handleSummarizeRequest}
       />
 
       {/* Quick Format Popup */}
@@ -1879,9 +1991,13 @@ Focus on making the information easily accessible and well-organized.`;
             setShowQuickFormatPopup(false);
             setQuickFormatSelectedText(""); // Clear preserved text when closing
             setQuickFormatSelectionData(null); // Clear preserved data when closing
+            setCachedQuickFormatResult(null); // Clear cached result
           }}
           selectedText={quickFormatSelectedText}
           selectionData={quickFormatSelectionData}
+          documentName={pdfFile?.name}
+          currentPageNumber={pageNumber}
+          cachedResult={cachedQuickFormatResult}
       />
 
       {/* Template Format Popup */}
@@ -1891,9 +2007,13 @@ Focus on making the information easily accessible and well-organized.`;
             setShowTemplateFormatPopup(false);
             setTemplateFormatSelectedText(""); // Clear preserved text when closing
             setTemplateFormatSelectionData(null); // Clear preserved data when closing
+            setCachedTemplateFormatResult(null); // Clear cached result
           }}
           selectedText={templateFormatSelectedText}
           selectionData={templateFormatSelectionData}
+          documentName={pdfFile?.name}
+          currentPageNumber={pageNumber}
+          cachedResult={cachedTemplateFormatResult}
       />
 
       {/* Full Document Popups */}
@@ -1924,6 +2044,14 @@ Focus on making the information easily accessible and well-organized.`;
         }}
         pdfFile={pdfFile}
         documentName={pdfFile?.name}
+      />
+
+      {/* History Mini Popup */}
+      <HistoryMiniPopup
+        isOpen={showHistoryPopup}
+        onClose={() => setShowHistoryPopup(false)}
+        position={historyPopupPosition}
+        onOpenEntry={handleOpenHistoryEntry}
       />
 
       {/* CSS for animated gradient background */}

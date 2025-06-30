@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useHistory } from '@/hooks/use-history';
 
 // Component to render formatted text content
 const FormattedContent = ({ content }: { content: string }) => {
@@ -102,6 +103,9 @@ interface SummarizePopupProps {
   selectedText: string;
   selectionData?: any;
   onSummarize: (text: string) => Promise<SummaryResult | null>;
+  documentName?: string;
+  currentPageNumber?: number;
+  cachedResult?: SummaryResult | null;
 }
 
 interface SummaryResult {
@@ -113,18 +117,25 @@ interface SummaryResult {
   processedAt: string;
 }
 
-export function SummarizePopup({ isOpen, onClose, selectedText, selectionData, onSummarize }: SummarizePopupProps) {
+export function SummarizePopup({ isOpen, onClose, selectedText, selectionData, onSummarize, documentName, currentPageNumber, cachedResult }: SummarizePopupProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SummaryResult | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { addHistoryEntry } = useHistory();
 
-  // Auto-summarize when popup opens
+  // Auto-summarize when popup opens or use cached result
   useEffect(() => {
     if (isOpen && selectedText.trim() && !result && !isLoading) {
-      handleSummarize();
+      if (cachedResult) {
+        console.log('📋 Using cached result, NOT adding to history');
+        setResult(cachedResult);
+      } else {
+        console.log('🔍 No cached result, will analyze and add to history');
+        handleSummarize();
+      }
     }
-  }, [isOpen, selectedText]);
+  }, [isOpen, selectedText, cachedResult]);
 
   const handleSummarize = async () => {
     if (!selectedText.trim()) return;
@@ -238,11 +249,35 @@ The goal is to create a summary that demonstrates understanding of the content a
         };
         
         setResult(summaryResult);
+        
+        // Add to history
+        console.log('🔄 Summarize popup: Adding to history...');
+        addHistoryEntry({
+          type: 'summary',
+          title: selectedText.length > 50 ? `${selectedText.substring(0, 47)}...` : selectedText,
+          content: summaryResult.summary,
+          selectedText,
+          selectionData,
+          documentName,
+          pageNumber: currentPageNumber,
+        });
       } else {
         // Handle text selection using the original method
         const summaryResult = await onSummarize(selectedText);
         if (summaryResult) {
           setResult(summaryResult);
+          
+          // Add to history
+          console.log('🔄 Summarize popup: Adding to history (text method)...');
+          addHistoryEntry({
+            type: 'summary',
+            title: selectedText.length > 50 ? `${selectedText.substring(0, 47)}...` : selectedText,
+            content: summaryResult.summary,
+            selectedText,
+            selectionData,
+            documentName,
+            pageNumber: currentPageNumber,
+          });
         }
       }
     } catch (error) {

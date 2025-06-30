@@ -16,12 +16,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
+import { useHistory } from "@/hooks/use-history";
 
 interface TemplateFormatPopupProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
   selectionData?: any;
+  documentName?: string;
+  currentPageNumber?: number;
+  cachedResult?: any;
 }
 
 interface Template {
@@ -32,27 +36,31 @@ interface Template {
   updated_at: string;
 }
 
-export function TemplateFormatPopup({ isOpen, onClose, selectedText, selectionData }: TemplateFormatPopupProps) {
+export function TemplateFormatPopup({ isOpen, onClose, selectedText, selectionData, documentName, currentPageNumber, cachedResult }: TemplateFormatPopupProps) {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const { templates, isLoading: templatesLoading } = useTemplates();
+  const { addHistoryEntry } = useHistory();
 
   // Filter templates based on search query
   const filteredTemplates = templates.filter(template =>
     template.name.toLowerCase().includes(templateSearchQuery.toLowerCase())
   );
 
-  // Reset state when popup closes
+  // Reset state when popup closes or use cached result when opening
   useEffect(() => {
     if (!isOpen) {
       setAnalysisResult(null);
       setIsAnalyzing(false);
       setSelectedTemplate(null);
       setTemplateSearchQuery("");
+    } else if (isOpen && cachedResult) {
+      // When opening from history with cached result, show it directly
+      setAnalysisResult(cachedResult);
     }
-  }, [isOpen]);
+  }, [isOpen, cachedResult]);
 
   const performTemplateFormat = async (template: Template) => {
     if (!selectedText || !template) return;
@@ -160,6 +168,19 @@ ${table.fields.map((field: any) => `  - ${field.name} (${field.type}): ${field.d
       const data = await res.json();
       console.log('Template Format API Response:', data);
       setAnalysisResult(data);
+      
+      // Add to history
+      addHistoryEntry({
+        type: 'template-format',
+        title: selectedText.length > 50 ? `${selectedText.substring(0, 47)}...` : selectedText,
+        content: data,
+        selectedText,
+        selectionData,
+        documentName,
+        templateName: template.name,
+        pageNumber: currentPageNumber,
+      });
+      
       setIsAnalyzing(false);
     } catch (error) {
       console.error(error);
