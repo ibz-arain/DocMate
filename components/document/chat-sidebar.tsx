@@ -104,6 +104,9 @@ export function ChatSidebar({
   const [chatHistory, setChatHistory] = useState<ChatConversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
 
+  // Track if we loaded a conversation from history to avoid double initialization
+  const loadedFromHistoryRef = useRef(false);
+
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -172,6 +175,7 @@ export function ChatSidebar({
   const loadConversation = (conversation: ChatConversation) => {
     setMessages(conversation.messages);
     setCurrentConversationId(conversation.id);
+    loadedFromHistoryRef.current = true;
   };
 
   const startNewConversation = () => {
@@ -180,23 +184,74 @@ export function ChatSidebar({
       saveCurrentConversation();
     }
     
+    // Generate new conversation id immediately so it can be persisted
+    const newId = `chat-${Date.now()}`;
+
     // Reset for new conversation
     setMessages([]);
-    setCurrentConversationId(null);
+    setCurrentConversationId(newId);
     setInputMessage("");
     setIsLoading(false);
     setCopiedMessageId(null);
+    loadedFromHistoryRef.current = false;
+
+    // Persist active id immediately
+    try {
+      localStorage.setItem('docmate-active-chat-id', newId);
+    } catch {/* ignore */}
     
-    // Initialize new chat
+    // Initialize new chat (welcome message will also be saved to history)
     setTimeout(() => {
       initializeChat();
-    }, 100);
+    }, 50);
   };
+
+  // Persist active conversation ID whenever it changes
+  useEffect(() => {
+    if (currentConversationId) {
+      try {
+        localStorage.setItem('docmate-active-chat-id', currentConversationId);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [currentConversationId]);
 
   // Load chat history on component mount
   useEffect(() => {
     const history = loadChatHistory();
     setChatHistory(history);
+
+    // Try to restore previously active conversation first
+    let restored = false;
+    try {
+      const activeId = localStorage.getItem('docmate-active-chat-id');
+      if (activeId) {
+        const conv = history.find(c => c.id === activeId);
+        if (conv) {
+          setMessages(conv.messages);
+          setCurrentConversationId(conv.id);
+          loadedFromHistoryRef.current = true;
+          restored = true;
+        }
+      }
+    } catch {/* ignore */}
+
+    // If not restored and there is history, attempt to match context or fall back to newest
+    if (!restored && history.length > 0 && messages.length === 0) {
+      const matchingConversation = history.find(c => {
+        const ctx = c.context || {};
+        return ctx.selectedText === selectedText && ctx.documentName === documentName;
+      });
+
+      const conversationToLoad = matchingConversation || history[0];
+
+      if (conversationToLoad) {
+        setMessages(conversationToLoad.messages);
+        setCurrentConversationId(conversationToLoad.id);
+        loadedFromHistoryRef.current = true;
+      }
+    }
   }, []);
 
   // Scroll to bottom when messages change
@@ -213,12 +268,12 @@ export function ChatSidebar({
     }
   }, [isOpen]);
 
-  // Initialize chat when sidebar opens
+  // Initialize chat when sidebar opens (only if no history was loaded)
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && messages.length === 0 && !loadedFromHistoryRef.current) {
       initializeChat();
     }
-  }, [isOpen, selectedText]);
+  }, [isOpen, selectedText, messages.length]);
 
   // Notify parent of width changes
   useEffect(() => {
@@ -234,7 +289,7 @@ export function ChatSidebar({
     let welcomeMessage = "";
     
     if (isFullDocument) {
-      welcomeMessage = `Hello! I'm ready to help you analyze and discuss your document${documentName ? ` "${documentName}"` : ''}. You can ask me questions about the content, request summaries, or get insights about any part of the document.
+      welcomeMessage = `Hello! I'm ready to help you analyze and discuss your document${documentName ? ` \"${documentName}\"` : ''}. You can ask me questions about the content, request summaries, or get insights about any part of the document.
 
 What would you like to know?`;
     } else if (isBoxSelection) {
@@ -243,9 +298,7 @@ What would you like to know?`;
 What would you like to know about this selection?`;
     } else {
       const preview = selectedText.length > 100 ? `${selectedText.substring(0, 97)}...` : selectedText;
-      welcomeMessage = `I can help you analyze this selected text: "${preview}"
-
-Feel free to ask me questions about it, request analysis, or discuss any aspect of this content.`;
+      welcomeMessage = `I can help you analyze this selected text: \"${preview}\"\n\nFeel free to ask me questions about it, request analysis, or discuss any aspect of this content.`;
     }
 
     const welcomeMsg: ChatMessage = {
@@ -255,7 +308,30 @@ Feel free to ask me questions about it, request analysis, or discuss any aspect 
       timestamp: new Date()
     };
 
-    setMessages([welcomeMsg]);
+    const newMessages = [welcomeMsg];
+    setMessages(newMessages);
+
+    // Persist this new conversation to history immediately
+    const convId = currentConversationId || `chat-${Date.now()}`;
+    const conversation: ChatConversation = {
+      id: convId,
+      title: 'Conversation',
+      messages: newMessages,
+      context: {
+        selectedText,
+        selectionData,
+        documentName,
+        pageNumber: currentPageNumber,
+      },
+      timestamp: new Date()
+    };
+
+    const updatedHistory = [conversation, ...chatHistory.filter(c => c.id !== convId)].slice(0, 20);
+    setChatHistory(updatedHistory);
+    saveChatHistory(updatedHistory);
+    if (!currentConversationId) {
+      setCurrentConversationId(convId);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -433,6 +509,7 @@ Feel free to ask me questions about it, request analysis, or discuss any aspect 
     setIsLoading(false);
     setCopiedMessageId(null);
     setCurrentConversationId(null);
+    loadedFromHistoryRef.current = false;
   };
 
   const handleClose = () => {
@@ -440,8 +517,9 @@ Feel free to ask me questions about it, request analysis, or discuss any aspect 
     if (messages.length > 0) {
       saveCurrentConversation();
     }
-    
-    resetChat();
+
+    // Do NOT reset chat state here to preserve the current conversation when the sidebar is reopened
+    // resetChat();
     onClose();
   };
 
@@ -454,6 +532,11 @@ Feel free to ask me questions about it, request analysis, or discuss any aspect 
     saveChatHistory(updated);
     if (currentConversationId === id) {
       startNewConversation();
+
+      // Remove active chat id if it was deleted
+      try {
+        localStorage.removeItem('docmate-active-chat-id');
+      } catch {/* ignore */}
     }
   };
 

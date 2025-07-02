@@ -902,12 +902,10 @@ export default function DocumentPage() {
     }
 
     if (showChatSidebar) {
-      // Close chat if it's already open
+      // Simply close the sidebar but keep the current chat context intact
       setShowChatSidebar(false);
-      setChatSelectedText("");
-      setChatSelectionData(null);
     } else {
-      // Open chat with full document
+      // Always set the context to full document when opening via this control
       setChatSelectedText('[Full Document]');
       setChatSelectionData(null);
       setShowChatSidebar(true);
@@ -1893,8 +1891,7 @@ Focus on making the information easily accessible and well-organized.`;
                   isOpen={showChatSidebar}
                   onClose={() => {
                     setShowChatSidebar(false);
-                    setChatSelectedText(""); // Clear preserved text when closing
-                    setChatSelectionData(null); // Clear preserved data when closing
+                    // Removed state clearing to preserve current chat context when sidebar is reopened
                   }}
                   selectedText={chatSelectedText}
                   selectionData={chatSelectionData}
