@@ -118,6 +118,8 @@ export default function DocumentPage() {
   const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [chatSelectedText, setChatSelectedText] = useState("");
   const [chatSelectionData, setChatSelectionData] = useState<any>(null);
+  // Text that should be pre-filled into the chat input (but not sent)
+  const [chatPrefillText, setChatPrefillText] = useState<string>("");
   const [chatSidebarWidth, setChatSidebarWidth] = useState(0);
 
   const dropTexts = [
@@ -887,6 +889,7 @@ export default function DocumentPage() {
     
     setChatSelectedText(selectedText); // Preserve the selected text
     setChatSelectionData(selectionData); // Preserve the selection data
+    setChatPrefillText(selectedText); // Pre-fill the chat input with the selection
     clearSelection(); // Close context menu
     setShowChatSidebar(true);
   };
@@ -908,6 +911,7 @@ export default function DocumentPage() {
       // Always set the context to full document when opening via this control
       setChatSelectedText('[Full Document]');
       setChatSelectionData(null);
+      setChatPrefillText(''); // No specific selection to pre-fill
       setShowChatSidebar(true);
     }
   };
@@ -1899,6 +1903,7 @@ Focus on making the information easily accessible and well-organized.`;
                   currentPageNumber={pageNumber}
                   pdfFile={pdfFile}
                   onWidthChange={setChatSidebarWidth}
+                  prefillInput={chatPrefillText}
                 />
               </div>
             )}

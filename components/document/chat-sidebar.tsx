@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -53,10 +53,11 @@ const FormattedContent = ({ content }: { content: string }) => {
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'context';
   content: string;
   timestamp: Date;
   isTyping?: boolean;
+  linesCount?: number; // Only for context messages
 }
 
 interface ChatConversation {
@@ -81,6 +82,12 @@ interface ChatSidebarProps {
   currentPageNumber?: number;
   pdfFile?: File | null;
   onWidthChange?: (width: number) => void;
+  /**
+   * Optional text to pre-populate the chat input. This should not trigger
+   * message sending – it merely lets the user review or edit before hitting
+   * enter.
+   */
+  prefillInput?: string;
 }
 
 export function ChatSidebar({ 
@@ -91,7 +98,8 @@ export function ChatSidebar({
   documentName,
   currentPageNumber,
   pdfFile,
-  onWidthChange
+  onWidthChange,
+  prefillInput
 }: ChatSidebarProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -109,8 +117,17 @@ export function ChatSidebar({
 
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Context snippets (text selections stacked before sending)
+  interface Snippet {
+    id: string;
+    text: string;
+    linesCount: number;
+  }
+
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
 
   // Chat history management functions
   const saveChatHistory = (conversations: ChatConversation[]) => {
@@ -325,6 +342,49 @@ export function ChatSidebar({
     }
   }, [isOpen, sidebarWidth, onWidthChange]);
 
+  // Function to estimate line numbers from selection
+  const getLineNumbers = (text: string): { start: number; end: number } | null => {
+    if (!text || text === '[Full Document]' || text === '[Box Selection]') return null;
+    // Rough estimation - count newlines before selection in the full document
+    const lines = text.split('\n');
+    return {
+      start: 1, // We'll need actual line numbers from PDF selection
+      end: lines.length
+    };
+  };
+
+  // Get a preview of the selected text
+  const getSelectionPreview = (text: string): string => {
+    if (!text || text === '[Full Document]' || text === '[Box Selection]') return '';
+    const maxLength = 100;
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+  };
+
+  // Effect: when a new text selection arrives via props, add to snippets list (avoid duplicates)
+  useEffect(() => {
+    if (
+      isOpen &&
+      selectedText &&
+      selectedText !== '[Full Document]' &&
+      selectedText !== '[Box Selection]'
+    ) {
+      setSnippets(prev => {
+        if (prev.some(s => s.text === selectedText)) return prev;
+        const newSnippet: Snippet = {
+          id: `snip-${Date.now()}`,
+          text: selectedText,
+          linesCount: selectedText.split('\n').length,
+        };
+        return [...prev, newSnippet];
+      });
+    }
+  }, [selectedText, isOpen]);
+
+  // Remove snippet helper
+  const removeSnippet = (id: string) => {
+    setSnippets(prev => prev.filter(s => s.id !== id));
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -335,9 +395,21 @@ export function ChatSidebar({
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    // Convert current snippets into context messages
+    const contextMessages: ChatMessage[] = snippets.map((snip, idx) => ({
+      id: `context-${Date.now()}-${idx}`,
+      role: 'context',
+      content: snip.text,
+      timestamp: new Date(),
+      linesCount: snip.linesCount,
+    }));
+
+    setMessages(prev => [...prev, ...contextMessages, userMessage]);
     setInputMessage("");
     setIsLoading(true);
+
+    // Clear snippets after attaching them to the conversation
+    setSnippets([]);
 
     try {
       const response = await sendChatMessage(inputMessage.trim());
@@ -402,8 +474,14 @@ export function ChatSidebar({
     let contextType: 'full_document' | 'text_selection' | 'box_selection';
     let contextData = "";
     let mimeType = "text/plain";
+    let additionalContext = null;
 
-    if (isFullDocument && pdfFile) {
+    if (snippets.length > 0) {
+      // Build context from snippets list
+      contextType = 'text_selection';
+      contextData = snippets.map(s => s.text).join('\n\n');
+      mimeType = 'text/plain';
+    } else if (isFullDocument && pdfFile) {
       // For full document chat, convert PDF to base64
       const base64Data = await convertFileToBase64(pdfFile);
       if (!base64Data) {
@@ -418,10 +496,22 @@ export function ChatSidebar({
       mimeType = 'image/png';
       contextType = 'box_selection';
     } else if (selectedText && selectedText !== '[Full Document]') {
-      // For text selection, we don't need to convert to base64 for the new API
+      // For text selection, prioritize the selected text but keep full document as context
       contextData = selectedText;
       mimeType = 'text/plain';
       contextType = 'text_selection';
+      if (pdfFile) {
+        // Add full document as additional context but mark it as lower priority
+        const base64Data = await convertFileToBase64(pdfFile);
+        if (base64Data) {
+          additionalContext = {
+            type: 'full_document',
+            data: base64Data.split(',')[1] || base64Data,
+            mimeType: pdfFile.type || 'application/pdf',
+            priority: 'low'
+          };
+        }
+      }
     } else {
       throw new Error('No content available for chat');
     }
@@ -437,6 +527,8 @@ export function ChatSidebar({
           mimeType,
           documentName,
           selectedText: contextType === 'text_selection' ? selectedText : undefined,
+          lineNumbers: getLineNumbers(selectedText),
+          additionalContext
         }
       })
     });
@@ -651,22 +743,42 @@ export function ChatSidebar({
                     key={message.id}
                     className={cn(
                       "relative group",
-                      message.role === 'user' ? "pl-4" : "pl-4"
+                      message.role === 'assistant' ? 'pl-4' : 'pl-4'
                     )}
                   >
-                    <div className={cn(
-                      "absolute left-0 top-0 w-1 h-full rounded-full",
-                      message.role === 'assistant' ? "bg-primary" : "bg-muted"
-                    )} />
+                    <div
+                      className={cn(
+                        'absolute left-0 top-0 w-1 h-full rounded-full',
+                        message.role === 'assistant'
+                          ? 'bg-primary'
+                          : message.role === 'context'
+                          ? 'bg-primary/50'
+                          : 'bg-muted'
+                      )}
+                    />
                     
                     <div className="flex items-start">
-                      <div className={cn(
-                        "flex-1 min-w-0 space-y-1 rounded-lg px-4 py-2",
-                        message.role === 'assistant' ? "bg-primary/5" : "bg-muted/10"
-                      )}>
+                      <div
+                        className={cn(
+                          'flex-1 min-w-0 space-y-1 rounded-lg px-4 py-2',
+                          message.role === 'assistant'
+                            ? 'bg-primary/5'
+                            : message.role === 'context'
+                            ? 'bg-primary/10'
+                            : 'bg-muted/10'
+                        )}
+                      >
                         <div className="text-sm">
                           {message.role === 'assistant' ? (
                             <FormattedContent content={message.content} />
+                          ) : message.role === 'context' ? (
+                            <div className="inline-flex items-center gap-1.5 text-primary text-xs">
+                              <FileText className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate max-w-[200px]">{message.content.replace(/\n/g, ' ')}</span>
+                              {message.linesCount && (
+                                <span className="opacity-70">• {message.linesCount} lines</span>
+                              )}
+                            </div>
                           ) : (
                             <p>{message.content}</p>
                           )}
@@ -725,32 +837,61 @@ export function ChatSidebar({
             </ScrollArea>
 
             {/* Input Area */}
-            <div className="p-3 border-t">
-              <div className="relative flex items-center gap-2">
-                <Input
-                  ref={inputRef}
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Message..."
-                  disabled={isLoading}
-                  className="pr-20 text-sm bg-transparent border-[1.5px] rounded-lg h-9 border-primary/20 focus-visible:border-primary/40 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!inputMessage.trim() || isLoading}
-                  className={cn(
-                    "absolute right-1 h-7 rounded-md px-2.5",
-                    isLoading ? "bg-muted" : "bg-primary/10 hover:bg-primary/20 text-primary"
-                  )}
-                  variant="ghost"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  )}
-                </Button>
+            <div className="border-t relative">
+              {/* Citation header - only show for text selections */}
+              {snippets.length > 0 && (
+                <div className="px-3 py-2.5 border-b border-border/50 space-y-2 max-h-40 overflow-y-auto">
+                  {snippets.map(snippet => (
+                    <div key={snippet.id} className="inline-flex items-center border border-primary/20 rounded-md py-1.5 px-2 bg-primary/5 max-w-full group text-xs text-primary">
+                      <FileText className="h-3 w-3 flex-shrink-0 mr-1" />
+                      <span className="flex-1 truncate font-medium">
+                        {snippet.text.replace(/\n/g, ' ')}
+                      </span>
+                      <span className="flex-shrink-0 opacity-70 ml-1">• {snippet.linesCount} lines</span>
+                      <button
+                        onClick={() => removeSnippet(snippet.id)}
+                        className="flex-shrink-0 ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove snippet"
+                      >
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="p-3">
+                <div className="relative">
+                  <Textarea
+                    ref={inputRef}
+                    value={inputMessage}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                      setInputMessage(e.target.value);
+                      // Auto-adjust height
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; // Max 8 lines (approx)
+                    }}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Message..."
+                    disabled={isLoading}
+                    className="pr-12 text-sm bg-transparent border-[1.5px] rounded-lg min-h-[36px] max-h-[200px] resize-none overflow-y-auto border-primary/20 focus-visible:border-primary/40 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
+                    rows={1}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!inputMessage.trim() || isLoading}
+                    className={cn(
+                      "absolute right-1 bottom-1 h-7 rounded-md px-2.5",
+                      isLoading ? "bg-muted" : "bg-primary/10 hover:bg-primary/20 text-primary"
+                    )}
+                    variant="ghost"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
