@@ -8,7 +8,8 @@ import {
   FileCode, 
   Copy,
   Loader2,
-  Sparkles
+  Sparkles,
+  MessageCircle
 } from 'lucide-react';
 import {
   Tooltip,
@@ -29,6 +30,7 @@ interface PdfContextMenuProps {
   onSummarizePopup: () => void;
   onQuickFormat: () => void;
   onTemplateFormat: () => void;
+  onChatPopup: () => void;
   onCopy: () => void;
   onClose: () => void;
 }
@@ -40,6 +42,7 @@ export function PdfContextMenu({
   onSummarizePopup,
   onQuickFormat,
   onTemplateFormat,
+  onChatPopup,
   onCopy,
   onClose
 }: PdfContextMenuProps) {
@@ -82,6 +85,14 @@ export function PdfContextMenu({
       onClick: onTemplateFormat,
       disabled: !hasValidSelection,
       tooltip: !hasValidSelection ? 'Select text or an area first to apply template' : undefined
+    },
+    {
+      id: 'chat',
+      label: 'Chat with AI',
+      icon: MessageCircle,
+      onClick: onChatPopup,
+      disabled: !hasValidSelection,
+      tooltip: !hasValidSelection ? 'Select text or an area first to chat about it' : undefined
     },
     {
       id: 'copy',

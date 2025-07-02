@@ -24,6 +24,7 @@ import {
   Sparkles,
   Loader2,
   History,
+  MessageCircle,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
@@ -35,6 +36,7 @@ import { FullDocumentSummarizePopup } from "@/components/document/full-document-
 import { FullDocumentQuickFormatPopup } from "@/components/document/full-document-quick-format-popup";
 import { FullDocumentTemplateFormatPopup } from "@/components/document/full-document-template-format-popup";
 import { HistoryMiniPopup } from "@/components/document/history-mini-popup";
+import { ChatSidebar } from "@/components/document/chat-sidebar";
 import { useHistory } from "@/hooks/use-history";
 import { convertFileToBase64 } from "@/components/document/document-utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -111,6 +113,12 @@ export default function DocumentPage() {
   const [showHistoryPopup, setShowHistoryPopup] = useState(false);
   const [historyPopupPosition, setHistoryPopupPosition] = useState({ top: 0, left: 0 });
   const historyButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Chat sidebar state
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
+  const [chatSelectedText, setChatSelectedText] = useState("");
+  const [chatSelectionData, setChatSelectionData] = useState<any>(null);
+  const [chatSidebarWidth, setChatSidebarWidth] = useState(0);
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -229,6 +237,7 @@ export default function DocumentPage() {
     setShowFullDocQuickFormatPopup(false);
     setShowFullDocTemplateFormatPopup(false);
     setShowHistoryPopup(false);
+    setShowChatSidebar(false);
     
     // Clear cached results
     setCachedSummaryResult(null);
@@ -856,6 +865,54 @@ export default function DocumentPage() {
     clearSelection(); // Close context menu
     setShowTemplateFormatPopup(true);
   };
+
+  // Chat handlers
+  const handleChatPopup = () => {
+    const isRightClickMenu = selectedText === '[Right-click menu]';
+    const isBoxSelection = selectedText === '[Box Selection]';
+    
+    if (isRightClickMenu) {
+      // No toast needed - user can see no text is selected
+      return;
+    }
+    
+    if (isBoxSelection && !selectionData?.base64Image) {
+      toast({
+        title: "Box Selection Error",
+        description: "Unable to extract image from selection area.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setChatSelectedText(selectedText); // Preserve the selected text
+    setChatSelectionData(selectionData); // Preserve the selection data
+    clearSelection(); // Close context menu
+    setShowChatSidebar(true);
+  };
+
+  const handleFullDocumentChat = () => {
+    if (!pdfFile) {
+      toast({
+        title: "No document loaded",
+        description: "Please load a PDF document first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (showChatSidebar) {
+      // Close chat if it's already open
+      setShowChatSidebar(false);
+      setChatSelectedText("");
+      setChatSelectionData(null);
+    } else {
+      // Open chat with full document
+      setChatSelectedText('[Full Document]');
+      setChatSelectionData(null);
+      setShowChatSidebar(true);
+    }
+  };
   
   // Summarize popup handlers
   const handleSummarizePopup = () => {
@@ -1072,6 +1129,11 @@ export default function DocumentPage() {
       setTemplateFormatSelectedText(entry.selectedText);
       setTemplateFormatSelectionData(entry.selectionData);
       setShowTemplateFormatPopup(true);
+    } else if (entry.type === 'chat') {
+      // For chat entries, open a new chat with the same context
+      setChatSelectedText(entry.selectedText);
+      setChatSelectionData(entry.selectionData);
+      setShowChatSidebar(true);
     }
   };
 
@@ -1541,7 +1603,12 @@ Focus on making the information easily accessible and well-organized.`;
         <CustomSidebar selectedType="document" />
         
         <main className="flex-1 flex flex-col overflow-hidden p-6">
-          <div className="grid gap-6 h-full lg:grid-cols-[1fr_auto] grid-cols-1">
+          <div className={cn(
+            "grid gap-6 h-full transition-all duration-300",
+            showChatSidebar 
+              ? "lg:grid-cols-[1fr_400px_auto] grid-cols-1" 
+              : "lg:grid-cols-[1fr_auto] grid-cols-1"
+          )}>
             {/* PDF Viewer Card with Floating Controls */}
             <Card className="shadow-sm overflow-hidden relative" ref={pdfContainerRef}>
               <CardContent className="p-0 h-full overflow-auto">
@@ -1805,6 +1872,7 @@ Focus on making the information easily accessible and well-organized.`;
                             onSummarizePopup={handleSummarizePopup}
                             onQuickFormat={handleQuickFormat}
                             onTemplateFormat={handleTemplateFormat}
+                            onChatPopup={handleChatPopup}
                             onCopy={handleCopy}
                             onClose={clearSelection}
                           />
@@ -1817,6 +1885,26 @@ Focus on making the information easily accessible and well-organized.`;
                 )}
               </CardContent>
             </Card>
+
+            {/* Chat Sidebar - Only show when chat is active */}
+            {showChatSidebar && (
+              <div className="flex flex-col h-full overflow-hidden flex-shrink-0">
+                <ChatSidebar
+                  isOpen={showChatSidebar}
+                  onClose={() => {
+                    setShowChatSidebar(false);
+                    setChatSelectedText(""); // Clear preserved text when closing
+                    setChatSelectionData(null); // Clear preserved data when closing
+                  }}
+                  selectedText={chatSelectedText}
+                  selectionData={chatSelectionData}
+                  documentName={pdfFile?.name}
+                  currentPageNumber={pageNumber}
+                  pdfFile={pdfFile}
+                  onWidthChange={setChatSidebarWidth}
+                />
+              </div>
+            )}
 
             {/* Tools Sidebar Card */}
             <Card className="shadow-sm flex flex-col h-full w-[60px] pt-2">
@@ -1901,6 +1989,23 @@ Focus on making the information easily accessible and well-organized.`;
                         </TooltipTrigger>
                         <TooltipContent side="left" align="center">
                           <p>Apply Template</p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={showChatSidebar ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-10 w-10"
+                            onClick={handleFullDocumentChat}
+                            disabled={isAnalyzing || isLoading}
+                          >
+                            <MessageCircle className="h-5 w-5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="center">
+                          <p>{showChatSidebar ? 'Close Chat' : 'Chat with Document'}</p>
                         </TooltipContent>
                       </Tooltip>
                     </>
@@ -2072,6 +2177,8 @@ Focus on making the information easily accessible and well-organized.`;
         position={historyPopupPosition}
         onOpenEntry={handleOpenHistoryEntry}
       />
+
+
 
       {/* CSS for animated gradient background */}
       <style jsx global>{`
