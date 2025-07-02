@@ -196,23 +196,10 @@ export function ChatSidebar({
   };
 
   const buildWelcomeMessage = (): ChatMessage => {
-    const isBoxSelection = selectedText === '[Box Selection]';
-    const isFullDocument = !selectedText || selectedText === '[Full Document]';
-
-    let content = "";
-    if (isFullDocument) {
-      content = `Hello! I'm ready to help you analyze and discuss your document${documentName ? ` \"${documentName}\"` : ''}. You can ask me questions about the content, request summaries, or get insights about any part of the document.
-\nWhat would you like to know?`;
-    } else if (isBoxSelection) {
-      content = `I can see you've selected a visual area from your document. I can analyze the content in this selection including text, charts, tables, or any other visual elements.\n\nWhat would you like to know about this selection?`;
-    } else {
-      const preview = selectedText.length > 100 ? `${selectedText.substring(0, 97)}...` : selectedText;
-      content = `I can help you analyze this selected text: \"${preview}\"\n\nFeel free to ask me questions about it, request analysis, or discuss any aspect of this content.`;
-    }
     return {
       id: 'welcome',
       role: 'assistant',
-      content,
+      content: "Hello! How can I help you today?",
       timestamp: new Date(),
     };
   };
@@ -477,12 +464,17 @@ export function ChatSidebar({
     let additionalContext = null;
 
     if (snippets.length > 0) {
-      // Build context from snippets list
+      // Build context from snippets list – user explicitly wants to use these selections
       contextType = 'text_selection';
       contextData = snippets.map(s => s.text).join('\n\n');
       mimeType = 'text/plain';
-    } else if (isFullDocument && pdfFile) {
-      // For full document chat, convert PDF to base64
+    } else if (isBoxSelection && selectionData?.base64Image) {
+      // Box selection (image) context
+      contextData = selectionData.base64Image.split(',')[1] || selectionData.base64Image;
+      mimeType = 'image/png';
+      contextType = 'box_selection';
+    } else if (pdfFile) {
+      // Default/fallback to the full document whenever no explicit snippets are present
       const base64Data = await convertFileToBase64(pdfFile);
       if (!base64Data) {
         throw new Error('Failed to process document');
@@ -490,28 +482,11 @@ export function ChatSidebar({
       contextData = base64Data.split(',')[1] || base64Data;
       mimeType = pdfFile.type || 'application/pdf';
       contextType = 'full_document';
-    } else if (isBoxSelection && selectionData?.base64Image) {
-      // For box selection, use the captured image
-      contextData = selectionData.base64Image.split(',')[1] || selectionData.base64Image;
-      mimeType = 'image/png';
-      contextType = 'box_selection';
     } else if (selectedText && selectedText !== '[Full Document]') {
-      // For text selection, prioritize the selected text but keep full document as context
+      // As a last resort (e.g. no PDF file provided) fall back to plain-text selection
       contextData = selectedText;
       mimeType = 'text/plain';
       contextType = 'text_selection';
-      if (pdfFile) {
-        // Add full document as additional context but mark it as lower priority
-        const base64Data = await convertFileToBase64(pdfFile);
-        if (base64Data) {
-          additionalContext = {
-            type: 'full_document',
-            data: base64Data.split(',')[1] || base64Data,
-            mimeType: pdfFile.type || 'application/pdf',
-            priority: 'low'
-          };
-        }
-      }
     } else {
       throw new Error('No content available for chat');
     }
