@@ -146,7 +146,7 @@ export function ChatSidebar({
     if (messages.length === 0) return;
 
     const firstUserMsg = messages.find(m => m.role === 'user')?.content;
-    const conversationTitle = firstUserMsg ? (firstUserMsg.slice(0, 30) + (firstUserMsg.length > 30 ? '...' : '')) : 'Conversation';
+    const conversationTitle = firstUserMsg ? (firstUserMsg.slice(0, 30) + (firstUserMsg.length > 30 ? '...' : '')) : 'New Chat';
     
     const conversation: ChatConversation = {
       id: currentConversationId || `chat-${Date.now()}`,
@@ -178,32 +178,73 @@ export function ChatSidebar({
     loadedFromHistoryRef.current = true;
   };
 
+  const buildWelcomeMessage = (): ChatMessage => {
+    const isBoxSelection = selectedText === '[Box Selection]';
+    const isFullDocument = !selectedText || selectedText === '[Full Document]';
+
+    let content = "";
+    if (isFullDocument) {
+      content = `Hello! I'm ready to help you analyze and discuss your document${documentName ? ` \"${documentName}\"` : ''}. You can ask me questions about the content, request summaries, or get insights about any part of the document.
+\nWhat would you like to know?`;
+    } else if (isBoxSelection) {
+      content = `I can see you've selected a visual area from your document. I can analyze the content in this selection including text, charts, tables, or any other visual elements.\n\nWhat would you like to know about this selection?`;
+    } else {
+      const preview = selectedText.length > 100 ? `${selectedText.substring(0, 97)}...` : selectedText;
+      content = `I can help you analyze this selected text: \"${preview}\"\n\nFeel free to ask me questions about it, request analysis, or discuss any aspect of this content.`;
+    }
+    return {
+      id: 'welcome',
+      role: 'assistant',
+      content,
+      timestamp: new Date(),
+    };
+  };
+
   const startNewConversation = () => {
     // Save current conversation if it has messages
     if (messages.length > 0) {
       saveCurrentConversation();
     }
-    
-    // Generate new conversation id immediately so it can be persisted
-    const newId = `chat-${Date.now()}`;
 
-    // Reset for new conversation
-    setMessages([]);
-    setCurrentConversationId(newId);
-    setInputMessage("");
+    // Check if a placeholder 'New Chat' (no user messages) already exists
+    const existingEmpty = chatHistory.find(c => c.title === 'New Chat' && c.messages.every(m => m.role !== 'user'));
+    if (existingEmpty) {
+      loadConversation(existingEmpty);
+      return;
+    }
+
+    const newConversationId = `chat-${Date.now()}`;
+    const welcomeMsg = buildWelcomeMessage();
+
+    // Create and persist immediately
+    const newConversation: ChatConversation = {
+      id: newConversationId,
+      title: 'New Chat',
+      messages: [welcomeMsg],
+      context: {
+        selectedText,
+        selectionData,
+        documentName,
+        pageNumber: currentPageNumber,
+      },
+      timestamp: new Date(),
+    };
+
+    const updatedHistory = [newConversation, ...chatHistory].slice(0, 20);
+    setChatHistory(updatedHistory);
+    saveChatHistory(updatedHistory);
+
+    // Persist active id
+    try {
+      localStorage.setItem('docmate-active-chat-id', newConversationId);
+    } catch {/* ignore */}
+
+    setCurrentConversationId(newConversationId);
+    setMessages([welcomeMsg]);
+    setInputMessage('');
     setIsLoading(false);
     setCopiedMessageId(null);
-    loadedFromHistoryRef.current = false;
-
-    // Persist active id immediately
-    try {
-      localStorage.setItem('docmate-active-chat-id', newId);
-    } catch {/* ignore */}
-    
-    // Initialize new chat (welcome message will also be saved to history)
-    setTimeout(() => {
-      initializeChat();
-    }, 50);
+    loadedFromHistoryRef.current = true; // Already loaded now
   };
 
   // Persist active conversation ID whenever it changes
@@ -271,7 +312,9 @@ export function ChatSidebar({
   // Initialize chat when sidebar opens (only if no history was loaded)
   useEffect(() => {
     if (isOpen && messages.length === 0 && !loadedFromHistoryRef.current) {
-      initializeChat();
+      // Build a welcome-only conversation but don't save to history here (will be saved when user starts chatting)
+      const welcomeMsg = buildWelcomeMessage();
+      setMessages([welcomeMsg]);
     }
   }, [isOpen, selectedText, messages.length]);
 
@@ -281,58 +324,6 @@ export function ChatSidebar({
       onWidthChange(isOpen ? sidebarWidth : 0);
     }
   }, [isOpen, sidebarWidth, onWidthChange]);
-
-  const initializeChat = () => {
-    const isBoxSelection = selectedText === '[Box Selection]';
-    const isFullDocument = !selectedText || selectedText === '[Full Document]';
-    
-    let welcomeMessage = "";
-    
-    if (isFullDocument) {
-      welcomeMessage = `Hello! I'm ready to help you analyze and discuss your document${documentName ? ` \"${documentName}\"` : ''}. You can ask me questions about the content, request summaries, or get insights about any part of the document.
-
-What would you like to know?`;
-    } else if (isBoxSelection) {
-      welcomeMessage = `I can see you've selected a visual area from your document. I can analyze the content in this selection including text, charts, tables, or any other visual elements.
-
-What would you like to know about this selection?`;
-    } else {
-      const preview = selectedText.length > 100 ? `${selectedText.substring(0, 97)}...` : selectedText;
-      welcomeMessage = `I can help you analyze this selected text: \"${preview}\"\n\nFeel free to ask me questions about it, request analysis, or discuss any aspect of this content.`;
-    }
-
-    const welcomeMsg: ChatMessage = {
-      id: 'welcome',
-      role: 'assistant',
-      content: welcomeMessage,
-      timestamp: new Date()
-    };
-
-    const newMessages = [welcomeMsg];
-    setMessages(newMessages);
-
-    // Persist this new conversation to history immediately
-    const convId = currentConversationId || `chat-${Date.now()}`;
-    const conversation: ChatConversation = {
-      id: convId,
-      title: 'Conversation',
-      messages: newMessages,
-      context: {
-        selectedText,
-        selectionData,
-        documentName,
-        pageNumber: currentPageNumber,
-      },
-      timestamp: new Date()
-    };
-
-    const updatedHistory = [conversation, ...chatHistory.filter(c => c.id !== convId)].slice(0, 20);
-    setChatHistory(updatedHistory);
-    saveChatHistory(updatedHistory);
-    if (!currentConversationId) {
-      setCurrentConversationId(convId);
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -526,17 +517,29 @@ What would you like to know about this selection?`;
   const isBoxSelection = selectedText === '[Box Selection]';
   const isFullDocument = !selectedText || selectedText === '[Full Document]';
 
+  const resetToNewChat = () => {
+    setMessages([]);
+    setCurrentConversationId(null);
+    setInputMessage("");
+    setIsLoading(false);
+    setCopiedMessageId(null);
+    loadedFromHistoryRef.current = false;
+    try {
+      localStorage.removeItem('docmate-active-chat-id');
+    } catch {/* ignore */}
+    // Create fresh welcome message directly
+    const welcomeMsg = buildWelcomeMessage();
+    setMessages([welcomeMsg]);
+  };
+
   const deleteConversation = (id: string) => {
     const updated = chatHistory.filter(c => c.id !== id);
     setChatHistory(updated);
     saveChatHistory(updated);
     if (currentConversationId === id) {
-      startNewConversation();
-
-      // Remove active chat id if it was deleted
-      try {
-        localStorage.removeItem('docmate-active-chat-id');
-      } catch {/* ignore */}
+      // If user deletes the chat they are currently in, reset to a fresh chat **without**
+      // saving the soon-to-be-deleted conversation back into history.
+      resetToNewChat();
     }
   };
 
