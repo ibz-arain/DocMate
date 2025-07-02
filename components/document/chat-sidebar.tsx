@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   MessageCircle, 
   Send, 
@@ -37,16 +37,74 @@ import {
 } from "@/components/ui/tooltip"
 
 const FormattedContent = ({ content }: { content: string }) => {
+  const html = useMemo(() => {
+    let html = content;
+
+    // Code blocks  ```code```
+    html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
+      const escaped = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<pre class="rounded-md p-3 bg-primary/5 overflow-x-auto font-mono text-[13px]"><code class="text-primary/90">${escaped}</code></pre>`;
+    });
+
+    // Simple Markdown-style tables (must run early so subsequent replacements don't break the pipe chars)
+    html = html.replace(/(?:^|\n)((?:[^\n|]*\|[^\n]*\n)+)/g, (match) => {
+      const rows = match.trim().split('\n').map(r => r.trim()).filter(Boolean);
+      if (rows.length < 2 || !rows[0].includes('|')) return match;
+      const makeCells = (row: string, Tag: 'td' | 'th') =>
+        row.trim().replace(/^\||\|$/g, '').split('|').map(cell => `<${Tag} class="border px-2 py-1">${cell.trim()}</${Tag}>`).join('');
+      const headerRow = rows[0];
+      let bodyStart = 1;
+      if (/^([\s:-]*\|[\s:-]*)+$/.test(rows[1])) bodyStart = 2;
+      const thead = `<thead><tr>${makeCells(headerRow, 'th')}</tr></thead>`;
+      const tbodyRows = rows.slice(bodyStart).map(r => `<tr>${makeCells(r, 'td')}</tr>`).join('');
+      return `\n<table class="border-collapse text-sm my-2">${thead}<tbody>${tbodyRows}</tbody></table>\n`;
+    });
+
+    // Bullet lists (-, *, •)  – must run before bold/italic replacement so leading * doesn't get interpreted as italic
+    html = html.replace(/(?:^|\n)(?:[ \t]*[-*\u2022]\s+.+(?:\n[ \t]*[-*\u2022]\s+.+)*)/g, (block) => {
+      const lines = block.trim().split(/\n+/).map(l => l.trim());
+      if (lines.length === 0) return block;
+      const items = lines
+        .map(l => l.replace(/^[-*\u2022]\s+/, ''))
+        .map(text => `<li class="mb-1">${text}</li>`)
+        .join('');
+      return `\n<ul class="list-disc list-inside my-2">${items}</ul>`;
+    });
+
+    // Numbered lists (1. item, 2. item)
+    html = html.replace(/(?:^|\n)(?:[ \t]*\d+\.\s+.+(?:\n[ \t]*\d+\.\s+.+)*)/g, (block) => {
+      const lines = block.trim().split(/\n+/).map(l => l.trim());
+      if (lines.length === 0) return block;
+      const items = lines
+        .map(l => l.replace(/^\d+\.\s+/, ''))
+        .map(text => `<li class="mb-1">${text}</li>`)
+        .join('');
+      return `\n<ol class="list-decimal list-inside my-2">${items}</ol>`;
+    });
+
+    // Blockquotes (> )
+    html = html.replace(/^>\s?(.*)$/gm, '<blockquote class="border-l-2 border-primary pl-4 py-2 pr-3 my-3 bg-primary/5 rounded-r-lg italic text-primary/90">$1</blockquote>');
+
+    // Horizontal rules (*** or ---)
+    html = html.replace(/^[\s]*([-*]{3,})[\s]*$/gm, '<hr class="my-4 border-t border-border" />');
+
+    // Bold, Italic, Inline code (now safe – list markers already converted)
+    html = html
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // italics only when *word* is on same line to avoid stray asterisks
+      .replace(/\*(?!\s)([^\n*]+?)\*(?!\S)/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Line breaks for remaining newlines
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
+  }, [content]);
+
   return (
-    <div 
+    <div
       className="prose prose-sm max-w-none dark:prose-invert"
-      dangerouslySetInnerHTML={{ 
-        __html: content
-          .replace(/\n/g, '<br>')
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/`(.*?)`/g, '<code>$1</code>')
-      }} 
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   );
 };
