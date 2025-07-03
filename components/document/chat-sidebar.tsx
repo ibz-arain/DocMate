@@ -14,7 +14,8 @@ import {
   Clock,
   Plus,
   X as XIcon,
-  ArrowUp
+  ArrowUp,
+  Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -163,6 +164,10 @@ export function ChatSidebar({
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+  // Editing state
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editedContent, setEditedContent] = useState<string>("");
 
   const [sidebarWidth] = useState(400);
   
@@ -430,6 +435,91 @@ export function ChatSidebar({
     setSnippets(prev => prev.filter(s => s.id !== id));
   };
 
+  // ----- Message Editing Helpers -----
+  const startEditingMessage = (messageId: string, currentContent: string) => {
+    setEditingMessageId(messageId);
+    setEditedContent(currentContent);
+  };
+
+  const cancelEditing = () => {
+    setEditingMessageId(null);
+    setEditedContent("");
+  };
+
+  const confirmEditMessage = async () => {
+    if (!editingMessageId) return;
+
+    const idx = messages.findIndex(m => m.id === editingMessageId);
+    if (idx === -1) return;
+
+    const updatedUserMessage: ChatMessage = { ...messages[idx], content: editedContent };
+    const trimmedMessages = [...messages.slice(0, idx), updatedUserMessage];
+
+    setMessages(trimmedMessages);
+    setIsLoading(true);
+    setEditingMessageId(null);
+    setEditedContent("");
+
+    // Collect any previous snippet context messages up to this point
+    const priorSnippetTexts = messages.slice(0, idx).filter(m=>m.role==='context').map(m=>m.content);
+
+    try {
+      const response = await sendChatMessage(editedContent, trimmedMessages, priorSnippetTexts);
+
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: response,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => {
+        const newMessages = [...prev, assistantMessage];
+
+        // Save conversation after edit
+        setTimeout(() => {
+          const firstUserMsg = newMessages.find(m => m.role === 'user')?.content;
+          const conversationTitle = firstUserMsg ? (firstUserMsg.slice(0, 30) + (firstUserMsg.length > 30 ? '...' : '')) : 'Conversation';
+
+          const conversation: ChatConversation = {
+            id: currentConversationId || `chat-${Date.now()}`,
+            title: conversationTitle,
+            messages: newMessages,
+            context: {
+              selectedText,
+              selectionData,
+              documentName,
+              pageNumber: currentPageNumber,
+            },
+            timestamp: new Date()
+          };
+
+          const updatedHistory = chatHistory.filter(c => c.id !== conversation.id);
+          updatedHistory.unshift(conversation);
+          const trimmedHistory = updatedHistory.slice(0, 20);
+
+          setChatHistory(trimmedHistory);
+          saveChatHistory(trimmedHistory);
+          if (!currentConversationId) {
+            setCurrentConversationId(conversation.id);
+          }
+        }, 100);
+
+        return newMessages;
+      });
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast({
+        title: 'Chat Error',
+        description: error instanceof Error ? error.message : 'Failed to get response. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -512,7 +602,11 @@ export function ChatSidebar({
     }
   };
 
-  async function sendChatMessage(message: string): Promise<string> {
+  async function sendChatMessage(
+    message: string,
+    messagesOverride?: ChatMessage[],
+    snippetOverride?: string[]
+  ): Promise<string> {
     const isBoxSelection = selectedText === '[Box Selection]';
     const isFullDocument = !selectedText || selectedText === '[Full Document]';
     
@@ -521,10 +615,12 @@ export function ChatSidebar({
     let mimeType = "text/plain";
     let additionalContext = null;
 
-    if (snippets.length > 0) {
+    const effectiveSnippets = snippetOverride && snippetOverride.length > 0 ? snippetOverride : snippets.map(s=>s.text);
+
+    if (effectiveSnippets.length > 0) {
       // Build context from snippets list – user explicitly wants to use these selections
       contextType = 'text_selection';
-      contextData = snippets.map(s => s.text).join('\n\n');
+      contextData = effectiveSnippets.join('\n\n');
       mimeType = 'text/plain';
     } else if (isBoxSelection && selectionData?.base64Image) {
       // Box selection (image) context
@@ -554,7 +650,7 @@ export function ChatSidebar({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
-        messages: messages.map(msg => ({
+        messages: (messagesOverride || messages).map(msg => ({
           role: msg.role,
           content: msg.content,
           timestamp: msg.timestamp.toISOString()
@@ -793,9 +889,9 @@ export function ChatSidebar({
                       className={cn(
                         'absolute left-0 top-0 w-1 h-full rounded-full',
                         message.role === 'assistant'
-                          ? 'bg-primary'
-                          : message.role === 'context'
                           ? 'bg-primary/50'
+                          : message.role === 'context'
+                          ? 'bg-primary/10'
                           : 'bg-muted'
                       )}
                     />
@@ -822,6 +918,13 @@ export function ChatSidebar({
                                 <span className="opacity-70">• {message.linesCount} lines</span>
                               )}
                             </div>
+                          ) : editingMessageId === message.id ? (
+                            <Textarea
+                              value={editedContent}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditedContent(e.target.value)}
+                              rows={2}
+                              className="w-full text-sm"
+                            />
                           ) : (
                             <p>{message.content}</p>
                           )}
@@ -837,20 +940,54 @@ export function ChatSidebar({
                               variant="ghost"
                               size="sm"
                               onClick={() => handleCopyMessage(message.id, message.content)}
-                              className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-primary"
                             >
                               {copiedMessageId === message.id ? (
                                 <>
-                                  <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                                  <span className="text-green-500">Copied</span>
+                                  <CheckCircle className="h-3 w-3 mr-1 text-primary" />
+                                  <span className="text-primary">Copied</span>
                                 </>
                               ) : (
                                 <>
-                                  <Copy className="h-3 w-3 mr-1" />
-                                  Copy
+                                  <Copy className="h-3 w-3 mr-1 text-primary" />
+                                  <span className="text-primary">Copy</span>
                                 </>
                               )}
                             </Button>
+                          )}
+
+                          {/* Edit controls for user messages */}
+                          {message.role === 'user' && (
+                            editingMessageId === message.id ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={confirmEditMessage}
+                                  className="h-7 px-2 text-primary"
+                                >
+                                  <CheckCircle className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={cancelEditing}
+                                  className="h-7 px-2 text-muted-foreground"
+                                >
+                                  <XIcon className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startEditingMessage(message.id, message.content)}
+                                className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-primary"
+                              >
+                                <Pencil className="h-3 w-3 mr-1" />
+                                Edit
+                              </Button>
+                            )
                           )}
                         </div>
                       </div>
