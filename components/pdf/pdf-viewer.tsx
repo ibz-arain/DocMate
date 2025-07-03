@@ -230,9 +230,17 @@ export function PdfViewer({
   useEffect(() => {
     if (selectionMode !== 'box') return;
     
+    const container = containerRef.current;
+    if (!container) return;
+    
     const handleMouseDown = (e: MouseEvent) => {
       if (!containerRef.current) return;
       if (e.button !== 0) return; // Only left click
+      
+      // Only handle mouse down events that start within the PDF container
+      const target = e.target as Element;
+      if (!container.contains(target)) return;
+      
       e.preventDefault(); // Prevent text selection
       
       // Find which page
@@ -411,16 +419,17 @@ export function PdfViewer({
       // If no box selection exists, do nothing (no menu)
     };
     
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('contextmenu', handleRightClick);
+    // Attach event listeners to the container instead of the entire document
+    container.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove); // Keep global for drag tracking
+    document.addEventListener('mouseup', handleMouseUp); // Keep global for completing selections
+    container.addEventListener('contextmenu', handleRightClick);
     
     return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
+      container.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('contextmenu', handleRightClick);
+      container.removeEventListener('contextmenu', handleRightClick);
     };
   }, [selectionMode, isBoxSelecting, boxStart, currentBoxSelection, persistentSelection, onSelection]);
 

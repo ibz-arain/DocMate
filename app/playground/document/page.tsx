@@ -88,6 +88,7 @@ export default function DocumentPage() {
   const lastCursorRef = useRef<{x:number;y:number}|null>(null);
   const scrollStartPositionRef = useRef<{x: number; y: number} | null>(null);
   const lastSelectionWasOutsidePdf = useRef<boolean>(false);
+  const lastBoxSelectionWasOutsidePdf = useRef<boolean>(false);
   
   // Summarize popup state
   const [showSummarizePopup, setShowSummarizePopup] = useState(false);
@@ -665,8 +666,13 @@ export default function DocumentPage() {
       }
     }
     
-    // Don't show context menu if the last selection was outside PDF
+    // Don't show context menu if the last text selection was outside PDF
     if (lastSelectionWasOutsidePdf.current) {
+      return;
+    }
+    
+    // Don't show context menu if the last box selection attempt was outside PDF
+    if (text === '[Box Selection]' && lastBoxSelectionWasOutsidePdf.current) {
       return;
     }
     
@@ -1424,13 +1430,15 @@ Focus on making the information easily accessible and well-organized.`;
       // Store global coordinates for context menu positioning
       lastCursorRef.current = {x:e.clientX,y:e.clientY};
       
-      // Reset the external selection flag when clicking in PDF area
+      // Reset the external selection flags when clicking in PDF area
       const pdfContainer = pdfContainerRef.current;
       if (pdfContainer && pdfContainer.contains(e.target as Element)) {
         const selection = window.getSelection();
         if (!selection || selection.toString().trim() === '') {
           lastSelectionWasOutsidePdf.current = false;
         }
+        // Reset box selection flag when clicking inside PDF
+        lastBoxSelectionWasOutsidePdf.current = false;
       }
     };
     
@@ -1438,6 +1446,20 @@ Focus on making the information easily accessible and well-organized.`;
       // Update cursor position during selection
       if(e.buttons > 0) { // Only during drag
         lastCursorRef.current = {x:e.clientX,y:e.clientY};
+      }
+    };
+    
+    const handleGlobalMouseDown = (e: MouseEvent) => {
+      // Check if box selection mode is active and user clicks outside PDF
+      if (selectedTool === 'box' && pdfUrl) {
+        const pdfContainer = pdfContainerRef.current;
+        if (!pdfContainer) return;
+        
+        const target = e.target as Element;
+        if (!pdfContainer.contains(target)) {
+          // User tried to start box selection outside PDF area
+          lastBoxSelectionWasOutsidePdf.current = true;
+        }
       }
     };
     
@@ -1562,15 +1584,17 @@ Focus on making the information easily accessible and well-organized.`;
     
     window.addEventListener('mouseup',handleUp);
     window.addEventListener('mousemove',handleMove);
+    window.addEventListener('mousedown', handleGlobalMouseDown);
     window.addEventListener('contextmenu', handleRightClick);
     document.addEventListener('selectionchange', handleSelectionChange);
     return ()=>{
       window.removeEventListener('mouseup',handleUp);
       window.removeEventListener('mousemove',handleMove);
+      window.removeEventListener('mousedown', handleGlobalMouseDown);
       window.removeEventListener('contextmenu', handleRightClick);
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  },[pdfUrl, selectedText, menuPos]);
+  },[pdfUrl, selectedText, menuPos, selectedTool]);
 
   // Click outside to dismiss context menu
   useEffect(() => {
@@ -1928,8 +1952,8 @@ Focus on making the information easily accessible and well-organized.`;
                               transition={{ duration: 0.2, ease: "easeOut" }}
                               className="bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md text-sm whitespace-nowrap"
                             >
-                              {selectedTool === 'box' ? 'Drag a box to capture content' : 
-                               selectedTool === 'text' ? 'Select text to capture content' :
+                              {selectedTool === 'box' ? 'Drag a box within the PDF to capture content' : 
+                               selectedTool === 'text' ? 'Select text within the PDF to capture content' :
                                'Select a tool from the sidebar to capture content'}
                             </motion.div>
                           </div>
