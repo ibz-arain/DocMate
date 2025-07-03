@@ -909,7 +909,7 @@ export function PdfViewer({
                 data-page-index={index}
                 className={`relative mb-4 transition-all duration-200 ${
                   index + 1 === currentPage 
-                    ? 'ring-2 ring-primary shadow-lg' 
+                    ? 'shadow-lg' 
                     : 'shadow-md hover:shadow-lg'
                 }`}
               >
