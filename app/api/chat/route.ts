@@ -23,11 +23,17 @@ const ChatRequestSchema = z.object({
   message: z.string().min(1, 'Message cannot be empty'),
   messages: z.array(MessageSchema).optional(), // Previous conversation history
   context: z.object({
-    type: z.enum(['full_document', 'text_selection', 'box_selection']),
+    type: z.enum(['full_document', 'text_selection', 'box_selection', 'mixed_selection']),
     data: z.string(), // base64 encoded content
     mimeType: z.string(),
     documentName: z.string().optional(),
     selectedText: z.string().optional(),
+    // New field for multiple selections
+    selections: z.array(z.object({
+      type: z.enum(['text', 'image']),
+      data: z.string(),
+      mimeType: z.string().optional(),
+    })).optional(),
   })
 });
 
@@ -60,21 +66,25 @@ Guidelines:
         break;
 
       case 'text_selection':
-        systemPrompt = `You are a helpful AI assistant having a conversation about a specific text selection from a document.
+        const hasCurrentSelections = context.selections && context.selections.length > 0;
+        const textContent = hasCurrentSelections 
+          ? `the ${context.selections!.length} text selection${context.selections!.length > 1 ? 's' : ''} provided with this message`
+          : `a specific text selection from a document: "${context.selectedText}"`;
+        
+        systemPrompt = `You are a helpful AI assistant having a natural conversation about ${textContent}.
 
 Your role:
-- Focus specifically on the selected text: "${context.selectedText}"
-- Answer questions about this text selection
-- Remember and reference previous parts of our conversation
-- Provide analysis, explanations, or insights about the selected content
-- Be conversational and helpful
+- Focus on the text content provided with the current message
+- Respond naturally as if you're discussing documents with a colleague
+- Provide insights, analysis, or explanations in a conversational way
+- Remember previous conversation context when it's relevant
 
 Guidelines:
-- Keep responses focused on the selected text
-- Be natural and conversational
-- Reference previous conversation when relevant
-- Provide context when helpful
-- Ask follow-up questions if appropriate`;
+- Respond naturally and conversationally, not formally or structured
+- Don't explicitly call out "Selection 1", "Selection 2" etc. - just discuss the content
+- Integrate insights from multiple texts seamlessly in your response
+- Use natural language like "both texts mention..." or "I notice these passages..."
+- Be helpful and engaging without being overly analytical or structured`;
         break;
 
       case 'box_selection':
@@ -93,6 +103,25 @@ Guidelines:
 - Reference previous conversation when relevant
 - Provide analysis of charts, graphs, tables if present
 - Be natural and conversational`;
+        break;
+
+      case 'mixed_selection':
+        const selectionCount = context.selections ? context.selections.length : 0;
+        systemPrompt = `You are a helpful AI assistant having a natural conversation about ${selectionCount} pieces of content provided with the current message, which may include both text passages and visual elements.
+
+Your role:
+- Discuss the content provided with the current message naturally
+- Respond as if you're having a conversation with a colleague about documents
+- Connect insights between different pieces of content in a natural way
+- Remember previous conversation context when it's relevant
+
+Guidelines:
+- Respond naturally and conversationally, not formally or structured
+- Don't explicitly label content as "Selection 1", "Selection 2" etc.
+- Weave insights from multiple pieces together naturally
+- Use conversational language like "these passages show..." or "looking at this content..."
+- Be helpful and engaging without being overly analytical or formal
+- Focus on what the user is asking about the content`;
         break;
     }
 
@@ -124,6 +153,28 @@ Guidelines:
             messageContent = [
               { type: 'text', text: msg.content }
             ];
+          } else if (context.type === 'mixed_selection' && context.selections) {
+            // For mixed selections, include all selections with the user message
+            messageContent = [
+              { type: 'text', text: `${msg.content}\n\nHere's the content I'm referring to:` }
+            ];
+            
+            // Add all selections naturally
+            for (let i = 0; i < context.selections.length; i++) {
+              const selection = context.selections[i];
+              if (selection.type === 'text') {
+                messageContent.push({ 
+                  type: 'text', 
+                  text: `${selection.data}` 
+                });
+              } else if (selection.type === 'image') {
+                messageContent.push({ 
+                  type: 'file', 
+                  data: selection.data, 
+                  mimeType: selection.mimeType || 'image/png' 
+                });
+              }
+            }
           } else {
             // For documents and box selections, include the file/image with the first user message
             messageContent = [
@@ -148,10 +199,33 @@ Guidelines:
     }
 
     // Add the current user message
-    if (!documentContentIncluded) {
-      // If this is the first message in the conversation, include document context
-      let messageContent: any[];
+    let messageContent: any[];
+    
+    // Always check for selections first, regardless of documentContentIncluded
+    if (context.selections && context.selections.length > 0) {
+      // Include all selections with the current user message
+      messageContent = [
+        { type: 'text', text: `${message}\n\nHere's the content I'm referring to:` }
+      ];
       
+      // Add all selections naturally
+      for (let i = 0; i < context.selections.length; i++) {
+        const selection = context.selections[i];
+        if (selection.type === 'text') {
+          messageContent.push({ 
+            type: 'text', 
+            text: `${selection.data}` 
+          });
+        } else if (selection.type === 'image') {
+          messageContent.push({ 
+            type: 'file', 
+            data: selection.data, 
+            mimeType: selection.mimeType || 'image/png' 
+          });
+        }
+      }
+    } else if (!documentContentIncluded) {
+      // Fall back to legacy context handling for first message only
       if (context.type === 'text_selection') {
         messageContent = [
           { type: 'text', text: message }
@@ -162,18 +236,17 @@ Guidelines:
           { type: 'file', data: context.data, mimeType: context.mimeType }
         ];
       }
-      
-      conversationMessages.push({
-        role: 'user',
-        content: messageContent
-      });
     } else {
-      // Just add the text for subsequent messages
-      conversationMessages.push({
-        role: 'user',
-        content: message
-      });
+      // Just add the text for subsequent messages with no selections
+      messageContent = [
+        { type: 'text', text: message }
+      ];
     }
+    
+    conversationMessages.push({
+      role: 'user',
+      content: messageContent
+    });
 
     // Generate response using AI with full conversation context
     const result = await generateText({

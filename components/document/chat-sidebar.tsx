@@ -6,6 +6,7 @@ import {
   Send, 
   Copy, 
   CheckCircle, 
+  Check,
   Loader2,
   FileText,
   Image as ImageIcon,
@@ -183,11 +184,16 @@ export function ChatSidebar({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // Context snippets (text selections stacked before sending)
+  // Context snippets: can be either textual selections or image (box) selections
   interface Snippet {
     id: string;
-    text: string;
-    linesCount: number;
+    type: 'text' | 'image';
+    /** For text snippets */
+    text?: string;
+    /** For image snippets – full base64 data URI (e.g. "data:image/png;base64,...") */
+    base64?: string;
+    /** Number of lines contained in the text snippet (text only) */
+    linesCount?: number;
   }
 
   const [snippets, setSnippets] = useState<Snippet[]>([]);
@@ -410,25 +416,46 @@ export function ChatSidebar({
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
 
-  // Effect: when a new text selection arrives via props, add to snippets list (avoid duplicates)
+  // Effect: when a new selection (text or box) arrives via props, add to snippets list (avoid duplicates)
   useEffect(() => {
+    if (!isOpen) return;
+
+    // Handle textual selections
     if (
-      isOpen &&
       selectedText &&
       selectedText !== '[Full Document]' &&
       selectedText !== '[Box Selection]'
     ) {
       setSnippets(prev => {
-        if (prev.some(s => s.text === selectedText)) return prev;
+        if (prev.some(s => s.type === 'text' && s.text === selectedText)) return prev;
         const newSnippet: Snippet = {
           id: `snip-${Date.now()}`,
+          type: 'text',
           text: selectedText,
           linesCount: selectedText.split('\n').length,
         };
         return [...prev, newSnippet];
       });
+      return; // text selection handled
     }
-  }, [selectedText, isOpen]);
+
+    // Handle box (image) selections
+    if (selectedText === '[Box Selection]' && selectionData?.base64Image) {
+      const base64Img: string = selectionData.base64Image.startsWith('data:')
+        ? selectionData.base64Image
+        : `data:image/png;base64,${selectionData.base64Image}`;
+
+      setSnippets(prev => {
+        if (prev.some(s => s.type === 'image' && s.base64 === base64Img)) return prev;
+        const newSnippet: Snippet = {
+          id: `snip-${Date.now()}`,
+          type: 'image',
+          base64: base64Img,
+        };
+        return [...prev, newSnippet];
+      });
+    }
+  }, [selectedText, selectionData, isOpen]);
 
   // Remove snippet helper
   const removeSnippet = (id: string) => {
@@ -464,7 +491,7 @@ export function ChatSidebar({
     const priorSnippetTexts = messages.slice(0, idx).filter(m=>m.role==='context').map(m=>m.content);
 
     try {
-      const response = await sendChatMessage(editedContent, trimmedMessages, priorSnippetTexts);
+      const response = await sendChatMessage(editedContent, trimmedMessages, priorSnippetTexts, []);
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -531,23 +558,35 @@ export function ChatSidebar({
     };
 
     // Convert current snippets into context messages
-    const contextMessages: ChatMessage[] = snippets.map((snip, idx) => ({
-      id: `context-${Date.now()}-${idx}`,
-      role: 'context',
-      content: snip.text,
-      timestamp: new Date(),
-      linesCount: snip.linesCount,
-    }));
+    const contextMessages: ChatMessage[] = snippets.map((snip, idx) => {
+      if (snip.type === 'text') {
+        return {
+          id: `context-${Date.now()}-${idx}`,
+          role: 'context',
+          content: snip.text || '',
+          timestamp: new Date(),
+          linesCount: snip.linesCount,
+        } as ChatMessage;
+      }
+      // image snippet
+      return {
+        id: `context-${Date.now()}-${idx}`,
+        role: 'context',
+        content: snip.base64 || '', // store the data URI for display
+        timestamp: new Date(),
+      } as ChatMessage;
+    });
 
     setMessages(prev => [...prev, ...contextMessages, userMessage]);
     setInputMessage("");
     setIsLoading(true);
 
-    // Clear snippets after attaching them to the conversation
-    setSnippets([]);
-
     try {
-      const response = await sendChatMessage(inputMessage.trim());
+      // Pass the current snippets to sendChatMessage BEFORE clearing them
+      const response = await sendChatMessage(inputMessage.trim(), undefined, undefined, [...snippets]);
+      
+      // Clear snippets only after successful message sending
+      setSnippets([]);
       
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -605,28 +644,77 @@ export function ChatSidebar({
   async function sendChatMessage(
     message: string,
     messagesOverride?: ChatMessage[],
-    snippetOverride?: string[]
+    snippetOverride?: string[],
+    currentSnippets?: Snippet[]
   ): Promise<string> {
     const isBoxSelection = selectedText === '[Box Selection]';
     const isFullDocument = !selectedText || selectedText === '[Full Document]';
     
-    let contextType: 'full_document' | 'text_selection' | 'box_selection';
+    let contextType: 'full_document' | 'text_selection' | 'box_selection' | 'mixed_selection';
     let contextData = "";
     let mimeType = "text/plain";
     let additionalContext = null;
 
-    const effectiveSnippets = snippetOverride && snippetOverride.length > 0 ? snippetOverride : snippets.map(s=>s.text);
+    // Separate snippets by type for more nuanced handling
+    const snippetsToUse = currentSnippets || snippets;
+    const textSnippets = snippetsToUse.filter(s => s.type === 'text');
+    const imageSnippets = snippetsToUse.filter(s => s.type === 'image');
 
-    if (effectiveSnippets.length > 0) {
-      // Build context from snippets list – user explicitly wants to use these selections
-      contextType = 'text_selection';
-      contextData = effectiveSnippets.join('\n\n');
+    // If snippetOverride is provided (during message edit), prioritise that for text snippets
+    const overrideText = snippetOverride && snippetOverride.length > 0 ? snippetOverride : textSnippets.map(s => s.text as string);
+
+    // Determine context type and prepare selections
+    let selections: Array<{type: 'text' | 'image', data: string, mimeType?: string}> = [];
+
+    if (overrideText.length > 0 && imageSnippets.length > 0) {
+      // Mixed selections: both text and images
+      contextType = 'mixed_selection';
+      
+      // Add text selections
+      overrideText.forEach(text => {
+        selections.push({ type: 'text', data: text, mimeType: 'text/plain' });
+      });
+      
+      // Add image selections
+      imageSnippets.forEach(imgSnippet => {
+        const imgDataUri = imgSnippet.base64 || '';
+        const base64Data = imgDataUri.split(',')[1] || imgDataUri;
+        selections.push({ type: 'image', data: base64Data, mimeType: 'image/png' });
+      });
+      
+      // For mixed selection, use first text as main context data
+      contextData = overrideText[0];
       mimeType = 'text/plain';
-    } else if (isBoxSelection && selectionData?.base64Image) {
-      // Box selection (image) context
-      contextData = selectionData.base64Image.split(',')[1] || selectionData.base64Image;
-      mimeType = 'image/png';
-      contextType = 'box_selection';
+    } else if (overrideText.length > 0) {
+      // Text-only selections
+      contextType = 'text_selection';
+      contextData = overrideText.join('\n\n');
+      mimeType = 'text/plain';
+      
+      // Still populate selections for consistency
+      overrideText.forEach(text => {
+        selections.push({ type: 'text', data: text, mimeType: 'text/plain' });
+      });
+    } else if (imageSnippets.length > 0) {
+      // Image-only selections
+      if (imageSnippets.length === 1) {
+        contextType = 'box_selection';
+        const imgDataUri = imageSnippets[0].base64 || '';
+        contextData = imgDataUri.split(',')[1] || imgDataUri;
+        mimeType = 'image/png';
+      } else {
+        // Multiple images - treat as mixed selection
+        contextType = 'mixed_selection';
+        const firstImg = imageSnippets[0].base64 || '';
+        contextData = firstImg.split(',')[1] || firstImg;
+        mimeType = 'image/png';
+        
+        imageSnippets.forEach(imgSnippet => {
+          const imgDataUri = imgSnippet.base64 || '';
+          const base64Data = imgDataUri.split(',')[1] || imgDataUri;
+          selections.push({ type: 'image', data: base64Data, mimeType: 'image/png' });
+        });
+      }
     } else if (pdfFile) {
       // Default/fallback to the full document whenever no explicit snippets are present
       const base64Data = await convertFileToBase64(pdfFile);
@@ -645,26 +733,29 @@ export function ChatSidebar({
       throw new Error('No content available for chat');
     }
 
+    const requestBody = {
+      message,
+      messages: (messagesOverride || messages).map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      })),
+      context: {
+        type: contextType,
+        data: contextData,
+        mimeType,
+        documentName,
+        selectedText: contextType === 'text_selection' ? selectedText : undefined,
+        lineNumbers: getLineNumbers(selectedText),
+        additionalContext,
+        selections: selections.length > 0 ? selections : undefined
+      }
+    };
+
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        messages: (messagesOverride || messages).map(msg => ({
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp.toISOString()
-        })),
-        context: {
-          type: contextType,
-          data: contextData,
-          mimeType,
-          documentName,
-          selectedText: contextType === 'text_selection' ? selectedText : undefined,
-          lineNumbers: getLineNumbers(selectedText),
-          additionalContext
-        }
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -911,13 +1002,30 @@ export function ChatSidebar({
                           {message.role === 'assistant' ? (
                             <FormattedContent content={message.content} />
                           ) : message.role === 'context' ? (
-                            <div className="inline-flex items-center gap-1.5 text-primary text-xs">
-                              <FileText className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate max-w-[200px]">{message.content.replace(/\n/g, ' ')}</span>
-                              {message.linesCount && (
-                                <span className="opacity-70">• {message.linesCount} lines</span>
-                              )}
-                            </div>
+                            (() => {
+                              const isImg = message.content.startsWith('data:image');
+                              if (isImg) {
+                                return (
+                                  <div className="inline-flex items-center gap-1.5 text-primary text-xs">
+                                    <ImageIcon className="h-3 w-3 flex-shrink-0" />
+                                    <img
+                                      src={message.content}
+                                      alt="Box selection preview"
+                                      className="h-6 w-auto rounded-sm border border-primary/30"
+                                    />
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="inline-flex items-center gap-1.5 text-primary text-xs">
+                                  <FileText className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate max-w-[200px]">{message.content.replace(/\n/g, ' ')}</span>
+                                  {message.linesCount && (
+                                    <span className="opacity-70">• {message.linesCount} lines</span>
+                                  )}
+                                </div>
+                              );
+                            })()
                           ) : editingMessageId === message.id ? (
                             <Textarea
                               value={editedContent}
@@ -938,19 +1046,18 @@ export function ChatSidebar({
                           {message.role === 'assistant' && (
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
+                              aria-label={copiedMessageId === message.id ? 'Copied' : 'Copy'}
                               onClick={() => handleCopyMessage(message.id, message.content)}
-                              className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-primary"
+                              className="h-5 w-5 p-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary"
                             >
                               {copiedMessageId === message.id ? (
                                 <>
-                                  <CheckCircle className="h-3 w-3 mr-1 text-primary" />
-                                  <span className="text-primary">Copied</span>
+                                  <Check className="h-3 w-3 text-primary" />
                                 </>
                               ) : (
                                 <>
-                                  <Copy className="h-3 w-3 mr-1 text-primary" />
-                                  <span className="text-primary">Copy</span>
+                                  <Copy className="h-3 w-3 text-primary" />
                                 </>
                               )}
                             </Button>
@@ -962,17 +1069,19 @@ export function ChatSidebar({
                               <div className="flex items-center gap-1">
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
                                   onClick={confirmEditMessage}
-                                  className="h-7 px-2 text-primary"
+                                  aria-label="Confirm edit"
+                                  className="h-5 w-5 p-3 text-primary"
                                 >
-                                  <CheckCircle className="h-3 w-3" />
+                                  <Check className="h-3 w-3" />
                                 </Button>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
                                   onClick={cancelEditing}
-                                  className="h-7 px-2 text-muted-foreground"
+                                  aria-label="Cancel edit"
+                                  className="h-5 w-5 p-3 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                 >
                                   <XIcon className="h-3 w-3" />
                                 </Button>
@@ -980,12 +1089,12 @@ export function ChatSidebar({
                             ) : (
                               <Button
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
                                 onClick={() => startEditingMessage(message.id, message.content)}
-                                className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-primary"
+                                aria-label="Edit message"
+                                className="h-5 w-5 p-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary"
                               >
-                                <Pencil className="h-3 w-3 mr-1" />
-                                Edit
+                                <Pencil className="h-3 w-3" />
                               </Button>
                             )
                           )}
@@ -1022,20 +1131,44 @@ export function ChatSidebar({
               {snippets.length > 0 && (
                 <div className="px-3 py-2.5 border-b border-border/50 space-y-2 max-h-40 overflow-y-auto">
                   {snippets.map(snippet => (
-                    <div key={snippet.id} className="inline-flex items-center border border-primary/20 rounded-md py-1.5 px-2 bg-primary/5 max-w-full group text-xs text-primary">
-                      <FileText className="h-3 w-3 flex-shrink-0 mr-1" />
-                      <span className="flex-1 truncate font-medium">
-                        {snippet.text.replace(/\n/g, ' ')}
-                      </span>
-                      <span className="flex-shrink-0 opacity-70 ml-1">• {snippet.linesCount} lines</span>
-                      <button
-                        onClick={() => removeSnippet(snippet.id)}
-                        className="flex-shrink-0 ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Remove snippet"
-                      >
-                        <XIcon className="h-3 w-3" />
-                      </button>
-                    </div>
+                    snippet.type === 'text' ? (
+                      <div key={snippet.id} className="inline-flex items-center border border-primary/20 rounded-md py-1.5 px-2 bg-primary/5 max-w-full group text-xs text-primary">
+                        <FileText className="h-3 w-3 flex-shrink-0 mr-1" />
+                        <span className="flex-1 truncate font-medium">
+                          {(snippet.text ?? '').replace(/\n/g, ' ')}
+                        </span>
+                        {snippet.linesCount && (
+                          <span className="flex-shrink-0 opacity-70 ml-1">• {snippet.linesCount} lines</span>
+                        )}
+                        <button
+                          onClick={() => removeSnippet(snippet.id)}
+                          className="flex-shrink-0 ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Remove snippet"
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div key={snippet.id} className="inline-flex w-full items-center border border-primary/20 rounded-md py-1.5 pl-2 pr-1 bg-primary/5 group text-xs text-primary overflow-hidden">
+                        <ImageIcon className="h-3 w-3 flex-shrink-0 mr-1" />
+                        {/* Preview thumbnail */}
+                        {snippet.base64 && (
+                          <img
+                            src={snippet.base64}
+                            alt="Box selection preview"
+                            className="h-6 w-auto rounded-sm border border-primary/30 mr-2 flex-shrink-0"
+                          />
+                        )}
+                        <span className="truncate font-medium flex-1">Image selection</span>
+                        <button
+                          onClick={() => removeSnippet(snippet.id)}
+                          className="flex-shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity mr-1"
+                          aria-label="Remove snippet"
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
                   ))}
                 </div>
               )}

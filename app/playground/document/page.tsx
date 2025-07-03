@@ -261,7 +261,7 @@ export default function DocumentPage() {
     
     toast({
       title: "Document cleared",
-      description: "PDF, cache, and history have been cleared from the editor.",
+      description: "PDF and history have been cleared from the editor.",
     });
   };
 
@@ -1954,11 +1954,6 @@ Focus on making the information easily accessible and well-organized.`;
                           onLoadError={(error: any) => {
                             console.error("Error loading PDF:", error);
                             setIsLoading(false);
-                            toast({
-                              title: "PDF Loading Error",
-                              description: "Failed to load PDF. Please try a different file or refresh the page.",
-                              variant: "destructive"
-                            });
                           }}
                           selectionMode={selectedTool as 'text' | 'box' | null}
                           onSelection={handleSelection}
@@ -2182,13 +2177,13 @@ Focus on making the information easily accessible and well-organized.`;
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                            className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                             onClick={clearPdf}
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="left" align="center" className=" text-red-600 dark:text-red-200 bg-red-50 dark:bg-red-950">
+                        <TooltipContent side="left" align="center" className=" text-red-600 dark:text-red-100 bg-red-500/10">
                           <p>Clear Document</p>
                         </TooltipContent>
                       </Tooltip>
