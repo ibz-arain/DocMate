@@ -22,8 +22,8 @@ import { ProjectionsSection } from "@/components/use-cases/ProjectionsSection";
 import { DemoSection } from "@/components/use-cases/DemoSection";
 
 export default function UseCasesPage() {
-  // Force dark theme
-  const { setTheme } = useTheme();
+  // Theme is automatically handled by ThemeProvider
+  const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
   // Generate particles - Reduced count
@@ -33,9 +33,8 @@ export default function UseCasesPage() {
   const particles3 = useMemo(() => Array(particleCount).fill(null), []);
   
   useEffect(() => {
-    setTheme("dark");
     setMounted(true);
-  }, [setTheme]);
+  }, []);
 
   if (!mounted) {
     // Optional: Render a loading state or null until mounted to avoid flash of incorrect theme/layout

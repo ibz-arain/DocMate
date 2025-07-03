@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { SidebarProvider } from "@/components/sidebar-provider";
 
@@ -24,7 +23,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="DocMate" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
-          <Providers attribute="class" defaultTheme="system" enableSystem>
+          <Providers>
             <SidebarProvider>
               {children}
           </SidebarProvider>

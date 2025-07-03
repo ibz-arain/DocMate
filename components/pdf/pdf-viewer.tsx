@@ -827,6 +827,9 @@ export function PdfViewer({
             user-select: ${selectionMode === 'text' ? 'text' : 'none'} !important;
             cursor: ${selectionMode === 'text' ? 'text' : 'default'} !important;
             background: transparent !important;
+            border-radius: 0.5rem !important;
+            overflow: hidden !important;
+            margin: 0 !important;
           }
           
           .react-pdf__Page__textContent span {
@@ -839,6 +842,9 @@ export function PdfViewer({
           
           .react-pdf__Page__canvas {
             cursor: ${selectionMode === 'box' ? 'crosshair' : selectionMode === 'text' ? 'text' : 'default'} !important;
+            border-radius: 0.5rem !important;
+            overflow: hidden !important;
+            margin: 0 !important;
           }
           
           /* Bright visible selection highlighting */
@@ -883,7 +889,18 @@ export function PdfViewer({
           
           .react-pdf__Page {
             margin-bottom: 1rem !important;
+            border-radius: 0.5rem !important;
+            background: white !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
           }
+          
+          /* Dark mode styles */
+          .dark .react-pdf__Page {
+            background: hsl(var(--card)) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+          }
+          
+
         `}</style>
         <div className="w-full py-4 flex justify-center" style={{
           minWidth: 'fit-content'
@@ -907,10 +924,9 @@ export function PdfViewer({
                 ref={el => { pageRefs.current[index] = el; }}
                 data-page-number={index + 1}
                 data-page-index={index}
-                className={`relative mb-4 transition-all duration-200 ${
+                className={`relative mt-4 transition-all duration-200 rounded-lg ${
                   index + 1 === currentPage 
-                    ? 'shadow-lg' 
-                    : 'shadow-md hover:shadow-lg'
+                    
                 }`}
               >
                 <Page

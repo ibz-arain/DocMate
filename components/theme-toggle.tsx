@@ -5,6 +5,7 @@ import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { usePathname } from "next/navigation"
 
 interface ThemeToggleProps {
   isCollapsed?: boolean;
@@ -12,6 +13,33 @@ interface ThemeToggleProps {
 
 export function ThemeToggle({ isCollapsed }: ThemeToggleProps) {
   const { setTheme, theme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+  const pathname = usePathname()
+  
+  // Only allow theme toggle in playground
+  const isPlayground = pathname?.startsWith('/playground')
+
+  // Prevent hydration mismatch
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || !isPlayground) {
+    return (
+      <Button
+        variant="ghost"
+        className={cn(
+          "w-full justify-start",
+          isCollapsed && "justify-center"
+        )}
+      >
+        <div className="relative h-5 w-5">
+          <Sun className="h-5 w-5" />
+        </div>
+        {!isCollapsed && <span className="ml-3">Toggle theme</span>}
+      </Button>
+    )
+  }
 
   return (
     <Button

@@ -213,11 +213,8 @@ export default function ChangelogPage() {
     restDelta: 0.001
   });
 
-  // Force dark theme
-  const { setTheme } = useTheme();
-  useEffect(() => {
-    setTheme("dark");
-  }, [setTheme]);
+  // Theme is automatically handled by ThemeProvider
+  const { theme } = useTheme();
 
   const releases = [
     {

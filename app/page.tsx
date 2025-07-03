@@ -97,21 +97,8 @@ export default function HomePage() {
     restDelta: 0.001
   });
 
-  // Force dark theme on this page
-  const { setTheme } = useTheme();
-  
-  useEffect(() => {
-    // Only set theme on the client side to avoid hydration mismatches
-    if (typeof window !== 'undefined') {
-      setTheme("dark");
-    }
-    
-    // Store the original theme implementation for later cleanup
-    return () => {
-      // We don't reset the theme on cleanup to avoid flashing
-      // If specific reset behavior is needed, it can be handled in navigation events
-    };
-  }, [setTheme]);
+  // Theme is automatically handled by ThemeProvider
+  const { theme } = useTheme();
 
   // Gradient background animation only - removed cursor tracking
   const backgroundX = useMotionValue(0);

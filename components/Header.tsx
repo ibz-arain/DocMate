@@ -19,8 +19,8 @@ export default function Header() {
 
   const router = useRouter();
 
-  // Force dark theme
-  const { setTheme } = useTheme();
+  // Theme is automatically handled by ThemeProvider
+  const { theme } = useTheme();
 
   const handleAuthAction = () => {
     // Open playground in a new tab
