@@ -87,6 +87,7 @@ export default function DocumentPage() {
   const [menuPos, setMenuPos] = useState<{top:number;left:number;isPageRelative?:boolean} | null>(null);
   const lastCursorRef = useRef<{x:number;y:number}|null>(null);
   const scrollStartPositionRef = useRef<{x: number; y: number} | null>(null);
+  const lastSelectionWasOutsidePdf = useRef<boolean>(false);
   
   // Summarize popup state
   const [showSummarizePopup, setShowSummarizePopup] = useState(false);
@@ -639,6 +640,36 @@ export default function DocumentPage() {
   };
 
   const handleSelection = (text: string, rects: any, hide: () => void) => {
+    // Only handle selections that come from the PDF viewer component
+    // This function should only be called by the PdfViewer component for legitimate PDF selections
+    
+    // Check if there's any external selection currently active
+    const selection = window.getSelection();
+    const pdfContainer = pdfContainerRef.current;
+    
+    if (selection && selection.toString().trim() && pdfContainer) {
+      let hasExternalSelection = false;
+      for (let i = 0; i < selection.rangeCount; i++) {
+        const range = selection.getRangeAt(i);
+        const container = range.commonAncestorContainer;
+        const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+        if (element && !pdfContainer.contains(element)) {
+          hasExternalSelection = true;
+          break;
+        }
+      }
+      
+      // Don't show context menu if there's external text selected
+      if (hasExternalSelection) {
+        return;
+      }
+    }
+    
+    // Don't show context menu if the last selection was outside PDF
+    if (lastSelectionWasOutsidePdf.current) {
+      return;
+    }
+    
     setSelectedText(text);
     setSelectionData(rects);
     
@@ -1392,12 +1423,68 @@ Focus on making the information easily accessible and well-organized.`;
     const handleUp = (e: MouseEvent)=>{
       // Store global coordinates for context menu positioning
       lastCursorRef.current = {x:e.clientX,y:e.clientY};
+      
+      // Reset the external selection flag when clicking in PDF area
+      const pdfContainer = pdfContainerRef.current;
+      if (pdfContainer && pdfContainer.contains(e.target as Element)) {
+        const selection = window.getSelection();
+        if (!selection || selection.toString().trim() === '') {
+          lastSelectionWasOutsidePdf.current = false;
+        }
+      }
     };
     
     const handleMove = (e: MouseEvent)=>{
       // Update cursor position during selection
       if(e.buttons > 0) { // Only during drag
         lastCursorRef.current = {x:e.clientX,y:e.clientY};
+      }
+    };
+    
+    const handleSelectionChange = () => {
+      // Close context menu if text is selected outside the PDF container
+      const pdfContainer = pdfContainerRef.current;
+      if (!pdfContainer) return;
+      
+      const selection = window.getSelection();
+      const selectedTextContent = selection?.toString().trim();
+      
+      // If there's any selection, check if it's outside our PDF container
+      if (selectedTextContent && selectedTextContent.length > 0 && selection) {
+        let hasSelectionOutsidePdf = false;
+        let hasSelectionInsidePdf = false;
+        
+        for (let i = 0; i < selection.rangeCount; i++) {
+          const range = selection.getRangeAt(i);
+          const container = range.commonAncestorContainer;
+          const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+          
+          if (element) {
+            if (pdfContainer.contains(element)) {
+              hasSelectionInsidePdf = true;
+            } else {
+              hasSelectionOutsidePdf = true;
+            }
+          }
+        }
+        
+                 // If there's any selection outside PDF, close the context menu
+         // Also prevent new context menus from appearing for outside selections
+         if (hasSelectionOutsidePdf) {
+           // Immediately close any open context menu
+           if (selectedText && menuPos) {
+             clearSelection();
+           }
+           // Set a flag to prevent context menu on next interaction
+           lastSelectionWasOutsidePdf.current = true;
+           
+           
+         } else if (hasSelectionInsidePdf) {
+           lastSelectionWasOutsidePdf.current = false;
+         }
+      } else {
+        // No selection, reset the flag
+        lastSelectionWasOutsidePdf.current = false;
       }
     };
     
@@ -1409,6 +1496,11 @@ Focus on making the information easily accessible and well-organized.`;
       const target = e.target as Element;
       if (!pdfContainer.contains(target)) return;
       
+      // Don't show context menu if the last selection was outside PDF
+      if (lastSelectionWasOutsidePdf.current) {
+        return;
+      }
+      
       // Prevent default context menu
       e.preventDefault();
       e.stopPropagation();
@@ -1416,15 +1508,29 @@ Focus on making the information easily accessible and well-organized.`;
       // Store cursor position
       lastCursorRef.current = {x: e.clientX, y: e.clientY};
       
-      // Check if there's currently selected text
+      // Check if there's currently selected text, but only within the PDF container
       const selection = window.getSelection();
       const selectedTextContent = selection?.toString().trim();
       
-      if (selectedTextContent && selectedTextContent.length > 0) {
-        // Use existing selected text
+      // Verify that the selection is within the PDF container
+      let isSelectionInPdfContainer = false;
+      if (selectedTextContent && selectedTextContent.length > 0 && selection) {
+        for (let i = 0; i < selection.rangeCount; i++) {
+          const range = selection.getRangeAt(i);
+          const container = range.commonAncestorContainer;
+          const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+          if (element && pdfContainer.contains(element)) {
+            isSelectionInPdfContainer = true;
+            break;
+          }
+        }
+      }
+      
+      if (isSelectionInPdfContainer && selectedTextContent) {
+        // Use existing selected text from within PDF container
         setSelectedText(selectedTextContent);
       } else {
-        // No text selected, use placeholder for general context menu
+        // No valid text selected within PDF container, use placeholder for general context menu
         setSelectedText("[Right-click menu]");
       }
       
@@ -1457,12 +1563,14 @@ Focus on making the information easily accessible and well-organized.`;
     window.addEventListener('mouseup',handleUp);
     window.addEventListener('mousemove',handleMove);
     window.addEventListener('contextmenu', handleRightClick);
+    document.addEventListener('selectionchange', handleSelectionChange);
     return ()=>{
       window.removeEventListener('mouseup',handleUp);
       window.removeEventListener('mousemove',handleMove);
       window.removeEventListener('contextmenu', handleRightClick);
+      document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  },[pdfUrl]);
+  },[pdfUrl, selectedText, menuPos]);
 
   // Click outside to dismiss context menu
   useEffect(() => {
