@@ -257,7 +257,7 @@ export function ChatSidebar({
     return {
       id: 'welcome',
       role: 'assistant',
-      content: "Hello! How can I help you today?",
+      content: "What would you like to know?",
       timestamp: new Date(),
     };
   };
@@ -554,6 +554,11 @@ export function ChatSidebar({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
+        messages: messages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString()
+        })),
         context: {
           type: contextType,
           data: contextData,
@@ -680,9 +685,14 @@ export function ChatSidebar({
         <Card className="h-full flex flex-col overflow-hidden rounded-xl">
           <CardHeader className="pb-3 border-b border-border/50 rounded-t-xl px-5 pt-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <MessageCircle className="h-4 w-4 text-primary" />
-                {documentName && documentName.length > 30 ? documentName.substring(0, 30) + '...' : documentName}
+              <CardTitle className="flex items-center gap-2 text-sm font-medium min-w-0 flex-1 mr-2">
+                <MessageCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="truncate">
+                  {currentConversationId ? 
+                    chatHistory.find(c => c.id === currentConversationId)?.title || 'New Chat' : 
+                    'New Chat'
+                  }
+                </span>
               </CardTitle>
               
               <div className="flex items-center gap-1">
@@ -904,7 +914,7 @@ export function ChatSidebar({
                       e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; // Max 8 lines (approx)
                     }}
                     onKeyDown={handleKeyPress}
-                    placeholder="Message..."
+                    placeholder="Analyze, summarize, explore anything..."
                     disabled={isLoading}
                     className="pr-12 text-sm bg-transparent border-[1.5px] rounded-lg min-h-[36px] max-h-[200px] resize-none overflow-y-auto border-primary/20 focus-visible:border-primary/40 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
                     rows={1}

@@ -11,9 +11,17 @@ const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
 });
 
+// Message schema for conversation history
+const MessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'context']),
+  content: z.string(),
+  timestamp: z.string().optional(),
+});
+
 // Request schema for chat
 const ChatRequestSchema = z.object({
   message: z.string().min(1, 'Message cannot be empty'),
+  messages: z.array(MessageSchema).optional(), // Previous conversation history
   context: z.object({
     type: z.enum(['full_document', 'text_selection', 'box_selection']),
     data: z.string(), // base64 encoded content
@@ -26,11 +34,10 @@ const ChatRequestSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, context } = ChatRequestSchema.parse(body);
+    const { message, messages = [], context } = ChatRequestSchema.parse(body);
 
-    // Build context-aware prompt
+    // Build context-aware system prompt
     let systemPrompt = '';
-    let userMessage = '';
 
     switch (context.type) {
       case 'full_document':
@@ -39,6 +46,7 @@ export async function POST(req: NextRequest) {
 Your role:
 - Analyze the document content and answer questions about it
 - Provide helpful, conversational responses
+- Remember and reference previous parts of our conversation
 - Be friendly and informative
 - Ask follow-up questions when appropriate
 - Focus on understanding and explaining the document's content
@@ -47,11 +55,8 @@ Guidelines:
 - Respond in a natural, conversational tone
 - Be concise but thorough
 - If you can't find specific information, say so honestly
+- Reference previous conversation when relevant
 - Offer to help with related questions`;
-
-        userMessage = `Here's my question about the document: ${message}
-
-Please provide a helpful response based on the document content.`;
         break;
 
       case 'text_selection':
@@ -60,20 +65,16 @@ Please provide a helpful response based on the document content.`;
 Your role:
 - Focus specifically on the selected text: "${context.selectedText}"
 - Answer questions about this text selection
+- Remember and reference previous parts of our conversation
 - Provide analysis, explanations, or insights about the selected content
 - Be conversational and helpful
 
 Guidelines:
 - Keep responses focused on the selected text
 - Be natural and conversational
+- Reference previous conversation when relevant
 - Provide context when helpful
 - Ask follow-up questions if appropriate`;
-
-        userMessage = `I've selected this text: "${context.selectedText}"
-
-My question: ${message}
-
-Please help me with this selection.`;
         break;
 
       case 'box_selection':
@@ -82,44 +83,102 @@ Please help me with this selection.`;
 Your role:
 - Analyze the visual content in the selection
 - Answer questions about charts, tables, images, or other visual elements
+- Remember and reference previous parts of our conversation
 - Provide insights about the visual information
 - Be conversational and helpful
 
 Guidelines:
 - Focus on the visual content
 - Explain what you see in the image
+- Reference previous conversation when relevant
 - Provide analysis of charts, graphs, tables if present
 - Be natural and conversational`;
-
-        userMessage = `I've selected a visual area from the document. My question: ${message}
-
-Please analyze the visual content and help me understand it.`;
         break;
     }
 
-    // Prepare message content based on context type
-    let messageContent: any[];
+    // Build conversation history for the AI model
+    const conversationMessages: any[] = [];
+
+    // Add system message
+    conversationMessages.push({
+      role: 'system',
+      content: systemPrompt
+    });
+
+    // Process conversation history
+    let documentContentIncluded = false;
     
-    if (context.type === 'text_selection') {
-      // For text selections, we can include the text directly
-      messageContent = [
-        { type: 'text', text: `${systemPrompt}\n\n${userMessage}` }
-      ];
-    } else {
-      // For documents and box selections, include the file/image
-      messageContent = [
-        { type: 'text', text: `${systemPrompt}\n\n${userMessage}` },
-        { type: 'file', data: context.data, mimeType: context.mimeType }
-      ];
+    for (const msg of messages) {
+      if (msg.role === 'context') {
+        // Skip context messages in the conversation flow - they're just UI indicators
+        continue;
+      }
+      
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        // For the first user message, include document context
+        if (msg.role === 'user' && !documentContentIncluded) {
+          let messageContent: any[];
+          
+          if (context.type === 'text_selection') {
+            // For text selections, include the text directly in the message
+            messageContent = [
+              { type: 'text', text: msg.content }
+            ];
+          } else {
+            // For documents and box selections, include the file/image with the first user message
+            messageContent = [
+              { type: 'text', text: msg.content },
+              { type: 'file', data: context.data, mimeType: context.mimeType }
+            ];
+          }
+          
+          conversationMessages.push({
+            role: 'user',
+            content: messageContent
+          });
+          documentContentIncluded = true;
+        } else {
+          // For subsequent messages, just include the text
+          conversationMessages.push({
+            role: msg.role,
+            content: msg.content
+          });
+        }
+      }
     }
 
-    // Generate response using AI
-    const result = await generateText({
-      model: google('gemini-2.0-flash'),
-      messages: [{
+    // Add the current user message
+    if (!documentContentIncluded) {
+      // If this is the first message in the conversation, include document context
+      let messageContent: any[];
+      
+      if (context.type === 'text_selection') {
+        messageContent = [
+          { type: 'text', text: message }
+        ];
+      } else {
+        messageContent = [
+          { type: 'text', text: message },
+          { type: 'file', data: context.data, mimeType: context.mimeType }
+        ];
+      }
+      
+      conversationMessages.push({
         role: 'user',
         content: messageContent
-      }],
+      });
+    } else {
+      // Just add the text for subsequent messages
+      conversationMessages.push({
+        role: 'user',
+        content: message
+      });
+    }
+
+    // Generate response using AI with full conversation context
+    const result = await generateText({
+      model: google('gemini-2.0-flash'),
+      messages: conversationMessages,
       maxTokens: 1000, // Reasonable limit for chat responses
       temperature: 0.7, // Slightly creative for conversational tone
     });
