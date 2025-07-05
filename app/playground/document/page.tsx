@@ -37,6 +37,7 @@ import { FullDocumentQuickFormatPopup } from "@/components/document/full-documen
 import { FullDocumentTemplateFormatPopup } from "@/components/document/full-document-template-format-popup";
 import { HistoryMiniPopup } from "@/components/document/history-mini-popup";
 import { ChatSidebar } from "@/components/document/chat-sidebar";
+import { SideToolbar, Tool } from "@/components/document/side-toolbar";
 import { useHistory } from "@/hooks/use-history";
 import { convertFileToBase64 } from "@/components/document/document-utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -114,7 +115,6 @@ export default function DocumentPage() {
   // History popup state
   const [showHistoryPopup, setShowHistoryPopup] = useState(false);
   const [historyPopupPosition, setHistoryPopupPosition] = useState({ top: 0, left: 0 });
-  const historyButtonRef = useRef<HTMLButtonElement>(null);
 
   // Chat sidebar state
   const [showChatSidebar, setShowChatSidebar] = useState(false);
@@ -619,7 +619,7 @@ export default function DocumentPage() {
     showZoomFeedbackBriefly();
   };
 
-  const tools = [
+  const tools: Tool[] = [
     { id: 'text', label: 'Text Select', icon: <MousePointerIcon className="h-5 w-5" /> },
     { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
   ];
@@ -1620,11 +1620,10 @@ Focus on making the information easily accessible and well-organized.`;
     const handleHistoryClickOutside = (e: MouseEvent) => {
       if (showHistoryPopup) {
         const target = e.target as Element;
-        // Check if click is outside history popup and history button
+        // Check if click is outside history popup
         const historyPopup = target.closest('.z-50');
-        const historyButton = historyButtonRef.current;
         
-        if (!historyPopup && !historyButton?.contains(target)) {
+        if (!historyPopup) {
           setShowHistoryPopup(false);
         }
       }
@@ -2035,187 +2034,36 @@ Focus on making the information easily accessible and well-organized.`;
               </div>
             )}
 
-            {/* Tools Sidebar Card */}
-            <Card className="shadow-sm flex flex-col h-full w-[60px] pt-2">
-              <CardContent className=" flex flex-col h-full items-center gap-2 pb-2">
-                <TooltipProvider delayDuration={0}>
-                  {tools.map(tool => (
-                    <Tooltip key={tool.id}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={selectedTool === tool.id ? "secondary" : "ghost"}
-                          size="icon"
-                          className="h-10 w-10"
-                          onClick={() => handleToolSelect(tool.id)}
-                        >
-                          {tool.icon}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" align="center">
-                        <p>{tool.label}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-
-                  {/* Document Analysis Tools */}
-                  {pdfFile && (
-                    <>
-                      <div className="w-full h-px bg-border my-2" />
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={handleDocumentSummarize}
-                            disabled={isAnalyzing || isLoading}
-                          >
-                            {processingAction === 'summarize' ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-5 w-5" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>Summarize Document</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={handleDocumentQuickFormat}
-                            disabled={isAnalyzing || isLoading}
-                          >
-                            {processingAction === 'quickformat' ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                              <Table className="h-5 w-5" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>Auto Format</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={handleFullDocTemplateFormatStart}
-                            disabled={isAnalyzing || isLoading}
-                          >
-                            <FileText className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>Apply Template</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant={showChatSidebar ? "secondary" : "ghost"}
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={handleFullDocumentChat}
-                            disabled={isAnalyzing || isLoading}
-                          >
-                            <MessageCircle className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>{showChatSidebar ? 'Close Chat' : 'Chat with Document'}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </>
-                  )}
-
-                  <div className="flex-1" />
-
-                  {/* History Button - Only show when PDF is loaded */}
-                  {pdfFile && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10 relative"
-                          ref={historyButtonRef}
-                          onClick={() => {
-                            if (!showHistoryPopup && historyButtonRef.current) {
-                              const rect = historyButtonRef.current.getBoundingClientRect();
-                              setHistoryPopupPosition({
-                                top: rect.top, // Keep the button's top position
-                                left: rect.left // Keep the button's left position
-                              });
-                            }
-                            setShowHistoryPopup(!showHistoryPopup);
-                          }}
-                        >
-                          <History className="h-5 w-5" />
-                          {history.length > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                              {history.length > 9 ? '9+' : history.length}
-                            </span>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" align="center">
-                        <p>View Recent ({history.length})</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {pdfFile && (
-                    <div className="mt-auto pt-2 border-t border-border w-full flex flex-col items-center gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                          >
-                            <FileTextIcon className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p className="font-medium">{pdfFile.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                            onClick={clearPdf}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center" className=" text-red-600 dark:text-red-100 bg-red-500/10">
-                          <p>Clear Document</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  )}
-                </TooltipProvider>
-              </CardContent>
-            </Card>
+            {/* Side Toolbar */}
+            <SideToolbar
+              selectedTool={selectedTool}
+              onToolSelect={handleToolSelect}
+              tools={tools}
+              pdfFile={pdfFile}
+              isAnalyzing={isAnalyzing}
+              isLoading={isLoading}
+              processingAction={processingAction}
+              showChatSidebar={showChatSidebar}
+              history={history}
+              showHistoryPopup={showHistoryPopup}
+              historyPopupPosition={historyPopupPosition}
+              onDocumentSummarize={handleDocumentSummarize}
+              onDocumentQuickFormat={handleDocumentQuickFormat}
+              onFullDocTemplateFormatStart={handleFullDocTemplateFormatStart}
+              onFullDocumentChat={handleFullDocumentChat}
+              onHistoryToggle={() => {}}
+              onClearPdf={clearPdf}
+              onHistoryPopupToggle={(buttonRef) => {
+                if (!showHistoryPopup && buttonRef) {
+                  const rect = buttonRef.getBoundingClientRect();
+                  setHistoryPopupPosition({
+                    top: rect.top,
+                    left: rect.left
+                  });
+                }
+                setShowHistoryPopup(!showHistoryPopup);
+              }}
+            />
           </div>
         </main>
       </div>
