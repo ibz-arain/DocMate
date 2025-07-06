@@ -30,6 +30,7 @@ interface EnhancedSpreadsheetProps {
     event: React.MouseEvent
   ) => void;
   className?: string;
+  scale?: number;
 }
 
 export function EnhancedSpreadsheet({
@@ -37,7 +38,8 @@ export function EnhancedSpreadsheet({
   onChange,
   onCellSelection,
   onRightClick,
-  className
+  className,
+  scale = 1.0
 }: EnhancedSpreadsheetProps) {
   const [selectedRange, setSelectedRange] = useState<SelectionRange | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -49,6 +51,7 @@ export function EnhancedSpreadsheet({
   const [rowHeights, setRowHeights] = useState<number[]>([]);
   const [isResizing, setIsResizing] = useState<{ type: 'column' | 'row'; index: number } | null>(null);
   const [resizeStart, setResizeStart] = useState<{ pos: number; size: number } | null>(null);
+  const [headerHover, setHeaderHover] = useState<{ type: 'column' | 'row'; index: number } | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -110,6 +113,60 @@ export function EnhancedSpreadsheet({
       }
     }
     return cells.join('\n');
+  };
+
+  // Calculate content width for a column
+  const getColumnContentWidth = (colIndex: number): number => {
+    let maxWidth = DEFAULT_COLUMN_WIDTH;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return maxWidth;
+    
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    
+    // Check header text
+    const headerText = getColumnLetter(colIndex);
+    const headerWidth = ctx.measureText(headerText).width + 20;
+    maxWidth = Math.max(maxWidth, headerWidth);
+    
+    // Check all cell values in this column
+    for (let row = 0; row < data.length; row++) {
+      const cellValue = data[row]?.[colIndex]?.value || '';
+      if (cellValue) {
+        const cellWidth = ctx.measureText(cellValue).width + 20;
+        maxWidth = Math.max(maxWidth, cellWidth);
+      }
+    }
+    
+    return Math.max(maxWidth, MIN_COLUMN_WIDTH);
+  };
+
+  // Calculate content height for a row
+  const getRowContentHeight = (rowIndex: number): number => {
+    let maxHeight = DEFAULT_ROW_HEIGHT;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return maxHeight;
+    
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    
+    // Check row header text
+    const headerText = (rowIndex + 1).toString();
+    const headerHeight = 20;
+    maxHeight = Math.max(maxHeight, headerHeight);
+    
+    // Check all cell values in this row
+    for (let col = 0; col < (data[rowIndex]?.length || 0); col++) {
+      const cellValue = data[rowIndex]?.[col]?.value || '';
+      if (cellValue) {
+        // Simple height calculation - could be improved for multi-line text
+        const lines = cellValue.split('\n').length;
+        const cellHeight = Math.max(lines * 16, 20);
+        maxHeight = Math.max(maxHeight, cellHeight);
+      }
+    }
+    
+    return Math.max(maxHeight, MIN_ROW_HEIGHT);
   };
 
   // Handle cell click
@@ -303,6 +360,48 @@ export function EnhancedSpreadsheet({
     }
   }, [handleCellSave, activeCell, rows, cols]);
 
+  // Handle column header click (select entire column)
+  const handleColumnHeaderClick = useCallback((colIndex: number, event: React.MouseEvent) => {
+    if (isResizing) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const range: SelectionRange = {
+      startRow: 0,
+      startCol: colIndex,
+      endRow: rows - 1,
+      endCol: colIndex
+    };
+    
+    setSelectedRange(range);
+    setActiveCell(null);
+    
+    const selectedText = getSelectedCellsText(range);
+    onCellSelection?.(selectedText, range, event);
+  }, [isResizing, rows, onCellSelection, getSelectedCellsText]);
+
+  // Handle row header click (select entire row)
+  const handleRowHeaderClick = useCallback((rowIndex: number, event: React.MouseEvent) => {
+    if (isResizing) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const range: SelectionRange = {
+      startRow: rowIndex,
+      startCol: 0,
+      endRow: rowIndex,
+      endCol: cols - 1
+    };
+    
+    setSelectedRange(range);
+    setActiveCell(null);
+    
+    const selectedText = getSelectedCellsText(range);
+    onCellSelection?.(selectedText, range, event);
+  }, [isResizing, cols, onCellSelection, getSelectedCellsText]);
+
   // Handle column resize
   const handleColumnResizeStart = useCallback((colIndex: number, event: React.MouseEvent) => {
     event.preventDefault();
@@ -320,6 +419,48 @@ export function EnhancedSpreadsheet({
     setIsResizing({ type: 'row', index: rowIndex });
     setResizeStart({ pos: event.clientY, size: rowHeights[rowIndex] || DEFAULT_ROW_HEIGHT });
   }, [rowHeights]);
+
+  // Handle column header double click (auto-fit)
+  const handleColumnHeaderDoubleClick = useCallback((colIndex: number, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const currentWidth = columnWidths[colIndex] || DEFAULT_COLUMN_WIDTH;
+    const contentWidth = getColumnContentWidth(colIndex);
+    
+    // If current width is close to content width, reset to default
+    if (Math.abs(currentWidth - contentWidth) < 10) {
+      const newWidths = [...columnWidths];
+      newWidths[colIndex] = DEFAULT_COLUMN_WIDTH;
+      setColumnWidths(newWidths);
+    } else {
+      // Auto-fit to content
+      const newWidths = [...columnWidths];
+      newWidths[colIndex] = contentWidth;
+      setColumnWidths(newWidths);
+    }
+  }, [columnWidths, getColumnContentWidth]);
+
+  // Handle row header double click (auto-fit)
+  const handleRowHeaderDoubleClick = useCallback((rowIndex: number, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const currentHeight = rowHeights[rowIndex] || DEFAULT_ROW_HEIGHT;
+    const contentHeight = getRowContentHeight(rowIndex);
+    
+    // If current height is close to content height, reset to default
+    if (Math.abs(currentHeight - contentHeight) < 10) {
+      const newHeights = [...rowHeights];
+      newHeights[rowIndex] = DEFAULT_ROW_HEIGHT;
+      setRowHeights(newHeights);
+    } else {
+      // Auto-fit to content
+      const newHeights = [...rowHeights];
+      newHeights[rowIndex] = contentHeight;
+      setRowHeights(newHeights);
+    }
+  }, [rowHeights, getRowContentHeight]);
 
   // Handle resize mouse move
   const handleResizeMove = useCallback((event: MouseEvent) => {
@@ -457,38 +598,75 @@ export function EnhancedSpreadsheet({
     return activeCell?.row === row && activeCell?.col === col;
   };
 
+  // Add refs for scroll sync
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const colHeaderRef = useRef<HTMLDivElement>(null);
+  const rowHeaderRef = useRef<HTMLDivElement>(null);
+
+  // Scroll sync effect
+  useEffect(() => {
+    const grid = gridScrollRef.current;
+    const colHeader = colHeaderRef.current;
+    const rowHeader = rowHeaderRef.current;
+    if (!grid || !colHeader || !rowHeader) return;
+    const handleScroll = () => {
+      colHeader.scrollLeft = grid.scrollLeft;
+      rowHeader.scrollTop = grid.scrollTop;
+    };
+    grid.addEventListener('scroll', handleScroll);
+    return () => grid.removeEventListener('scroll', handleScroll);
+  }, [scale, cols, rows]);
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className={cn(
         "w-full h-full border rounded-lg bg-background overflow-hidden relative",
         className
       )}
       onMouseUp={handleMouseUp}
+      style={{ position: 'relative' }}
     >
-      <div className="w-full h-full overflow-auto" ref={gridRef}>
-        <div className="min-w-max min-h-max relative">
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${cols + 1}, max-content)` }}>
-            {/* Top-left sticky corner */}
-            <div
-              className="sticky left-0 top-0 z-30 bg-muted/50 border-r border-b border-border flex items-center justify-center text-xs font-medium text-muted-foreground"
-              style={{ width: HEADER_WIDTH, height: HEADER_HEIGHT, gridColumn: 1, gridRow: 1 }}
-            />
-            {/* Column headers */}
+      {/* Column Headers */}
+      <div
+        ref={colHeaderRef}
+        className="absolute z-30 bg-background"
+        style={{
+          left: HEADER_WIDTH * scale,
+          right: 0,
+          top: 0,
+          height: HEADER_HEIGHT * scale,
+          overflow: 'hidden',
+          pointerEvents: 'none'
+        }}
+      >
+        <div
+          className="relative"
+          style={{
+            width: cols * DEFAULT_COLUMN_WIDTH,
+            height: HEADER_HEIGHT,
+            transform: `scale(${scale})`,
+            transformOrigin: 'left top',
+            pointerEvents: 'auto',
+          }}
+        >
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${cols}, max-content)` }}>
             {Array.from({ length: cols }, (_, col) => (
               <div
                 key={col}
                 className={cn(
-                  "sticky top-0 z-20 border-b border-r border-border bg-muted/50 text-xs font-medium text-muted-foreground select-none flex items-center justify-center",
-                  "hover:bg-muted/70 transition-colors cursor-pointer"
+                  "border-b border-r border-border bg-zinc-100 dark:bg-zinc-900 text-xs font-medium text-muted-foreground select-none flex items-center justify-center relative",
+                  "hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-crosshair"
                 )}
                 style={{
                   width: columnWidths[col] || DEFAULT_COLUMN_WIDTH,
                   height: HEADER_HEIGHT,
                   minWidth: MIN_COLUMN_WIDTH,
-                  gridColumn: col + 2,
-                  gridRow: 1
                 }}
+                onClick={(e) => handleColumnHeaderClick(col, e)}
+                onDoubleClick={(e) => handleColumnHeaderDoubleClick(col, e)}
+                onMouseEnter={() => setHeaderHover({ type: 'column', index: col })}
+                onMouseLeave={() => setHeaderHover(null)}
               >
                 {getColumnLetter(col)}
                 {/* Column resize handle */}
@@ -498,51 +676,106 @@ export function EnhancedSpreadsheet({
                     "hover:bg-primary/50 transition-colors"
                   )}
                   onMouseDown={(e) => handleColumnResizeStart(col, e)}
-                  onDoubleClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const newWidths = [...columnWidths];
-                    newWidths[col] = DEFAULT_COLUMN_WIDTH;
-                    setColumnWidths(newWidths);
-                  }}
                 />
               </div>
             ))}
-            {/* Row headers and data grid */}
+          </div>
+        </div>
+      </div>
+      {/* Row Headers */}
+      <div
+        ref={rowHeaderRef}
+        className="absolute z-30 bg-background"
+        style={{
+          top: HEADER_HEIGHT * scale,
+          bottom: 0,
+          left: 0,
+          width: HEADER_WIDTH * scale,
+          overflow: 'hidden',
+          pointerEvents: 'none'
+        }}
+      >
+        <div
+          className="relative"
+          style={{
+            height: rows * DEFAULT_ROW_HEIGHT,
+            width: HEADER_WIDTH,
+            transform: `scale(${scale})`,
+            transformOrigin: 'left top',
+            pointerEvents: 'auto',
+          }}
+        >
+          <div className="flex flex-col">
             {Array.from({ length: rows }, (_, row) => (
-              <React.Fragment key={row}>
-                {/* Row header */}
+              <div
+                key={row}
+                className={cn(
+                  "border-b border-r border-border bg-zinc-100 dark:bg-zinc-900 text-xs font-medium text-muted-foreground select-none flex items-center justify-center relative",
+                  "hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-crosshair"
+                )}
+                style={{
+                  width: HEADER_WIDTH,
+                  height: rowHeights[row] || DEFAULT_ROW_HEIGHT,
+                  minHeight: MIN_ROW_HEIGHT,
+                }}
+                onClick={(e) => handleRowHeaderClick(row, e)}
+                onDoubleClick={(e) => handleRowHeaderDoubleClick(row, e)}
+                onMouseEnter={() => setHeaderHover({ type: 'row', index: row })}
+                onMouseLeave={() => setHeaderHover(null)}
+              >
+                {row + 1}
+                {/* Row resize handle */}
                 <div
                   className={cn(
-                    "sticky left-0 z-20 border-b border-r border-border bg-muted/50 text-xs font-medium text-muted-foreground select-none flex items-center justify-center",
-                    "hover:bg-muted/70 transition-colors cursor-pointer"
+                    "absolute bottom-0 left-0 w-full h-1 cursor-row-resize z-10",
+                    "hover:bg-primary/50 transition-colors"
                   )}
-                  style={{
-                    width: HEADER_WIDTH,
-                    height: rowHeights[row] || DEFAULT_ROW_HEIGHT,
-                    minHeight: MIN_ROW_HEIGHT,
-                    gridColumn: 1,
-                    gridRow: row + 2
-                  }}
-                >
-                  {row + 1}
-                  {/* Row resize handle */}
-                  <div
-                    className={cn(
-                      "absolute bottom-0 left-0 w-full h-1 cursor-row-resize z-10",
-                      "hover:bg-primary/50 transition-colors"
-                    )}
-                    onMouseDown={(e) => handleRowResizeStart(row, e)}
-                    onDoubleClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const newHeights = [...rowHeights];
-                      newHeights[row] = DEFAULT_ROW_HEIGHT;
-                      setRowHeights(newHeights);
-                    }}
-                  />
-                </div>
-                {/* Data cells */}
+                  onMouseDown={(e) => handleRowResizeStart(row, e)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Top-left sticky corner */}
+      <div
+        className="absolute z-40 bg-zinc-100 dark:bg-zinc-900 border-r border-b border-border flex items-center justify-center text-xs font-medium text-muted-foreground"
+        style={{
+          left: 0,
+          top: 0,
+          width: HEADER_WIDTH * scale,
+          height: HEADER_HEIGHT * scale
+        }}
+      />
+      {/* Scrollable grid */}
+      <div
+        ref={gridScrollRef}
+        className="absolute overflow-auto"
+        style={{
+          top: HEADER_HEIGHT * scale,
+          left: HEADER_WIDTH * scale,
+          right: 0,
+          bottom: 0,
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
+        <div
+          className="relative"
+          style={{
+            width: cols * DEFAULT_COLUMN_WIDTH * scale,
+            height: rows * DEFAULT_ROW_HEIGHT * scale,
+          }}
+        >
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: `repeat(${cols}, max-content)`,
+              transform: `scale(${scale})`,
+              transformOrigin: 'left top',
+            }}
+          >
+            {Array.from({ length: rows }, (_, row) => (
+              <React.Fragment key={row}>
                 {Array.from({ length: cols }, (_, col) => {
                   const cellData = data[row]?.[col];
                   const isSelected = isCellSelected(row, col);
@@ -562,8 +795,6 @@ export function EnhancedSpreadsheet({
                         width: columnWidths[col] || DEFAULT_COLUMN_WIDTH,
                         height: rowHeights[row] || DEFAULT_ROW_HEIGHT,
                         minWidth: MIN_COLUMN_WIDTH,
-                        gridColumn: col + 2,
-                        gridRow: row + 2
                       }}
                       onClick={(e) => handleCellClick(row, col, e)}
                       onDoubleClick={(e) => handleCellDoubleClick(row, col, e)}
@@ -609,14 +840,15 @@ export function EnhancedSpreadsheet({
       </div>
       {/* Selection info - bottom middle */}
       {selectedRange && (
-        <div className={cn(
-          "absolute bottom-4 left-1/2 transform -translate-x-1/2 px-3 py-2 rounded-md text-sm z-50 pointer-events-none shadow-lg",
-          "bg-popover text-popover-foreground border border-border"
-        )}>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Selected:</span>
-            <span className="font-mono font-medium">{getRangeReference(selectedRange)}</span>
-          </div>
+        <div
+          className={cn(
+            "absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg px-4 py-1.5 pointer-events-none"
+          )}
+        >
+          <span className="p-1 text-sm min-w-[4.5rem] text-center font-medium text-foreground">
+            <span className="text-sm text-muted-foreground">Selected: </span>
+            {getRangeReference(selectedRange)}
+          </span>
         </div>
       )}
       {/* Resize cursor overlay */}
@@ -625,6 +857,15 @@ export function EnhancedSpreadsheet({
           className="fixed inset-0 z-50 pointer-events-none"
           style={{
             cursor: isResizing.type === 'column' ? 'col-resize' : 'row-resize'
+          }}
+        />
+      )}
+      {/* Header hover cursor overlay */}
+      {headerHover && (
+        <div
+          className="fixed inset-0 z-40 pointer-events-none"
+          style={{
+            cursor: headerHover.type === 'column' ? 'col-resize' : 'row-resize'
           }}
         />
       )}

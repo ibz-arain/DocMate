@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit } from "lucide-react";
+import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit, FileSpreadsheet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -92,9 +92,15 @@ export function CustomSidebar({
   const mainNavItems = [
     {
       id: 'Document Editor',
-      name: 'Editor',
+      name: 'Document',
       icon: <Edit className="h-5 w-5" />,
       href: '/playground/document'
+    },
+    {
+      id: 'Spreadsheet Editor',
+      name: 'Spreadsheet',
+      icon: <FileSpreadsheet className="h-5 w-5" />,
+      href: '/playground/spreadsheet'
     },
     {
       id: 'document',

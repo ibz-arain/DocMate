@@ -18,6 +18,8 @@ import {
   PieChart,
   X,
   FileTextIcon,
+  MinusIcon,
+  PlusIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -101,6 +103,15 @@ export default function SpreadsheetPage() {
   
   // Tool selection (for consistency with document page)
   const [selectedTool, setSelectedTool] = useState<string | null>('cell');
+
+  // Add zoom state and refs
+  const [scale, setScale] = useState(1.0);
+  const [showZoomFeedback, setShowZoomFeedback] = useState(false);
+  const zoomFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingScaleRef = useRef<number>(scale);
+  const lastScaleUpdateRef = useRef<number>(Date.now());
+  const lastWheelEventRef = useRef<number>(0);
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
@@ -954,6 +965,155 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
     { id: 'range', label: 'Range Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
   ];
 
+  // Smooth zoom update function
+  const updateZoomSmooth = (newScale: number) => {
+    pendingScaleRef.current = newScale;
+    // Clear existing timeout
+    if (zoomTimeoutRef.current) {
+      clearTimeout(zoomTimeoutRef.current);
+    }
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastScaleUpdateRef.current;
+    const delay = timeSinceLastUpdate > 100 ? 0 : 150;
+    zoomTimeoutRef.current = setTimeout(() => {
+      setScale(pendingScaleRef.current);
+      lastScaleUpdateRef.current = Date.now();
+    }, delay);
+  };
+
+  const showZoomFeedbackBriefly = () => {
+    setShowZoomFeedback(true);
+    if (zoomFeedbackTimeoutRef.current) {
+      clearTimeout(zoomFeedbackTimeoutRef.current);
+    }
+    zoomFeedbackTimeoutRef.current = setTimeout(() => {
+      setShowZoomFeedback(false);
+    }, 1000);
+  };
+
+  const zoomIn = () => {
+    const currentScale = pendingScaleRef.current;
+    const newScale = Math.min(currentScale * 1.25, 3.0);
+    updateZoomSmooth(newScale);
+    showZoomFeedbackBriefly();
+  };
+  const zoomOut = () => {
+    const currentScale = pendingScaleRef.current;
+    const newScale = Math.max(currentScale * 0.8, 0.5);
+    updateZoomSmooth(newScale);
+    showZoomFeedbackBriefly();
+  };
+  const resetZoom = () => {
+    updateZoomSmooth(1.0);
+    showZoomFeedbackBriefly();
+  };
+
+  // Mouse wheel zoom with Ctrl/Cmd
+  useEffect(() => {
+    const container = spreadsheetContainerRef.current;
+    if (!container) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const now = Date.now();
+        if (now - lastWheelEventRef.current < 16) return;
+        lastWheelEventRef.current = now;
+        const delta = Math.abs(e.deltaY);
+        const baseFactor = 1.08;
+        const adjustedFactor = delta > 100 ? baseFactor * 1.1 : baseFactor;
+        const zoomFactor = e.deltaY > 0 ? 1 / adjustedFactor : adjustedFactor;
+        const currentScale = pendingScaleRef.current;
+        const newScale = Math.max(0.5, Math.min(3.0, currentScale * zoomFactor));
+        updateZoomSmooth(newScale);
+        showZoomFeedbackBriefly();
+      }
+    };
+    // Touch pinch-to-zoom
+    let initialDistance = 0;
+    let initialScale = scale;
+    let isGesturing = false;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        initialDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        initialScale = pendingScaleRef.current;
+        isGesturing = true;
+        setShowZoomFeedback(true);
+      }
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && isGesturing) {
+        e.preventDefault();
+        const now = Date.now();
+        if (now - lastWheelEventRef.current < 32) return;
+        lastWheelEventRef.current = now;
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        if (initialDistance > 0) {
+          const scaleMultiplier = currentDistance / initialDistance;
+          const newScale = Math.max(0.5, Math.min(3.0, initialScale * scaleMultiplier));
+          updateZoomSmooth(newScale);
+        }
+      }
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        isGesturing = false;
+        setShowZoomFeedback(false);
+        initialDistance = 0;
+        if (zoomTimeoutRef.current) {
+          clearTimeout(zoomTimeoutRef.current);
+          setScale(pendingScaleRef.current);
+        }
+      }
+    };
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd);
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [scale, spreadsheetUrl]);
+
+  // Keyboard shortcuts for zoom
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!spreadsheetUrl) return;
+      if (e.key === '=' || e.key === '+') {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          zoomIn();
+        }
+      } else if (e.key === '-') {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          zoomOut();
+        }
+      } else if (e.key === '0') {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          resetZoom();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [spreadsheetUrl]);
+
   return (
     <>
       <Head>
@@ -1044,15 +1204,73 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                       </div>
                     )}
 
-                    <div className="absolute inset-0 p-4">
-                      <EnhancedSpreadsheet
-                        data={spreadsheetData}
-                        onChange={setSpreadsheetData}
-                        onCellSelection={handleCellSelection}
-                        onRightClick={handleRightClick}
-                        className="w-full h-full"
-                      />
-                    </div>
+                    {spreadsheetUrl && (
+                      <>
+                        {/* Zoom Controls Bottom Center */}
+                        <div className="absolute bottom-4 right-4 z-20 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
+                          <TooltipProvider delayDuration={0}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={zoomOut} disabled={scale <= 0.5} className="h-8 w-8">
+                                  <MinusIcon className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p>Zoom out (Ctrl + Scroll)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="sm" onClick={resetZoom} className="h-8 px-2 min-w-[3rem]">
+                                  <span className={cn("text-xs font-medium transition-colors", showZoomFeedback && "text-primary")}>{Math.round(scale * 100)}%</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p>Reset zoom to 100%</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={zoomIn} disabled={scale >= 3.0} className="h-8 w-8">
+                                  <PlusIcon className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p>Zoom in (Ctrl + Scroll)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        {/* Zoom Feedback Overlay */}
+                        <AnimatePresence>
+                          {showZoomFeedback && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              className="absolute bottom-20 right-8 z-30 pointer-events-none"
+                            >
+                              <div className="bg-background/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border">
+                                <div className="flex items-center space-x-2">
+                                  <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center">
+                                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                                  </div>
+                                  <span className="text-lg font-medium text-primary">{Math.round(scale * 100)}%</span>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </>
+                    )}
+                    <EnhancedSpreadsheet
+                      data={spreadsheetData}
+                      onChange={setSpreadsheetData}
+                      onCellSelection={handleCellSelection}
+                      onRightClick={handleRightClick}
+                      className="w-full h-full"
+                      scale={scale}
+                    />
                   </div>
                 )}
               </CardContent>
