@@ -141,6 +141,13 @@ interface ChatSidebarProps {
   documentName?: string;
   currentPageNumber?: number;
   pdfFile?: File | null;
+  /**
+   * Optional plain-text representation of the entire document (e.g. a spreadsheet
+   * serialised as "A1: foo, B1: bar …"). This is used when binary files are
+   * not supported by the model. If provided and no explicit snippets/images
+   * are selected, it will be sent as the full-document context.
+   */
+  documentText?: string;
   onWidthChange?: (width: number) => void;
   /**
    * Optional text to pre-populate the chat input. This should not trigger
@@ -158,6 +165,7 @@ export function ChatSidebar({
   documentName,
   currentPageNumber,
   pdfFile,
+  documentText,
   onWidthChange,
   prefillInput
 }: ChatSidebarProps) {
@@ -724,6 +732,15 @@ export function ChatSidebar({
       contextData = base64Data.split(',')[1] || base64Data;
       mimeType = pdfFile.type || 'application/pdf';
       contextType = 'full_document';
+    } else if (documentText) {
+      // Use the provided plain-text full document (e.g. full spreadsheet) as context
+      const base64Data = typeof window === 'undefined'
+        ? Buffer.from(documentText, 'utf8').toString('base64')
+        : btoa(unescape(encodeURIComponent(documentText)));
+
+      contextData = base64Data;
+      mimeType = 'text/plain';
+      contextType = 'full_document';
     } else if (selectedText && selectedText !== '[Full Document]') {
       // As a last resort (e.g. no PDF file provided) fall back to plain-text selection
       contextData = selectedText;
@@ -1130,46 +1147,66 @@ export function ChatSidebar({
               {/* Citation header - only show for text selections */}
               {snippets.length > 0 && (
                 <div className="px-3 py-2.5 border-b border-border/50 space-y-2 max-h-40 overflow-y-auto">
-                  {snippets.map(snippet => (
-                    snippet.type === 'text' ? (
-                      <div key={snippet.id} className="inline-flex items-center border border-primary/20 rounded-md py-1.5 px-2 bg-primary/5 max-w-full group text-xs text-primary">
-                        <FileText className="h-3 w-3 flex-shrink-0 mr-1" />
-                        <span className="flex-1 truncate font-medium">
-                          {(snippet.text ?? '').replace(/\n/g, ' ')}
-                        </span>
-                        {snippet.linesCount && (
-                          <span className="flex-shrink-0 opacity-70 ml-1">• {snippet.linesCount} lines</span>
-                        )}
-                        <button
-                          onClick={() => removeSnippet(snippet.id)}
-                          className="flex-shrink-0 ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label="Remove snippet"
-                        >
-                          <XIcon className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div key={snippet.id} className="inline-flex w-full items-center border border-primary/20 rounded-md py-1.5 pl-2 pr-1 bg-primary/5 group text-xs text-primary overflow-hidden">
-                        <ImageIcon className="h-3 w-3 flex-shrink-0 mr-1" />
-                        {/* Preview thumbnail */}
-                        {snippet.base64 && (
-                          <img
-                            src={snippet.base64}
-                            alt="Box selection preview"
-                            className="h-6 w-auto rounded-sm border border-primary/30 mr-2 flex-shrink-0"
-                          />
-                        )}
-                        <span className="truncate font-medium flex-1">Image selection</span>
-                        <button
-                          onClick={() => removeSnippet(snippet.id)}
-                          className="flex-shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity mr-1"
-                          aria-label="Remove snippet"
-                        >
-                          <XIcon className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )
-                  ))}
+                  {snippets.map(snippet => {
+                    if (snippet.type === 'text') {
+                      // If selectionData is present, show cell range (e.g., A1:C5)
+                      let rangeLabel = null;
+                      if (selectionData && typeof selectionData === 'object' && selectionData.startRow !== undefined && selectionData.startCol !== undefined && selectionData.endRow !== undefined && selectionData.endCol !== undefined) {
+                        // Helper to get column letter
+                        const getColumnLetter = (index: number) => {
+                          let result = '';
+                          while (index >= 0) {
+                            result = String.fromCharCode(65 + (index % 26)) + result;
+                            index = Math.floor(index / 26) - 1;
+                          }
+                          return result;
+                        };
+                        const startRef = `${getColumnLetter(selectionData.startCol)}${selectionData.startRow + 1}`;
+                        const endRef = `${getColumnLetter(selectionData.endCol)}${selectionData.endRow + 1}`;
+                        rangeLabel = startRef === endRef ? startRef : `${startRef}:${endRef}`;
+                      }
+                      return (
+                        <div key={snippet.id} className="inline-flex items-center border border-primary/20 rounded-md py-1.5 px-2 bg-primary/5 max-w-full group text-xs text-primary">
+                          <FileText className="h-3 w-3 flex-shrink-0 mr-1" />
+                          <span className="flex-1 truncate font-medium">
+                            {rangeLabel ? `Cells: ${rangeLabel}` : (snippet.text ?? '').replace(/\n/g, ' ')}
+                          </span>
+                          {snippet.linesCount && (
+                            <span className="flex-shrink-0 opacity-70 ml-1">• {snippet.linesCount} lines</span>
+                          )}
+                          <button
+                            onClick={() => removeSnippet(snippet.id)}
+                            className="flex-shrink-0 ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Remove snippet"
+                          >
+                            <XIcon className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div key={snippet.id} className="inline-flex w-full items-center border border-primary/20 rounded-md py-1.5 pl-2 pr-1 bg-primary/5 group text-xs text-primary overflow-hidden">
+                          <ImageIcon className="h-3 w-3 flex-shrink-0 mr-1" />
+                          {/* Preview thumbnail */}
+                          {snippet.base64 && (
+                            <img
+                              src={snippet.base64}
+                              alt="Box selection preview"
+                              className="h-6 w-auto rounded-sm border border-primary/30 mr-2 flex-shrink-0"
+                            />
+                          )}
+                          <span className="truncate font-medium flex-1">Image selection</span>
+                          <button
+                            onClick={() => removeSnippet(snippet.id)}
+                            className="flex-shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity mr-1"
+                            aria-label="Remove snippet"
+                          >
+                            <XIcon className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    }
+                  })}
                 </div>
               )}
               <div className="p-3">

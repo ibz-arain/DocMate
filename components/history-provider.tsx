@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, createContext, useContext, Rea
 
 export interface HistoryEntry {
   id: string;
-  type: 'summary' | 'quick-format' | 'template-format' | 'chat';
+  type: 'summary' | 'quick-format' | 'template-format' | 'chat' | 'chart-generator';
   title: string;
   content: any;
   selectedText: string;

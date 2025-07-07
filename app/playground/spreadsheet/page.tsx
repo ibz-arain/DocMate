@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { CustomSidebar } from "@/components/custom-sidebar";
 import Head from "next/head";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import { FullDocumentTemplateFormatPopup } from "@/components/document/full-docu
 import { HistoryMiniPopup } from "@/components/document/history-mini-popup";
 import { SpreadsheetContextMenu } from "@/components/spreadsheet/spreadsheet-context-menu";
 import { EnhancedSpreadsheet } from "@/components/spreadsheet/enhanced-spreadsheet";
+import { ChartGeneratorPopup } from "@/components/spreadsheet/chart-generator-popup";
 import { useHistory } from "@/hooks/use-history";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -53,7 +54,7 @@ interface SelectionRange {
 }
 
 export default function SpreadsheetPage() {
-  const { history, clearHistory } = useHistory();
+  const { history, clearHistory, addHistoryEntry } = useHistory();
   const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
   const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
@@ -73,10 +74,6 @@ export default function SpreadsheetPage() {
   const [showSummarizePopup, setShowSummarizePopup] = useState(false);
   const [popupSelectedText, setPopupSelectedText] = useState("");
   const [popupSelectionData, setPopupSelectionData] = useState<any>(null);
-  
-  const [showQuickFormatPopup, setShowQuickFormatPopup] = useState(false);
-  const [quickFormatSelectedText, setQuickFormatSelectedText] = useState("");
-  const [quickFormatSelectionData, setQuickFormatSelectionData] = useState<any>(null);
   
   const [showTemplateFormatPopup, setShowTemplateFormatPopup] = useState(false);
   const [templateFormatSelectedText, setTemplateFormatSelectedText] = useState("");
@@ -100,6 +97,12 @@ export default function SpreadsheetPage() {
   const [showHistoryPopup, setShowHistoryPopup] = useState(false);
   const [historyPopupPosition, setHistoryPopupPosition] = useState({ top: 0, left: 0 });
   
+  // Chart generator popup state
+  const [showChartGeneratorPopup, setShowChartGeneratorPopup] = useState(false);
+  const [chartGeneratorSelectedText, setChartGeneratorSelectedText] = useState("");
+  const [chartGeneratorSelectionData, setChartGeneratorSelectionData] = useState<any>(null);
+  const [cachedChartResult, setCachedChartResult] = useState<any>(null);
+  
   // Tool selection (for consistency with document page)
   const [selectedTool, setSelectedTool] = useState<string | null>('cell');
 
@@ -118,7 +121,6 @@ export default function SpreadsheetPage() {
   
   // Cached results for history
   const [cachedSummaryResult, setCachedSummaryResult] = useState<any>(null);
-  const [cachedQuickFormatResult, setCachedQuickFormatResult] = useState<any>(null);
   const [cachedTemplateFormatResult, setCachedTemplateFormatResult] = useState<any>(null);
 
   const dropTexts = [
@@ -319,7 +321,6 @@ export default function SpreadsheetPage() {
     
     // Clear all popup states
     setShowSummarizePopup(false);
-    setShowQuickFormatPopup(false);
     setShowTemplateFormatPopup(false);
     setShowFullDocSummarizePopup(false);
     setShowFullDocQuickFormatPopup(false);
@@ -329,7 +330,6 @@ export default function SpreadsheetPage() {
     
     // Clear cached results
     setCachedSummaryResult(null);
-    setCachedQuickFormatResult(null);
     setCachedTemplateFormatResult(null);
     setFullDocSummarizeResult(null);
     setFullDocQuickFormatResult(null);
@@ -409,16 +409,6 @@ export default function SpreadsheetPage() {
     setShowSummarizePopup(true);
   };
 
-  const handleQuickFormat = () => {
-    if (!selectedCells) return;
-    
-    setCachedQuickFormatResult(null);
-    setQuickFormatSelectedText(selectedCells);
-    setQuickFormatSelectionData(selectedRange);
-    clearSelection();
-    setShowQuickFormatPopup(true);
-  };
-
   const handleTemplateFormat = () => {
     if (!selectedCells) return;
     
@@ -454,57 +444,28 @@ export default function SpreadsheetPage() {
     }
   };
 
-  const handleCreateChart = async () => {
+  const handleCreateChart = () => {
     if (!selectedCells || !selectedRange) return;
     
-    try {
-      setIsAnalyzing(true);
-      
-      const prompt = `Analyze this spreadsheet data and suggest appropriate chart types and visualizations:
-${selectedCells}
+    setCachedChartResult(null);
+    setChartGeneratorSelectedText(selectedCells);
+    setChartGeneratorSelectionData(selectedRange);
+    setShowChartGeneratorPopup(true);
+    // Don't clear selection immediately - let the popup handle it
+  };
 
-Please provide:
-1. Recommended chart types for this data
-2. Data preparation suggestions
-3. Key insights that would be highlighted by visualization
-4. Specific chart configuration recommendations
-
-Focus on making the data more understandable through visualization.`;
-
-      const response = await fetch('/api/analyze/custom', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageData: btoa(unescape(encodeURIComponent(selectedCells))),
-          mimeType: 'text/plain',
-          customPrompt: prompt
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Chart analysis failed');
-      }
-
-      const result = await response.json();
-      
-      // Show result in chat sidebar
-      setChatSelectedText(selectedCells);
-      setChatSelectionData(selectedRange);
-      setChatPrefillText('');
-      setShowChatSidebar(true);
-      
-      setIsAnalyzing(false);
-      clearSelection();
-    } catch (error) {
-      console.error('Chart analysis error:', error);
-      toast({
-        title: "Chart analysis failed",
-        description: error instanceof Error ? error.message : 'Please try again.',
-        variant: "destructive"
-      });
-      setIsAnalyzing(false);
-    }
+  const handleSaveChartToHistory = (result: any) => {
+    setCachedChartResult(result);
+    
+    // Save to history
+    addHistoryEntry({
+      type: 'chart-generator',
+      title: `Chart Generation - ${result.charts?.length || 0} charts`,
+      selectedText: chartGeneratorSelectedText,
+      selectionData: chartGeneratorSelectionData,
+      content: result,
+      documentName: spreadsheetFile?.name || 'Spreadsheet'
+    });
   };
 
   // Full document handlers
@@ -725,6 +686,23 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
     setShowFullDocTemplateFormatPopup(true);
   };
 
+  // Plain-text representation of the entire sheet – always up to date
+  const fullSpreadsheetText = useMemo(() => {
+    return spreadsheetData
+      .map((row, rowIndex) => {
+        const rowData = row
+          .map((cell, colIndex) => {
+            const columnLetter = String.fromCharCode(65 + colIndex);
+            return `${columnLetter}${rowIndex + 1}: ${cell.value || ''}`;
+          })
+          .filter(cell => cell.split(': ')[1].trim() !== '')
+          .join(', ');
+        return rowData;
+      })
+      .filter(row => row.trim() !== '')
+      .join('\n');
+  }, [spreadsheetData]);
+
   const handleFullDocumentChat = () => {
     if (!spreadsheetFile) {
       toast({
@@ -738,7 +716,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
     if (showChatSidebar) {
       setShowChatSidebar(false);
     } else {
-      setChatSelectedText('[Full Spreadsheet]');
+      setChatSelectedText('[Full Document]'); // sentinel – same as PDF doc flow
       setChatSelectionData(null);
       setChatPrefillText('');
       setShowChatSidebar(true);
@@ -793,16 +771,16 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
       setPopupSelectedText(entry.selectedText);
       setPopupSelectionData(entry.selectionData);
       setShowSummarizePopup(true);
-    } else if (entry.type === 'quick-format') {
-      setCachedQuickFormatResult(entry.content);
-      setQuickFormatSelectedText(entry.selectedText);
-      setQuickFormatSelectionData(entry.selectionData);
-      setShowQuickFormatPopup(true);
     } else if (entry.type === 'template-format') {
       setCachedTemplateFormatResult(entry.content);
       setTemplateFormatSelectedText(entry.selectedText);
       setTemplateFormatSelectionData(entry.selectionData);
       setShowTemplateFormatPopup(true);
+    } else if (entry.type === 'chart-generator') {
+      setCachedChartResult(entry.content);
+      setChartGeneratorSelectedText(entry.selectedText);
+      setChartGeneratorSelectionData(entry.selectionData);
+      setShowChartGeneratorPopup(true);
     } else if (entry.type === 'chat') {
       setChatSelectedText(entry.selectedText);
       setChatSelectionData(entry.selectionData);
@@ -813,7 +791,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
   // Click outside to dismiss context menu
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (selectedCells && menuPos && !showQuickFormatPopup && !showTemplateFormatPopup) {
+      if (selectedCells && menuPos) {
         const target = e.target as Element;
         // Check if click is outside context menu and popups
         const contextMenu = target.closest('.z-50');
@@ -822,12 +800,12 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
         }
       }
     };
-
-    if (selectedCells && menuPos && !showQuickFormatPopup && !showTemplateFormatPopup) {
+  
+    if (selectedCells && menuPos) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [selectedCells, menuPos, showQuickFormatPopup, showTemplateFormatPopup]);
+  }, [selectedCells, menuPos]);
 
   // Click outside to dismiss history popup
   useEffect(() => {
@@ -1184,8 +1162,8 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                   selectedText={chatSelectedText}
                   selectionData={chatSelectionData}
                   documentName={spreadsheetFile?.name}
+                  documentText={fullSpreadsheetText}
                   currentPageNumber={1}
-                  pdfFile={spreadsheetFile}
                   onWidthChange={setChatSidebarWidth}
                   prefillInput={chatPrefillText}
                 />
@@ -1233,7 +1211,6 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
           selectedCells={selectedCells}
           selectedRange={selectedRange}
           onSummarizeData={handleSummarizeData}
-          onQuickFormat={handleQuickFormat}
           onTemplateFormat={handleTemplateFormat}
           onChatPopup={handleChatPopup}
           onCopy={handleCopy}
@@ -1257,21 +1234,6 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
         currentPageNumber={1}
         cachedResult={cachedSummaryResult}
         onSummarize={handleSummarizeRequest}
-      />
-
-      <QuickFormatPopup
-        isOpen={showQuickFormatPopup}
-        onClose={() => {
-          setShowQuickFormatPopup(false);
-          setQuickFormatSelectedText("");
-          setQuickFormatSelectionData(null);
-          setCachedQuickFormatResult(null);
-        }}
-        selectedText={quickFormatSelectedText}
-        selectionData={quickFormatSelectionData}
-        documentName={spreadsheetFile?.name}
-        currentPageNumber={1}
-        cachedResult={cachedQuickFormatResult}
       />
 
       <TemplateFormatPopup
@@ -1325,6 +1287,22 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
         onClose={() => setShowHistoryPopup(false)}
         position={historyPopupPosition}
         onOpenEntry={handleOpenHistoryEntry}
+      />
+
+      {/* Chart Generator Popup */}
+      <ChartGeneratorPopup
+        isOpen={showChartGeneratorPopup}
+        onClose={() => {
+          setShowChartGeneratorPopup(false);
+          setChartGeneratorSelectedText("");
+          setChartGeneratorSelectionData(null);
+          clearSelection();
+        }}
+        selectedCells={chartGeneratorSelectedText}
+        selectedRange={chartGeneratorSelectionData}
+        spreadsheetData={spreadsheetData}
+        cachedResult={cachedChartResult}
+        onSaveToHistory={handleSaveChartToHistory}
       />
 
       {/* CSS for animated gradient background */}

@@ -633,6 +633,12 @@ export function EnhancedSpreadsheet({
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore key events if focus is inside an input/textarea or content-editable (e.g. chat sidebar)
+      const target = event.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as HTMLElement).isContentEditable)) {
+        return;
+      }
+
       if (editingCell || !activeCell) return;
       
       let newRow = activeCell.row;

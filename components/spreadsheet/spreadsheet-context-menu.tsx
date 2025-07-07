@@ -35,7 +35,6 @@ interface SpreadsheetContextMenuProps {
     endCol: number;
   } | null;
   onSummarizeData: () => void;
-  onQuickFormat: () => void;
   onTemplateFormat: () => void;
   onChatPopup: () => void;
   onCopy: () => void;
@@ -48,7 +47,6 @@ export function SpreadsheetContextMenu({
   selectedCells,
   selectedRange,
   onSummarizeData,
-  onQuickFormat,
   onTemplateFormat,
   onChatPopup,
   onCopy,
@@ -85,14 +83,6 @@ export function SpreadsheetContextMenu({
       onClick: onCreateChart,
       disabled: !hasMultipleCells,
       tooltip: !hasMultipleCells ? 'Select multiple cells to create chart' : undefined
-    },
-    {
-      id: 'quick-format',
-      label: 'Auto Format',
-      icon: Table,
-      onClick: onQuickFormat,
-      disabled: !hasSelection,
-      tooltip: !hasSelection ? 'Select cells first to format' : undefined
     },
     {
       id: 'template-format',
