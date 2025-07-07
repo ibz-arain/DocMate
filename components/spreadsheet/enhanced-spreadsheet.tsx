@@ -29,6 +29,11 @@ interface EnhancedSpreadsheetProps {
     range: SelectionRange,
     event: React.MouseEvent
   ) => void;
+  onContextMenu?: (
+    selectedCells: string,
+    range: SelectionRange,
+    position: { top: number; left: number }
+  ) => void;
   className?: string;
   scale?: number;
 }
@@ -38,6 +43,7 @@ export function EnhancedSpreadsheet({
   onChange,
   onCellSelection,
   onRightClick,
+  onContextMenu,
   className,
   scale = 1.0
 }: EnhancedSpreadsheetProps) {
@@ -52,6 +58,8 @@ export function EnhancedSpreadsheet({
   const [isResizing, setIsResizing] = useState<{ type: 'column' | 'row'; index: number } | null>(null);
   const [resizeStart, setResizeStart] = useState<{ pos: number; size: number } | null>(null);
   const [headerHover, setHeaderHover] = useState<{ type: 'column' | 'row'; index: number } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [lastCursorPosition, setLastCursorPosition] = useState<{ x: number; y: number } | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -65,19 +73,44 @@ export function EnhancedSpreadsheet({
   const HEADER_HEIGHT = 36;
   const HEADER_WIDTH = 60;
 
-  // Initialize dimensions
-  const rows = Math.max(data.length, 100);
-  const cols = Math.max(data[0]?.length || 0, 26);
+  // Initialize dimensions - dynamic based on data size with proportional buffer
+  const MIN_ROWS = 10;
+  const MIN_COLS = 5;
+  
+  // Calculate actual data dimensions
+  const actualRows = data.length;
+  const actualCols = data.length > 0 ? Math.max(...data.map(row => row?.length || 0)) : 0;
+  
+  // Proportional buffer: 20% of data size, but at least 5 rows/2 columns
+  const bufferRows = Math.max(Math.ceil(actualRows * 0.2), 5);
+  const bufferCols = Math.max(Math.ceil(actualCols * 0.2), 2);
+  
+  // Set dimensions with proportional buffer, but ensure minimum usable size
+  const rows = Math.max(actualRows + bufferRows, MIN_ROWS);
+  const cols = Math.max(actualCols + bufferCols, MIN_COLS);
 
   // Initialize column widths and row heights
   useEffect(() => {
-    if (columnWidths.length === 0) {
-      setColumnWidths(new Array(cols).fill(DEFAULT_COLUMN_WIDTH));
+    // Update column widths when cols changes
+    if (columnWidths.length !== cols) {
+      const newColumnWidths = new Array(cols).fill(DEFAULT_COLUMN_WIDTH);
+      // Preserve existing widths for columns that still exist
+      for (let i = 0; i < Math.min(columnWidths.length, cols); i++) {
+        newColumnWidths[i] = columnWidths[i] || DEFAULT_COLUMN_WIDTH;
+      }
+      setColumnWidths(newColumnWidths);
     }
-    if (rowHeights.length === 0) {
-      setRowHeights(new Array(rows).fill(DEFAULT_ROW_HEIGHT));
+    
+    // Update row heights when rows changes
+    if (rowHeights.length !== rows) {
+      const newRowHeights = new Array(rows).fill(DEFAULT_ROW_HEIGHT);
+      // Preserve existing heights for rows that still exist
+      for (let i = 0; i < Math.min(rowHeights.length, rows); i++) {
+        newRowHeights[i] = rowHeights[i] || DEFAULT_ROW_HEIGHT;
+      }
+      setRowHeights(newRowHeights);
     }
-  }, [cols, rows, columnWidths.length, rowHeights.length]);
+  }, [cols, rows, columnWidths, rowHeights]);
 
   // Get column letter from index (A, B, C, ... Z, AA, AB, etc.)
   const getColumnLetter = (index: number): string => {
@@ -114,6 +147,51 @@ export function EnhancedSpreadsheet({
     }
     return cells.join('\n');
   };
+
+  // Calculate menu position based on cursor or selection
+  const calculateMenuPosition = (event: React.MouseEvent): { top: number; left: number } => {
+    const menuWidth = 200;
+    const menuHeight = 300;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let left = event.clientX + 8;
+    let top = event.clientY;
+    
+    // Adjust horizontal position if menu would go off-screen
+    if (left + menuWidth > viewportWidth) {
+      left = event.clientX - menuWidth - 8;
+    }
+    
+    // Adjust vertical position if menu would go off-screen
+    if (top + menuHeight > viewportHeight) {
+      top = event.clientY - menuHeight - 8;
+    }
+    
+    // Ensure minimum distance from edges
+    left = Math.max(8, Math.min(left, viewportWidth - menuWidth - 8));
+    top = Math.max(8, Math.min(top, viewportHeight - menuHeight - 8));
+    
+    return { top, left };
+  };
+
+  // Show context menu for selection
+  const showContextMenu = (range: SelectionRange, event: React.MouseEvent) => {
+    const selectedText = getSelectedCellsText(range);
+    const position = calculateMenuPosition(event);
+    
+    setMenuPosition(position);
+    setLastCursorPosition({ x: event.clientX, y: event.clientY });
+    
+    // Call the context menu callback
+    onContextMenu?.(selectedText, range, position);
+  };
+
+  // Clear context menu
+  const clearContextMenu = useCallback(() => {
+    setMenuPosition(null);
+    setLastCursorPosition(null);
+  }, []);
 
   // Calculate content width for a column
   const getColumnContentWidth = (colIndex: number): number => {
@@ -192,6 +270,9 @@ export function EnhancedSpreadsheet({
       setSelectedRange(range);
       const selectedText = getSelectedCellsText(range);
       onCellSelection?.(selectedText, range, event);
+      
+      // Show context menu immediately for extended selection
+      showContextMenu(range, event);
     } else {
       // Single cell selection
       const range: SelectionRange = {
@@ -205,8 +286,11 @@ export function EnhancedSpreadsheet({
       
       const selectedText = getSelectedCellsText(range);
       onCellSelection?.(selectedText, range, event);
+      
+      // Show context menu immediately for single cell selection
+      showContextMenu(range, event);
     }
-  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText]);
+  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu]);
 
   // Handle cell double click (start editing)
   const handleCellDoubleClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
@@ -214,6 +298,9 @@ export function EnhancedSpreadsheet({
     
     event.preventDefault();
     event.stopPropagation();
+    
+    // Clear context menu when starting to edit
+    clearContextMenu();
     
     const cellValue = data[row]?.[col]?.value || '';
     setEditingCell({ row, col });
@@ -224,7 +311,7 @@ export function EnhancedSpreadsheet({
       editInputRef.current?.focus();
       editInputRef.current?.select();
     }, 0);
-  }, [data, isResizing]);
+  }, [data, isResizing, clearContextMenu]);
 
   // Handle mouse down for selection
   const handleMouseDown = useCallback((row: number, col: number, event: React.MouseEvent) => {
@@ -266,7 +353,10 @@ export function EnhancedSpreadsheet({
     
     const selectedText = getSelectedCellsText(selectedRange);
     onCellSelection?.(selectedText, selectedRange, event);
-  }, [isSelecting, selectedRange, isResizing, onCellSelection, getSelectedCellsText]);
+    
+    // Show context menu when drag selection ends
+    showContextMenu(selectedRange, event);
+  }, [isSelecting, selectedRange, isResizing, onCellSelection, getSelectedCellsText, showContextMenu]);
 
   // Handle right click
   const handleRightClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
@@ -292,7 +382,10 @@ export function EnhancedSpreadsheet({
     
     const selectedText = getSelectedCellsText(range);
     onRightClick?.(selectedText, range, event);
-  }, [selectedRange, isResizing, onRightClick, getSelectedCellsText]);
+    
+    // Show context menu for right-click
+    showContextMenu(range, event);
+  }, [selectedRange, isResizing, onRightClick, getSelectedCellsText, showContextMenu]);
 
   // Handle cell value change
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
@@ -379,7 +472,10 @@ export function EnhancedSpreadsheet({
     
     const selectedText = getSelectedCellsText(range);
     onCellSelection?.(selectedText, range, event);
-  }, [isResizing, rows, onCellSelection, getSelectedCellsText]);
+    
+    // Show context menu immediately for column selection
+    showContextMenu(range, event);
+  }, [isResizing, rows, onCellSelection, getSelectedCellsText, showContextMenu]);
 
   // Handle row header click (select entire row)
   const handleRowHeaderClick = useCallback((rowIndex: number, event: React.MouseEvent) => {
@@ -400,7 +496,10 @@ export function EnhancedSpreadsheet({
     
     const selectedText = getSelectedCellsText(range);
     onCellSelection?.(selectedText, range, event);
-  }, [isResizing, cols, onCellSelection, getSelectedCellsText]);
+    
+    // Show context menu immediately for row selection
+    showContextMenu(range, event);
+  }, [isResizing, cols, onCellSelection, getSelectedCellsText, showContextMenu]);
 
   // Handle column resize
   const handleColumnResizeStart = useCallback((colIndex: number, event: React.MouseEvent) => {
@@ -509,14 +608,27 @@ export function EnhancedSpreadsheet({
       }
     };
 
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuPosition) {
+        const target = event.target as Element;
+        // Check if click is outside the spreadsheet container
+        const container = containerRef.current;
+        if (container && !container.contains(target)) {
+          clearContextMenu();
+        }
+      }
+    };
+
     document.addEventListener('mouseup', handleGlobalMouseUp);
     document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mousedown', handleClickOutside);
     
     return () => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSelecting, isResizing, handleResizeMove, handleResizeEnd]);
+  }, [isSelecting, isResizing, handleResizeMove, handleResizeEnd, menuPosition, clearContextMenu]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -560,6 +672,14 @@ export function EnhancedSpreadsheet({
             }
           }
           return;
+        case 'Escape':
+          event.preventDefault();
+          // Clear context menu if open
+          if (menuPosition) {
+            clearContextMenu();
+            return;
+          }
+          break;
         default:
           // If it's a printable character, start editing
           if (event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
@@ -584,7 +704,7 @@ export function EnhancedSpreadsheet({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeCell, editingCell, selectedRange, rows, cols, handleCellChange, handleCellDoubleClick]);
+  }, [activeCell, editingCell, selectedRange, rows, cols, handleCellChange, handleCellDoubleClick, menuPosition, clearContextMenu]);
 
   // Check if cell is selected
   const isCellSelected = (row: number, col: number): boolean => {
@@ -788,7 +908,7 @@ export function EnhancedSpreadsheet({
                         "border-b border-r border-border relative cursor-cell transition-colors flex-shrink-0",
                         "bg-background text-foreground",
                         isSelected && "bg-primary/10 border-primary/30",
-                        isActive && "ring-2 ring-primary ring-inset",
+                        isActive && !selectedRange && "ring-2 ring-primary ring-inset",
                         !isSelected && !isActive && "hover:bg-muted/30"
                       )}
                       style={{
@@ -818,17 +938,59 @@ export function EnhancedSpreadsheet({
                         />
                       ) : (
                         <div
-                          className={cn(
-                            "w-full h-full px-3 py-2 text-sm overflow-hidden whitespace-nowrap text-ellipsis flex items-center",
-                            "text-foreground"
-                          )}
+                                                className={cn(
+                        "w-full h-full px-3 py-2 text-sm overflow-hidden whitespace-nowrap text-ellipsis flex items-center",
+                        "text-foreground",
+                        isSelected && "select-none"
+                      )}
                         >
                           {cellData?.value || ''}
                         </div>
                       )}
-                      {/* Active cell border */}
-                      {isActive && !isEditing && (
-                        <div className="absolute inset-0 border-2 border-primary pointer-events-none rounded-sm" />
+                      {/* Selection border - show around entire range */}
+                      {selectedRange && !isEditing && (
+                        <>
+                          {/* Top border for first row */}
+                          {row === selectedRange.startRow && (
+                            <div 
+                              className="absolute top-0 left-0 right-0 border-t-2 border-primary pointer-events-none z-10"
+                              style={{
+                                left: col >= selectedRange.startCol && col <= selectedRange.endCol ? 0 : 'auto',
+                                right: col >= selectedRange.startCol && col <= selectedRange.endCol ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                          {/* Bottom border for last row */}
+                          {row === selectedRange.endRow && (
+                            <div 
+                              className="absolute bottom-0 left-0 right-0 border-b-2 border-primary pointer-events-none z-10"
+                              style={{
+                                left: col >= selectedRange.startCol && col <= selectedRange.endCol ? 0 : 'auto',
+                                right: col >= selectedRange.startCol && col <= selectedRange.endCol ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                          {/* Left border for first column */}
+                          {col === selectedRange.startCol && (
+                            <div 
+                              className="absolute top-0 bottom-0 left-0 border-l-2 border-primary pointer-events-none z-10"
+                              style={{
+                                top: row >= selectedRange.startRow && row <= selectedRange.endRow ? 0 : 'auto',
+                                bottom: row >= selectedRange.startRow && row <= selectedRange.endRow ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                          {/* Right border for last column */}
+                          {col === selectedRange.endCol && (
+                            <div 
+                              className="absolute top-0 bottom-0 right-0 border-r-2 border-primary pointer-events-none z-10"
+                              style={{
+                                top: row >= selectedRange.startRow && row <= selectedRange.endRow ? 0 : 'auto',
+                                bottom: row >= selectedRange.startRow && row <= selectedRange.endRow ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   );

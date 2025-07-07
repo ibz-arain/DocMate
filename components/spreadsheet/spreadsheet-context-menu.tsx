@@ -34,13 +34,11 @@ interface SpreadsheetContextMenuProps {
     endRow: number;
     endCol: number;
   } | null;
-  onAnalyzeData: () => void;
   onSummarizeData: () => void;
   onQuickFormat: () => void;
   onTemplateFormat: () => void;
   onChatPopup: () => void;
   onCopy: () => void;
-  onCalculateStats: () => void;
   onCreateChart: () => void;
   onClose: () => void;
 }
@@ -49,13 +47,11 @@ export function SpreadsheetContextMenu({
   position,
   selectedCells,
   selectedRange,
-  onAnalyzeData,
   onSummarizeData,
   onQuickFormat,
   onTemplateFormat,
   onChatPopup,
   onCopy,
-  onCalculateStats,
   onCreateChart,
   onClose
 }: SpreadsheetContextMenuProps) {
@@ -75,28 +71,12 @@ export function SpreadsheetContextMenu({
     tooltip?: string;
   }> = [
     {
-      id: 'analyze-data',
-      label: 'Analyze Data',
-      icon: TrendingUp,
-      onClick: onAnalyzeData,
-      disabled: !hasSelection,
-      tooltip: !hasSelection ? 'Select cells first to analyze' : undefined
-    },
-    {
       id: 'summarize-data',
       label: 'Summarize Data',
       icon: Sparkles,
       onClick: onSummarizeData,
       disabled: !hasSelection,
       tooltip: !hasSelection ? 'Select cells first to summarize' : undefined
-    },
-    {
-      id: 'calculate-stats',
-      label: 'Calculate Statistics',
-      icon: Calculator,
-      onClick: onCalculateStats,
-      disabled: !hasMultipleCells,
-      tooltip: !hasMultipleCells ? 'Select multiple cells to calculate statistics' : undefined
     },
     {
       id: 'create-chart',

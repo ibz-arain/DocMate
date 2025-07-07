@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Upload,
   MousePointer as MousePointerIcon,
-  BoxSelect as BoxSelectIcon,
   Table,
   Sparkles,
   Loader2,
@@ -211,9 +210,6 @@ export default function SpreadsheetPage() {
       if (e.key === '1') {
         e.preventDefault();
         handleToolSelect('cell');
-      } else if (e.key === '2') {
-        e.preventDefault();
-        handleToolSelect('range');
       }
       // Escape to clear selection
       else if (e.key === 'Escape') {
@@ -389,6 +385,13 @@ export default function SpreadsheetPage() {
     setMenuPos({ top, left });
   };
 
+  // Handle context menu from cell selection
+  const handleContextMenu = (selectedText: string, range: SelectionRange, position: { top: number; left: number }) => {
+    setSelectedCells(selectedText);
+    setSelectedRange(range);
+    setMenuPos(position);
+  };
+
   const clearSelection = () => {
     setSelectedCells("");
     setSelectedRange(null);
@@ -396,59 +399,6 @@ export default function SpreadsheetPage() {
   };
 
   // Context menu handlers
-  const handleAnalyzeData = async () => {
-    if (!selectedCells) return;
-    
-    try {
-      setIsAnalyzing(true);
-      
-      const prompt = `Analyze this spreadsheet data and provide comprehensive insights:
-${selectedCells}
-
-Please provide:
-1. Data overview and patterns
-2. Key statistics and trends
-3. Notable observations
-4. Potential insights or recommendations
-
-Focus on understanding the data structure and meaning.`;
-
-      const response = await fetch('/api/analyze/custom', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageData: btoa(unescape(encodeURIComponent(selectedCells))),
-          mimeType: 'text/plain',
-          customPrompt: prompt
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Analysis failed');
-      }
-
-      const result = await response.json();
-      
-      // Show result in a popup or sidebar
-      setChatSelectedText(selectedCells);
-      setChatSelectionData(selectedRange);
-      setChatPrefillText('');
-      setShowChatSidebar(true);
-      
-      setIsAnalyzing(false);
-      clearSelection();
-    } catch (error) {
-      console.error('Data analysis error:', error);
-      toast({
-        title: "Analysis failed",
-        description: error instanceof Error ? error.message : 'Please try again.',
-        variant: "destructive"
-      });
-      setIsAnalyzing(false);
-    }
-  };
-
   const handleSummarizeData = () => {
     if (!selectedCells) return;
     
@@ -501,59 +451,6 @@ Focus on understanding the data structure and meaning.`;
         description: "Unable to copy data to clipboard.",
         variant: "destructive"
       });
-    }
-  };
-
-  const handleCalculateStats = async () => {
-    if (!selectedCells || !selectedRange) return;
-    
-    try {
-      setIsAnalyzing(true);
-      
-      const prompt = `Calculate comprehensive statistics for this spreadsheet data:
-${selectedCells}
-
-Please provide:
-1. Basic statistics (count, sum, average, min, max)
-2. Distribution analysis
-3. Data quality assessment
-4. Any notable patterns or outliers
-
-Format the response clearly with the calculations.`;
-
-      const response = await fetch('/api/analyze/custom', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageData: btoa(unescape(encodeURIComponent(selectedCells))),
-          mimeType: 'text/plain',
-          customPrompt: prompt
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Statistics calculation failed');
-      }
-
-      const result = await response.json();
-      
-      // Show result in chat sidebar
-      setChatSelectedText(selectedCells);
-      setChatSelectionData(selectedRange);
-      setChatPrefillText('');
-      setShowChatSidebar(true);
-      
-      setIsAnalyzing(false);
-      clearSelection();
-    } catch (error) {
-      console.error('Statistics calculation error:', error);
-      toast({
-        title: "Statistics calculation failed",
-        description: error instanceof Error ? error.message : 'Please try again.',
-        variant: "destructive"
-      });
-      setIsAnalyzing(false);
     }
   };
 
@@ -962,7 +859,6 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
   // Tools for sidebar
   const tools: Tool[] = [
     { id: 'cell', label: 'Cell Select', icon: <Table className="h-5 w-5" /> },
-    { id: 'range', label: 'Range Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
   ];
 
   // Smooth zoom update function
@@ -1268,6 +1164,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                       onChange={setSpreadsheetData}
                       onCellSelection={handleCellSelection}
                       onRightClick={handleRightClick}
+                      onContextMenu={handleContextMenu}
                       className="w-full h-full"
                       scale={scale}
                     />
@@ -1335,13 +1232,11 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
           position={menuPos}
           selectedCells={selectedCells}
           selectedRange={selectedRange}
-          onAnalyzeData={handleAnalyzeData}
           onSummarizeData={handleSummarizeData}
           onQuickFormat={handleQuickFormat}
           onTemplateFormat={handleTemplateFormat}
           onChatPopup={handleChatPopup}
           onCopy={handleCopy}
-          onCalculateStats={handleCalculateStats}
           onCreateChart={handleCreateChart}
           onClose={clearSelection}
         />
