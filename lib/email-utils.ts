@@ -18,8 +18,8 @@ export async function sendVerificationEmail(email: string, code: string, firstNa
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
       <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #333; margin: 0; font-size: 24px;">DocMate</h1>
-          <p style="color: #666; margin: 10px 0 0 0;">Document Processing Made Simple</p>
+          <img src="https://docmate-beta.vercel.app/logo-text.png" alt="DocMate" style="height: 40px; margin-bottom: 10px;">
+          <p style="color: #666; margin: 10px 0 0 0; font-size: 14px;">Document Processing Made Simple</p>
         </div>
         
         <div style="margin-bottom: 30px;">
@@ -30,7 +30,7 @@ export async function sendVerificationEmail(email: string, code: string, firstNa
           </p>
           
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-            <div style="font-size: 32px; font-weight: bold; color: #007bff; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+            <div style="font-size: 32px; font-weight: bold; color: #1db5a3; letter-spacing: 8px; font-family: 'Courier New', monospace;">
               ${code}
             </div>
           </div>
@@ -61,16 +61,20 @@ export async function sendVerificationEmail(email: string, code: string, firstNa
 }
 
 // Store verification codes in memory (in production, use Redis or database)
-const verificationCodes = new Map<string, { code: string; expiresAt: number; userId: number }>();
+const verificationCodes = new Map<string, { 
+  code: string; 
+  expiresAt: number; 
+  userData: { firstName: string; lastName: string; email: string } 
+}>();
 
-// Store verification code
-export function storeVerificationCode(email: string, code: string, userId: number): void {
+// Store verification code with user data
+export function storeVerificationCode(email: string, code: string, userData: { firstName: string; lastName: string; email: string }): void {
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-  verificationCodes.set(email.toLowerCase(), { code, expiresAt, userId });
+  verificationCodes.set(email.toLowerCase(), { code, expiresAt, userData });
 }
 
 // Verify and remove verification code
-export function verifyAndRemoveCode(email: string, code: string): { isValid: boolean; userId?: number } {
+export function verifyAndRemoveCode(email: string, code: string): { isValid: boolean; userData?: { firstName: string; lastName: string; email: string } } {
   const stored = verificationCodes.get(email.toLowerCase());
   
   if (!stored) {
@@ -87,8 +91,9 @@ export function verifyAndRemoveCode(email: string, code: string): { isValid: boo
   }
   
   // Remove the code after successful verification
+  const userData = stored.userData;
   verificationCodes.delete(email.toLowerCase());
-  return { isValid: true, userId: stored.userId };
+  return { isValid: true, userData };
 }
 
 // Clean up expired codes (run periodically)

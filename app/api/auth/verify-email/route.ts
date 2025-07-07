@@ -23,26 +23,25 @@ export async function POST(request: NextRequest) {
     // Verify the code
     const verification = verifyAndRemoveCode(email.toLowerCase(), code);
     
-    if (!verification.isValid || !verification.userId) {
+    if (!verification.isValid || !verification.userData) {
       return NextResponse.json(
         { message: 'Invalid or expired verification code' },
         { status: 400 }
       );
     }
 
-    // Update user to mark email as verified
+    // Create the user record after successful email verification
     const result = await db.execute({
-      sql: `UPDATE users 
-            SET email_verified = 1, updated_at = CURRENT_DATE 
-            WHERE user_id = ? AND email = ? 
+      sql: `INSERT INTO users (first_name, last_name, email, password_hash, email_verified, updated_at) 
+            VALUES (?, ?, ?, '', 1, CURRENT_DATE) 
             RETURNING user_id, first_name, last_name, email, phone_number, email_verified, phone_verified, is_active, created_at, updated_at`,
-      args: [verification.userId, email.toLowerCase()]
+      args: [verification.userData.firstName, verification.userData.lastName, email.toLowerCase()]
     });
 
     if (result.rows.length === 0) {
       return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
+        { message: 'Failed to create user account' },
+        { status: 500 }
       );
     }
 

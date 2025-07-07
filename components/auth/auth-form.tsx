@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, ArrowLeft, ArrowRight, Mail, Lock, User, Phone, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, Mail, Lock, User, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AuthFormProps {
@@ -13,7 +13,7 @@ interface AuthFormProps {
   onToggleMode?: () => void;
 }
 
-type SignupStep = 'name-email' | 'email-confirm' | 'password' | 'phone' | 'complete';
+type SignupStep = 'name-email' | 'email-confirm' | 'password' | 'complete';
 
 export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     last_name: '',
     email: '',
     password: '',
-    phone_number: '',
   });
   const { login, register } = useAuthContext();
   const { toast } = useToast();
@@ -41,7 +40,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       last_name: '',
       email: '',
       password: '',
-      phone_number: '',
     });
     setSignupStep('name-email');
     setVerificationCode(['', '', '', '', '', '']);
@@ -184,12 +182,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     return { checks, score, isValid: score >= 4 };
   };
 
-  const isValidPhoneNumber = (phone: string) => {
-    if (!phone) return true; // Optional field
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
-  };
-
   const handleNextStep = async () => {
     setShowValidation(true);
     
@@ -297,17 +289,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         });
         return;
       }
-      setSignupStep('phone');
-      setShowValidation(false);
-    } else if (signupStep === 'phone') {
-      if (formData.phone_number && !isValidPhoneNumber(formData.phone_number)) {
-        toast({
-          title: 'Invalid phone number',
-          description: 'Please enter a valid phone number or leave it empty.',
-          variant: 'destructive',
-        });
-        return;
-      }
       setSignupStep('complete');
       handleSignup();
     }
@@ -320,15 +301,13 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       // Don't reset emailSent - preserve the sent state
     } else if (signupStep === 'password') {
       setSignupStep('email-confirm');
-    } else if (signupStep === 'phone') {
-      setSignupStep('password');
     }
   };
 
   const handleSignup = async () => {
     setLoading(true);
     try {
-      // Update the user with password and complete registration
+      // Complete registration with all user data
       const response = await fetch('/api/auth/complete-registration', {
         method: 'POST',
         headers: {
@@ -337,7 +316,8 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          phone_number: formData.phone_number || undefined
+          firstName: formData.first_name,
+          lastName: formData.last_name,
         }),
       });
 
@@ -399,8 +379,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     } else if (signupStep === 'password') {
       const passwordStrength = getPasswordStrength(formData.password);
       return formData.password && confirmPassword && passwordStrength.isValid && formData.password === confirmPassword;
-    } else if (signupStep === 'phone') {
-      return !formData.phone_number || isValidPhoneNumber(formData.phone_number);
     }
     return true;
   };
@@ -519,20 +497,20 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         {/* Progress indicator */}
         <div className="flex justify-center mt-4 mb-6">
           <div className="flex items-center space-x-2">
-            {['name-email', 'email-confirm', 'password', 'phone'].map((step, index) => (
+            {['name-email', 'email-confirm', 'password'].map((step, index) => (
               <div key={step} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                   signupStep === step 
                     ? 'bg-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.5)]' 
-                    : index < ['name-email', 'email-confirm', 'password', 'phone'].indexOf(signupStep)
+                    : index < ['name-email', 'email-confirm', 'password'].indexOf(signupStep)
                     ? 'bg-primary/20'
                     : 'bg-muted-foreground/20 text-muted-foreground'
                 }`}>
                   {index + 1}
                 </div>
-                {index < 3 && (
+                {index < 2 && (
                   <div className={`w-8 h-px mx-2 transition-all duration-300 ${
-                    index < ['name-email', 'email-confirm', 'password', 'phone'].indexOf(signupStep)
+                    index < ['name-email', 'email-confirm', 'password'].indexOf(signupStep)
                       ? 'bg-primary'
                       : 'bg-gray-800'
                   }`} />
@@ -828,45 +806,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
             </>
           )}
 
-          {signupStep === 'phone' && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="space-y-4"
-            >
-              <div className="text-center mb-4">
-                <Phone className="w-12 h-12 text-primary mx-auto mb-2" />
-                <h3 className="text-lg font-medium text-white mb-2">Phone Number (Optional)</h3>
-                <p className="text-gray-400 text-sm">
-                  Add your phone number for additional security
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phone_number" className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  Phone Number
-                </Label>
-                <Input
-                  id="phone_number"
-                  name="phone_number"
-                  type="tel"
-                  placeholder="+1 (555) 123-4567"
-                  value={formData.phone_number}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                  className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
-                    showValidation && formData.phone_number && !isValidPhoneNumber(formData.phone_number) ? 'border-red-500' : ''
-                  }`}
-                />
-                {showValidation && formData.phone_number && !isValidPhoneNumber(formData.phone_number) && (
-                  <p className="text-xs text-red-400 mt-1">Please enter a valid phone number or leave empty</p>
-                )}
-              </div>
-            </motion.div>
-          )}
-
           {/* Navigation buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -895,7 +834,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
-              ) : signupStep === 'phone' ? (
+              ) : signupStep === 'password' ? (
                 <>
                   Create Account
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />

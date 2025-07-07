@@ -6,18 +6,19 @@ import { User } from '@/types/auth';
 interface CompleteRegistrationRequest {
   email: string;
   password: string;
-  phone_number?: string;
+  firstName: string;
+  lastName: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: CompleteRegistrationRequest = await request.json();
-    const { email, password, phone_number } = body;
+    const { email, password, firstName, lastName } = body;
 
     // Validate required fields
-    if (!email || !password) {
+    if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
-        { message: 'Email and password are required' },
+        { message: 'Email, password, first name, and last name are required' },
         { status: 400 }
       );
     }
@@ -50,13 +51,13 @@ export async function POST(request: NextRequest) {
     // Hash password
     const password_hash = await hashPassword(password);
 
-    // Update user with password and phone number
+    // Update user with password
     const updateResult = await db.execute({
       sql: `UPDATE users 
-            SET password_hash = ?, phone_number = ?, updated_at = CURRENT_DATE 
+            SET password_hash = ?, updated_at = CURRENT_DATE 
             WHERE user_id = ? 
             RETURNING user_id, first_name, last_name, email, phone_number, email_verified, phone_verified, is_active, created_at, updated_at`,
-      args: [password_hash, phone_number || null, user.user_id]
+      args: [password_hash, user.user_id]
     });
 
     if (updateResult.rows.length === 0) {

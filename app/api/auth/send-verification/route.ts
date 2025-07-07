@@ -46,25 +46,13 @@ export async function POST(request: NextRequest) {
     // Generate verification code
     const verificationCode = generateVerificationCode();
 
-    // Create a temporary user record (will be updated after verification)
-    const result = await db.execute({
-      sql: `INSERT INTO users (first_name, last_name, email, password_hash, email_verified, updated_at) 
-            VALUES (?, ?, ?, '', 0, CURRENT_DATE) 
-            RETURNING user_id`,
-      args: [firstName.trim(), lastName.trim(), email.toLowerCase()]
+    // Store verification code with user data (temporarily)
+    // We'll create the actual user record after email verification
+    storeVerificationCode(email.toLowerCase(), verificationCode, {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase()
     });
-
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { message: 'Failed to create user account' },
-        { status: 500 }
-      );
-    }
-
-    const userId = result.rows[0].user_id as number;
-
-    // Store verification code
-    storeVerificationCode(email.toLowerCase(), verificationCode, userId);
 
     // Send verification email
     await sendVerificationEmail(email, verificationCode, firstName);
