@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { validateEmail } from '@/lib/auth-utils';
-import { generateVerificationCode, sendVerificationEmail, storeVerificationCode } from '@/lib/email-utils';
+import { generateVerificationCode, sendVerificationEmail } from '@/lib/email-utils';
 
 interface SendVerificationRequest {
   email: string;
@@ -46,19 +46,12 @@ export async function POST(request: NextRequest) {
     // Generate verification code
     const verificationCode = generateVerificationCode();
 
-    // Store verification code with user data (temporarily)
-    // We'll create the actual user record after email verification
-    storeVerificationCode(email.toLowerCase(), verificationCode, {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.toLowerCase()
-    });
-
     // Send verification email
     await sendVerificationEmail(email, verificationCode, firstName);
 
     return NextResponse.json({
-      message: 'Verification email sent successfully'
+      message: 'Verification email sent successfully',
+      code: verificationCode // For demo purposes, return the code
     });
 
   } catch (error) {

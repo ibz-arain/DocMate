@@ -61,20 +61,16 @@ export async function sendVerificationEmail(email: string, code: string, firstNa
 }
 
 // Store verification codes in memory (in production, use Redis or database)
-const verificationCodes = new Map<string, { 
-  code: string; 
-  expiresAt: number; 
-  userData: { firstName: string; lastName: string; email: string } 
-}>();
+const verificationCodes = new Map<string, { code: string; expiresAt: number; userData: { firstName: string; lastName: string } }>();
 
-// Store verification code with user data
-export function storeVerificationCode(email: string, code: string, userData: { firstName: string; lastName: string; email: string }): void {
+// Store verification code
+export function storeVerificationCode(email: string, code: string, userData: { firstName: string; lastName: string }): void {
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
   verificationCodes.set(email.toLowerCase(), { code, expiresAt, userData });
 }
 
 // Verify and remove verification code
-export function verifyAndRemoveCode(email: string, code: string): { isValid: boolean; userData?: { firstName: string; lastName: string; email: string } } {
+export function verifyAndRemoveCode(email: string, code: string): { isValid: boolean; userData?: { firstName: string; lastName: string } } {
   const stored = verificationCodes.get(email.toLowerCase());
   
   if (!stored) {
@@ -91,9 +87,8 @@ export function verifyAndRemoveCode(email: string, code: string): { isValid: boo
   }
   
   // Remove the code after successful verification
-  const userData = stored.userData;
   verificationCodes.delete(email.toLowerCase());
-  return { isValid: true, userData };
+  return { isValid: true, userData: stored.userData };
 }
 
 // Clean up expired codes (run periodically)

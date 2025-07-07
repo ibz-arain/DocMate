@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, ArrowLeft, ArrowRight, Mail, Lock, User, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, Mail, Lock, User, Phone, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AuthFormProps {
@@ -13,7 +13,7 @@ interface AuthFormProps {
   onToggleMode?: () => void;
 }
 
-type SignupStep = 'name-email' | 'email-confirm' | 'password' | 'complete';
+type SignupStep = 'name-email' | 'email-confirm' | 'password' | 'phone' | 'complete';
 
 export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
@@ -23,11 +23,15 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   const [showValidation, setShowValidation] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [sentVerificationCode, setSentVerificationCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: '',
     password: '',
+    phone_number: '',
   });
   const { login, register } = useAuthContext();
   const { toast } = useToast();
@@ -40,6 +44,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       last_name: '',
       email: '',
       password: '',
+      phone_number: '',
     });
     setSignupStep('name-email');
     setVerificationCode(['', '', '', '', '', '']);
@@ -47,6 +52,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     setShowValidation(false);
     setEmailSent(false);
     setResendCooldown(0);
+    setSentVerificationCode('');
+    setEmailVerified(false);
+    setFormErrors({});
   }, [mode]);
 
   // Auto-send verification email when reaching email-confirm step
@@ -66,6 +74,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
 
   const sendVerificationEmail = async () => {
     setLoading(true);
+    setFormErrors({});
     try {
       const response = await fetch('/api/auth/send-verification', {
         method: 'POST',
@@ -84,6 +93,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         throw new Error(error.message || 'Failed to send verification email');
       }
 
+      const result = await response.json();
+      // Store the verification code that was sent
+      setSentVerificationCode(result.code);
       setEmailSent(true);
       toast({
         title: 'Verification email sent!',
@@ -94,17 +106,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       if (error.message.includes('already exists')) {
         setSignupStep('name-email');
         setEmailSent(false);
-        toast({
-          title: 'Account already exists',
-          description: 'An account with this email already exists. Please use a different email or sign in.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'An account with this email already exists. Please use a different email or sign in.' });
       } else {
-        toast({
-          title: 'Error',
-          description: error.message || 'Failed to send verification email. Please try again.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: error.message || 'Failed to send verification email. Please try again.' });
       }
     } finally {
       setLoading(false);
@@ -182,41 +186,32 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     return { checks, score, isValid: score >= 4 };
   };
 
+  const isValidPhoneNumber = (phone: string) => {
+    if (!phone) return true; // Optional field
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+  };
+
   const handleNextStep = async () => {
     setShowValidation(true);
+    setFormErrors({});
     
     if (signupStep === 'name-email') {
       // Validate name and email
       if (!formData.first_name.trim()) {
-        toast({
-          title: 'First name required',
-          description: 'Please enter your first name.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'First name is required.' });
         return;
       }
       if (!formData.last_name.trim()) {
-        toast({
-          title: 'Last name required',
-          description: 'Please enter your last name.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'Last name is required.' });
         return;
       }
       if (!formData.email.trim()) {
-        toast({
-          title: 'Email required',
-          description: 'Please enter your email address.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'Email address is required.' });
         return;
       }
       if (!isValidEmail(formData.email)) {
-        toast({
-          title: 'Invalid email',
-          description: 'Please enter a valid email address.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'Please enter a valid email address.' });
         return;
       }
 
@@ -226,67 +221,35 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     } else if (signupStep === 'email-confirm') {
       const codeString = verificationCode.join('');
       if (codeString.length !== 6) {
-        toast({
-          title: 'Invalid code',
-          description: 'Please enter the 6-digit verification code.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'Please enter the 6-digit verification code.' });
         return;
       }
 
-      // Verify the code
-      setLoading(true);
-      try {
-        const response = await fetch('/api/auth/verify-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: formData.email,
-            code: codeString,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to verify email');
-        }
-
-        toast({
-          title: 'Email verified!',
-          description: 'Your email has been verified successfully.',
-        });
-
-        setSignupStep('password');
-        setShowValidation(false);
-      } catch (error: any) {
-        // Clear the verification code on error
+      // Check if the entered code matches the sent code
+      if (codeString !== sentVerificationCode) {
+        setFormErrors({ general: 'The verification code you entered is incorrect. Please try again.' });
         setVerificationCode(['', '', '', '', '', '']);
-        toast({
-          title: 'Error',
-          description: error.message || 'Failed to verify email. Please try again.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
+        return;
       }
+
+      setSignupStep('password');
+      setShowValidation(false);
+      setEmailVerified(true);
     } else if (signupStep === 'password') {
       const passwordStrength = getPasswordStrength(formData.password);
       if (!passwordStrength.isValid) {
-        toast({
-          title: 'Password too weak',
-          description: 'Password must meet at least 4 of the requirements.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'Password must meet at least 4 of the requirements.' });
         return;
       }
       if (formData.password !== confirmPassword) {
-        toast({
-          title: 'Passwords don\'t match',
-          description: 'Please make sure both passwords are identical.',
-          variant: 'destructive',
-        });
+        setFormErrors({ general: 'Please make sure both passwords are identical.' });
+        return;
+      }
+      setSignupStep('phone');
+      setShowValidation(false);
+    } else if (signupStep === 'phone') {
+      if (formData.phone_number && !isValidPhoneNumber(formData.phone_number)) {
+        setFormErrors({ general: 'Please enter a valid phone number or leave it empty.' });
         return;
       }
       setSignupStep('complete');
@@ -301,32 +264,42 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       // Don't reset emailSent - preserve the sent state
     } else if (signupStep === 'password') {
       setSignupStep('email-confirm');
+    } else if (signupStep === 'phone') {
+      setSignupStep('password');
     }
   };
 
   const handleSignup = async () => {
     setLoading(true);
+    setFormErrors({});
     try {
-      // Complete registration with all user data
-      const response = await fetch('/api/auth/complete-registration', {
+      // Create the account with all user data
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
           email: formData.email,
           password: formData.password,
-          firstName: formData.first_name,
-          lastName: formData.last_name,
+          phone_number: formData.phone_number || undefined
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to complete registration');
+        throw new Error(error.message || 'Failed to create account');
       }
 
       const { user } = await response.json();
+      
+      // Automatically sign in the user after successful registration
+      await login({
+        email: formData.email,
+        password: formData.password
+      });
       
       toast({
         title: 'Account created!',
@@ -334,10 +307,8 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       });
       onSuccess?.();
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Something went wrong. Please try again.',
-        variant: 'destructive',
+      setFormErrors({
+        general: error.message || 'Something went wrong. Please try again.'
       });
     } finally {
       setLoading(false);
@@ -347,6 +318,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setFormErrors({});
 
     try {
       if (mode === 'signin') {
@@ -361,10 +333,8 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         onSuccess?.();
       }
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Something went wrong. Please try again.',
-        variant: 'destructive',
+      setFormErrors({
+        general: error.message || 'Something went wrong. Please try again.'
       });
     } finally {
       setLoading(false);
@@ -379,6 +349,8 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     } else if (signupStep === 'password') {
       const passwordStrength = getPasswordStrength(formData.password);
       return formData.password && confirmPassword && passwordStrength.isValid && formData.password === confirmPassword;
+    } else if (signupStep === 'phone') {
+      return !formData.phone_number || isValidPhoneNumber(formData.phone_number);
     }
     return true;
   };
@@ -464,6 +436,12 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
               )}
             </Button>
 
+            {formErrors.general && (
+              <div className="text-center p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <p className="text-sm text-red-400">{formErrors.general}</p>
+              </div>
+            )}
+
             {onToggleMode && (
               <p className="text-center text-sm text-gray-400">
                 Don't have an account? 
@@ -497,20 +475,20 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         {/* Progress indicator */}
         <div className="flex justify-center mt-4 mb-6">
           <div className="flex items-center space-x-2">
-            {['name-email', 'email-confirm', 'password'].map((step, index) => (
+            {['name-email', 'email-confirm', 'password', 'phone'].map((step, index) => (
               <div key={step} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                   signupStep === step 
                     ? 'bg-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.5)]' 
-                    : index < ['name-email', 'email-confirm', 'password'].indexOf(signupStep)
+                    : index < ['name-email', 'email-confirm', 'password', 'phone'].indexOf(signupStep)
                     ? 'bg-primary/20'
                     : 'bg-muted-foreground/20 text-muted-foreground'
                 }`}>
                   {index + 1}
                 </div>
-                {index < 2 && (
+                {index < 3 && (
                   <div className={`w-8 h-px mx-2 transition-all duration-300 ${
-                    index < ['name-email', 'email-confirm', 'password'].indexOf(signupStep)
+                    index < ['name-email', 'email-confirm', 'password', 'phone'].indexOf(signupStep)
                       ? 'bg-primary'
                       : 'bg-gray-800'
                   }`} />
@@ -640,13 +618,15 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                       onChange={(e) => handleVerificationCodeChange(index, e.target.value.replace(/\D/g, ''))}
                       onKeyDown={(e) => handleVerificationKeyDown(index, e)}
                       onPaste={handleVerificationPaste}
-                      className="w-12 h-12 text-center text-lg font-medium bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out"
+                      disabled={emailVerified}
+                      className={`w-12 h-12 text-center text-lg font-medium bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
+                        emailVerified ? 'opacity-60 cursor-not-allowed border-green-500' : ''
+                      }`}
                     />
                   ))}
                 </div>
-                {showValidation && verificationCode.join('').length > 0 && verificationCode.join('').length < 6 && (
-                  <p className="text-xs text-yellow-400 mt-1 text-center">Please enter all 6 digits</p>
-                )}
+                
+
                 
                 <div className="text-center mt-4">
                   <button
@@ -655,6 +635,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                       if (resendCooldown > 0) return;
                       
                       setLoading(true);
+                      setFormErrors({});
                       try {
                         const response = await fetch('/api/auth/send-verification', {
                           method: 'POST',
@@ -673,38 +654,34 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                           throw new Error(error.message || 'Failed to resend verification email');
                         }
 
+                        const result = await response.json();
+                        // Store the new verification code
+                        setSentVerificationCode(result.code);
                         setResendCooldown(60); // 60 second cooldown
-
-                                              } catch (error: any) {
-                          // If account already exists, go back to name-email step
-                          if (error.message.includes('already exists')) {
-                            setSignupStep('name-email');
-                            setEmailSent(false);
-                            toast({
-                              title: 'Account already exists',
-                              description: 'An account with this email already exists. Please use a different email or sign in.',
-                              variant: 'destructive',
-                            });
-                          } else {
-                            toast({
-                              title: 'Error',
-                              description: error.message || 'Failed to resend verification email. Please try again.',
-                              variant: 'destructive',
-                            });
-                          }
-                        } finally {
-                          setLoading(false);
+                      } catch (error: any) {
+                        // If account already exists, go back to name-email step
+                        if (error.message.includes('already exists')) {
+                          setSignupStep('name-email');
+                          setEmailSent(false);
+                          setFormErrors({ general: 'An account with this email already exists. Please use a different email or sign in.' });
+                        } else {
+                          setFormErrors({ general: error.message || 'Failed to resend verification email. Please try again.' });
                         }
+                      } finally {
+                        setLoading(false);
+                      }
                     }}
-                    disabled={loading || resendCooldown > 0}
+                    disabled={loading || resendCooldown > 0 || emailVerified}
                     className={`text-sm transition-colors underline ${
-                      resendCooldown > 0 
+                      resendCooldown > 0 || emailVerified
                         ? 'text-gray-500 cursor-not-allowed' 
                         : 'text-primary hover:text-primary/80'
                     }`}
                   >
                     {resendCooldown > 0 
                       ? `Resend available in ${resendCooldown}s` 
+                      : emailVerified 
+                      ? "Email verified ✓"
                       : "Didn't receive the code? Resend"
                     }
                   </button>
@@ -806,6 +783,45 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
             </>
           )}
 
+          {signupStep === 'phone' && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="space-y-4"
+            >
+              <div className="text-center mb-4">
+                <Phone className="w-12 h-12 text-primary mx-auto mb-2" />
+                <h3 className="text-lg font-medium text-white mb-2">Phone Number (Optional)</h3>
+                <p className="text-gray-400 text-sm">
+                  Add your phone number for additional security
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phone_number" className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  Phone Number
+                </Label>
+                <Input
+                  id="phone_number"
+                  name="phone_number"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  value={formData.phone_number}
+                  onChange={handleInputChange}
+                  disabled={loading}
+                  className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
+                    showValidation && formData.phone_number && !isValidPhoneNumber(formData.phone_number) ? 'border-red-500' : ''
+                  }`}
+                />
+                {showValidation && formData.phone_number && !isValidPhoneNumber(formData.phone_number) && (
+                  <p className="text-xs text-red-400 mt-1">Please enter a valid phone number or leave empty</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {/* Navigation buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -834,7 +850,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
-              ) : signupStep === 'password' ? (
+              ) : signupStep === 'phone' ? (
                 <>
                   Create Account
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
@@ -847,6 +863,12 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
               )}
             </Button>
           </motion.div>
+
+          {formErrors.general && (
+            <div className="text-center p-3 bg-red-500/10 border border-red-500/20 rounded-lg mt-4">
+              <p className="text-sm text-red-400">{formErrors.general}</p>
+            </div>
+          )}
 
           {onToggleMode && signupStep === 'name-email' && (
             <p className="text-center text-sm text-gray-400 mt-4">
