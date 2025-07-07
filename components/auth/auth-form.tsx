@@ -92,11 +92,22 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         description: 'Please check your email for the verification code.',
       });
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to send verification email. Please try again.',
-        variant: 'destructive',
-      });
+      // If account already exists, go back to name-email step
+      if (error.message.includes('already exists')) {
+        setSignupStep('name-email');
+        setEmailSent(false);
+        toast({
+          title: 'Account already exists',
+          description: 'An account with this email already exists. Please use a different email or sign in.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to send verification email. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -128,6 +139,29 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
       // Move to previous input on backspace if current is empty
       inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Handle paste event for verification code
+  const handleVerificationPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, ''); // Remove non-digits
+    
+    if (pastedData.length === 6) {
+      const digits = pastedData.split('');
+      setVerificationCode(digits);
+      
+      // Focus the last input after pasting
+      setTimeout(() => {
+        inputRefs.current[5]?.focus();
+      }, 0);
+    } else if (pastedData.length > 0) {
+      // Show error if pasted data is not exactly 6 digits
+      toast({
+        title: 'Invalid code format',
+        description: 'Please paste a 6-digit verification code.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -235,6 +269,8 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         setSignupStep('password');
         setShowValidation(false);
       } catch (error: any) {
+        // Clear the verification code on error
+        setVerificationCode(['', '', '', '', '', '']);
         toast({
           title: 'Error',
           description: error.message || 'Failed to verify email. Please try again.',
@@ -359,10 +395,12 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     if (signupStep === 'name-email') {
       return formData.first_name.trim() && formData.last_name.trim() && formData.email.trim() && isValidEmail(formData.email);
     } else if (signupStep === 'email-confirm') {
-      return verificationCode.join('').length === 6;
+      return verificationCode.join('').length === 6 && emailSent;
     } else if (signupStep === 'password') {
       const passwordStrength = getPasswordStrength(formData.password);
       return formData.password && confirmPassword && passwordStrength.isValid && formData.password === confirmPassword;
+    } else if (signupStep === 'phone') {
+      return !formData.phone_number || isValidPhoneNumber(formData.phone_number);
     }
     return true;
   };
@@ -623,6 +661,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                       value={digit}
                       onChange={(e) => handleVerificationCodeChange(index, e.target.value.replace(/\D/g, ''))}
                       onKeyDown={(e) => handleVerificationKeyDown(index, e)}
+                      onPaste={handleVerificationPaste}
                       className="w-12 h-12 text-center text-lg font-medium bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out"
                     />
                   ))}
@@ -657,19 +696,27 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                         }
 
                         setResendCooldown(60); // 60 second cooldown
-                        toast({
-                          title: 'Code resent!',
-                          description: 'A new verification code has been sent to your email.',
-                        });
-                      } catch (error: any) {
-                        toast({
-                          title: 'Error',
-                          description: error.message || 'Failed to resend verification email. Please try again.',
-                          variant: 'destructive',
-                        });
-                      } finally {
-                        setLoading(false);
-                      }
+
+                                              } catch (error: any) {
+                          // If account already exists, go back to name-email step
+                          if (error.message.includes('already exists')) {
+                            setSignupStep('name-email');
+                            setEmailSent(false);
+                            toast({
+                              title: 'Account already exists',
+                              description: 'An account with this email already exists. Please use a different email or sign in.',
+                              variant: 'destructive',
+                            });
+                          } else {
+                            toast({
+                              title: 'Error',
+                              description: error.message || 'Failed to resend verification email. Please try again.',
+                              variant: 'destructive',
+                            });
+                          }
+                        } finally {
+                          setLoading(false);
+                        }
                     }}
                     disabled={loading || resendCooldown > 0}
                     className={`text-sm transition-colors underline ${
@@ -844,7 +891,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
               type="button"
               onClick={handleNextStep}
               disabled={loading || !canProceed()}
-              className="flex-1 h-10 bg-primary/20 hover:bg-primary/30 font-medium transition-all duration-300 shadow-[0_0_20px_rgba(var(--primary),0.2)] hover:shadow-[0_0_30px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-[0.98] border border-primary/30 group"
+              className="flex-1 h-10 bg-primary/20 hover:bg-primary/30 font-medium transition-all duration-300 shadow-[0_0_20px_rgba(var(--primary),0.2)] hover:shadow-[0_0_30px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-[0.98] border border-primary/30 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
