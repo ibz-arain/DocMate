@@ -12,6 +12,7 @@
   "dependencies": {
     "@ai-sdk/google": "^1.1.1",
     "@auth/core": "^0.34.2",
+    "@getbrevo/brevo": "^2.5.0",
     "@google/generative-ai": "^0.21.0",
     "@libsql/client": "^0.14.0",
     "@radix-ui/react-alert-dialog": "^1.1.6",

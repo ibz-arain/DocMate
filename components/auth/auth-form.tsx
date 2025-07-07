@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthContext } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, ArrowLeft, ArrowRight, Mail, Lock, User, Phone } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, Mail, Lock, User, Phone, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AuthFormProps {
@@ -18,8 +18,11 @@ type SignupStep = 'name-email' | 'email-confirm' | 'password' | 'phone' | 'compl
 export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [signupStep, setSignupStep] = useState<SignupStep>('name-email');
-  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showValidation, setShowValidation] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -29,6 +32,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   });
   const { login, register } = useAuthContext();
   const { toast } = useToast();
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   
   // Reset form when mode changes
   useEffect(() => {
@@ -40,9 +44,63 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       phone_number: '',
     });
     setSignupStep('name-email');
-    setVerificationCode('');
+    setVerificationCode(['', '', '', '', '', '']);
     setConfirmPassword('');
+    setShowValidation(false);
+    setEmailSent(false);
+    setResendCooldown(0);
   }, [mode]);
+
+  // Auto-send verification email when reaching email-confirm step
+  useEffect(() => {
+    if (signupStep === 'email-confirm' && !emailSent) {
+      sendVerificationEmail();
+    }
+  }, [signupStep, emailSent]);
+
+  // Handle resend cooldown
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const sendVerificationEmail = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          firstName: formData.first_name,
+          lastName: formData.last_name,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to send verification email');
+      }
+
+      setEmailSent(true);
+      toast({
+        title: 'Verification email sent!',
+        description: 'Please check your email for the verification code.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send verification email. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,28 +110,178 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     }));
   };
 
-  const handleNextStep = () => {
+  // Handle verification code input
+  const handleVerificationCodeChange = (index: number, value: string) => {
+    if (value.length > 1) return; // Only allow single digit
+    
+    const newCode = [...verificationCode];
+    newCode[index] = value;
+    setVerificationCode(newCode);
+    
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleVerificationKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
+      // Move to previous input on backspace if current is empty
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Validation functions
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const getPasswordStrength = (password: string) => {
+    const checks = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+    
+    const score = Object.values(checks).filter(Boolean).length;
+    return { checks, score, isValid: score >= 4 };
+  };
+
+  const isValidPhoneNumber = (phone: string) => {
+    if (!phone) return true; // Optional field
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+  };
+
+  const handleNextStep = async () => {
+    setShowValidation(true);
+    
     if (signupStep === 'name-email') {
-      if (formData.first_name && formData.last_name && formData.email) {
-        setSignupStep('email-confirm');
+      // Validate name and email
+      if (!formData.first_name.trim()) {
+        toast({
+          title: 'First name required',
+          description: 'Please enter your first name.',
+          variant: 'destructive',
+        });
+        return;
       }
+      if (!formData.last_name.trim()) {
+        toast({
+          title: 'Last name required',
+          description: 'Please enter your last name.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!formData.email.trim()) {
+        toast({
+          title: 'Email required',
+          description: 'Please enter your email address.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!isValidEmail(formData.email)) {
+        toast({
+          title: 'Invalid email',
+          description: 'Please enter a valid email address.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Move to email confirmation step (email will be sent automatically)
+      setSignupStep('email-confirm');
+      setShowValidation(false);
     } else if (signupStep === 'email-confirm') {
-      if (verificationCode.length === 6) {
+      const codeString = verificationCode.join('');
+      if (codeString.length !== 6) {
+        toast({
+          title: 'Invalid code',
+          description: 'Please enter the 6-digit verification code.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Verify the code
+      setLoading(true);
+      try {
+        const response = await fetch('/api/auth/verify-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            code: codeString,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to verify email');
+        }
+
+        toast({
+          title: 'Email verified!',
+          description: 'Your email has been verified successfully.',
+        });
+
         setSignupStep('password');
+        setShowValidation(false);
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to verify email. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
       }
     } else if (signupStep === 'password') {
-      if (formData.password && confirmPassword && formData.password === confirmPassword) {
-        setSignupStep('phone');
+      const passwordStrength = getPasswordStrength(formData.password);
+      if (!passwordStrength.isValid) {
+        toast({
+          title: 'Password too weak',
+          description: 'Password must meet at least 4 of the requirements.',
+          variant: 'destructive',
+        });
+        return;
       }
+      if (formData.password !== confirmPassword) {
+        toast({
+          title: 'Passwords don\'t match',
+          description: 'Please make sure both passwords are identical.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setSignupStep('phone');
+      setShowValidation(false);
     } else if (signupStep === 'phone') {
+      if (formData.phone_number && !isValidPhoneNumber(formData.phone_number)) {
+        toast({
+          title: 'Invalid phone number',
+          description: 'Please enter a valid phone number or leave it empty.',
+          variant: 'destructive',
+        });
+        return;
+      }
       setSignupStep('complete');
       handleSignup();
     }
   };
 
   const handlePrevStep = () => {
+    setShowValidation(false);
     if (signupStep === 'email-confirm') {
       setSignupStep('name-email');
+      // Don't reset emailSent - preserve the sent state
     } else if (signupStep === 'password') {
       setSignupStep('email-confirm');
     } else if (signupStep === 'phone') {
@@ -84,13 +292,26 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
   const handleSignup = async () => {
     setLoading(true);
     try {
-      await register({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
-        password: formData.password,
-        phone_number: formData.phone_number || undefined
+      // Update the user with password and complete registration
+      const response = await fetch('/api/auth/complete-registration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          phone_number: formData.phone_number || undefined
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to complete registration');
+      }
+
+      const { user } = await response.json();
+      
       toast({
         title: 'Account created!',
         description: 'Your account has been created and you are now signed in.',
@@ -136,14 +357,17 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
 
   const canProceed = () => {
     if (signupStep === 'name-email') {
-      return formData.first_name && formData.last_name && formData.email;
+      return formData.first_name.trim() && formData.last_name.trim() && formData.email.trim() && isValidEmail(formData.email);
     } else if (signupStep === 'email-confirm') {
-      return verificationCode.length === 6;
+      return verificationCode.join('').length === 6;
     } else if (signupStep === 'password') {
-      return formData.password && confirmPassword && formData.password === confirmPassword;
+      const passwordStrength = getPasswordStrength(formData.password);
+      return formData.password && confirmPassword && passwordStrength.isValid && formData.password === confirmPassword;
     }
     return true;
   };
+
+  const passwordStrength = getPasswordStrength(formData.password);
 
   if (mode === 'signin') {
     return (
@@ -179,7 +403,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
               onChange={handleInputChange}
               required
               disabled={loading}
-              className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all"
+              className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out"
             />
           </motion.div>
 
@@ -199,7 +423,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
               onChange={handleInputChange}
               required
               disabled={loading}
-              className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all"
+              className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out"
             />
           </motion.div>
 
@@ -212,12 +436,15 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-medium transition-all shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)]"
+              className="w-full h-10 bg-primary/20 hover:bg-primary/30 font-medium transition-all duration-300 shadow-[0_0_20px_rgba(var(--primary),0.2)] hover:shadow-[0_0_30px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-[0.98] border border-primary/30 group"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                'Sign In'
+                <>
+                  Sign In
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
+                </>
               )}
             </Button>
 
@@ -228,7 +455,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                   type="button"
                   onClick={onToggleMode}
                   disabled={loading}
-                  className="font-medium text-primary hover:text-primary/80 transition-colors ml-1"
+                  className="font-medium text-primary hover:text-primary/80 transition-colors ml-1 hover:shadow-[0_0_10px_rgba(var(--primary),0.3)] px-1 py-0.5 rounded"
                 >
                   Sign up
                 </button>
@@ -256,17 +483,17 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
           <div className="flex items-center space-x-2">
             {['name-email', 'email-confirm', 'password', 'phone'].map((step, index) => (
               <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                   signupStep === step 
-                    ? 'bg-primary text-white' 
+                    ? 'bg-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.5)]' 
                     : index < ['name-email', 'email-confirm', 'password', 'phone'].indexOf(signupStep)
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-gray-800 text-gray-400'
+                    ? 'bg-primary/20'
+                    : 'bg-muted-foreground/20 text-muted-foreground'
                 }`}>
                   {index + 1}
                 </div>
                 {index < 3 && (
-                  <div className={`w-8 h-px mx-2 ${
+                  <div className={`w-8 h-px mx-2 transition-all duration-300 ${
                     index < ['name-email', 'email-confirm', 'password', 'phone'].indexOf(signupStep)
                       ? 'bg-primary'
                       : 'bg-gray-800'
@@ -309,7 +536,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                     onChange={handleInputChange}
                     required
                     disabled={loading}
-                    className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all"
+                    className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
+                      showValidation && formData.first_name && !formData.first_name.trim() ? 'border-red-500' : ''
+                    }`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -326,7 +555,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                     onChange={handleInputChange}
                     required
                     disabled={loading}
-                    className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all"
+                    className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
+                      showValidation && formData.last_name && !formData.last_name.trim() ? 'border-red-500' : ''
+                    }`}
                   />
                 </div>
               </motion.div>
@@ -350,8 +581,13 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                   onChange={handleInputChange}
                   required
                   disabled={loading}
-                  className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all"
+                  className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
+                    showValidation && formData.email && !isValidEmail(formData.email) ? 'border-red-500' : ''
+                  }`}
                 />
+                {showValidation && formData.email && !isValidEmail(formData.email) && (
+                  <p className="text-xs text-red-400 mt-1">Please enter a valid email address</p>
+                )}
               </motion.div>
             </>
           )}
@@ -372,18 +608,82 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="verification_code" className="text-sm font-medium text-gray-300">
+                <Label className="text-sm font-medium text-gray-300">
                   Verification Code
                 </Label>
-                <Input
-                  id="verification_code"
-                  type="text"
-                  placeholder="123456"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  maxLength={6}
-                  className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all text-center text-lg tracking-widest"
-                />
+                <div className="flex gap-2 justify-center">
+                  {verificationCode.map((digit, index) => (
+                    <Input
+                      key={index}
+                      ref={(el) => {
+                        inputRefs.current[index] = el;
+                      }}
+                      type="text"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleVerificationCodeChange(index, e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={(e) => handleVerificationKeyDown(index, e)}
+                      className="w-12 h-12 text-center text-lg font-medium bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out"
+                    />
+                  ))}
+                </div>
+                {showValidation && verificationCode.join('').length > 0 && verificationCode.join('').length < 6 && (
+                  <p className="text-xs text-yellow-400 mt-1 text-center">Please enter all 6 digits</p>
+                )}
+                
+                <div className="text-center mt-4">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (resendCooldown > 0) return;
+                      
+                      setLoading(true);
+                      try {
+                        const response = await fetch('/api/auth/send-verification', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            email: formData.email,
+                            firstName: formData.first_name,
+                            lastName: formData.last_name,
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          const error = await response.json();
+                          throw new Error(error.message || 'Failed to resend verification email');
+                        }
+
+                        setResendCooldown(60); // 60 second cooldown
+                        toast({
+                          title: 'Code resent!',
+                          description: 'A new verification code has been sent to your email.',
+                        });
+                      } catch (error: any) {
+                        toast({
+                          title: 'Error',
+                          description: error.message || 'Failed to resend verification email. Please try again.',
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading || resendCooldown > 0}
+                    className={`text-sm transition-colors underline ${
+                      resendCooldown > 0 
+                        ? 'text-gray-500 cursor-not-allowed' 
+                        : 'text-primary hover:text-primary/80'
+                    }`}
+                  >
+                    {resendCooldown > 0 
+                      ? `Resend available in ${resendCooldown}s` 
+                      : "Didn't receive the code? Resend"
+                    }
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -409,11 +709,41 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                   onChange={handleInputChange}
                   required
                   disabled={loading}
-                  className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all"
+                  className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Password must be at least 8 characters with uppercase, lowercase, and number
-                </p>
+                
+                {/* Password strength indicator */}
+                {formData.password && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-400">Password strength:</span>
+                      <span className={`font-medium ${
+                        passwordStrength.score >= 4 ? 'text-green-400' : 
+                        passwordStrength.score >= 2 ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {passwordStrength.score}/5
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {Object.entries(passwordStrength.checks).map(([key, passed]) => (
+                        <div key={key} className="flex items-center gap-2 text-xs">
+                          {passed ? (
+                            <CheckCircle className="w-3 h-3 text-green-400" />
+                          ) : (
+                            <XCircle className="w-3 h-3 text-red-400" />
+                          )}
+                          <span className={passed ? 'text-green-400' : 'text-gray-400'}>
+                            {key === 'length' && 'At least 8 characters'}
+                            {key === 'uppercase' && 'One uppercase letter'}
+                            {key === 'lowercase' && 'One lowercase letter'}
+                            {key === 'number' && 'One number'}
+                            {key === 'special' && 'One special character'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
 
               <motion.div
@@ -434,12 +764,18 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all ${
-                    confirmPassword && formData.password !== confirmPassword ? 'border-red-500' : ''
+                  className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
+                    showValidation && confirmPassword && formData.password !== confirmPassword ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''
                   }`}
                 />
-                {confirmPassword && formData.password !== confirmPassword && (
+                {showValidation && confirmPassword && formData.password !== confirmPassword && (
                   <p className="text-xs text-red-400 mt-1">Passwords don't match</p>
+                )}
+                {showValidation && confirmPassword && formData.password === confirmPassword && (
+                  <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Passwords match
+                  </p>
                 )}
               </motion.div>
             </>
@@ -473,8 +809,13 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                   value={formData.phone_number}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all"
+                  className={`bg-black/50 border-gray-800 focus:border-primary focus:shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:border-primary/60 hover:shadow-[0_0_15px_rgba(var(--primary),0.2)] transition-all duration-300 ease-out ${
+                    showValidation && formData.phone_number && !isValidPhoneNumber(formData.phone_number) ? 'border-red-500' : ''
+                  }`}
                 />
+                {showValidation && formData.phone_number && !isValidPhoneNumber(formData.phone_number) && (
+                  <p className="text-xs text-red-400 mt-1">Please enter a valid phone number or leave empty</p>
+                )}
               </div>
             </motion.div>
           )}
@@ -492,9 +833,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                 onClick={handlePrevStep}
                 disabled={loading}
                 variant="outline"
-                className="flex-1 h-12 border-gray-700 text-gray-300 hover:bg-gray-800 transition-all"
+                className="flex-1 h-10 border-muted-foreground hover:bg-muted-foreground/10 hover:border-muted-foreground/60 hover:shadow-[0_0_15px_rgba(156,163,175,0.2)] transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98] group"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-2" />
                 Back
               </Button>
             )}
@@ -503,16 +844,19 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
               type="button"
               onClick={handleNextStep}
               disabled={loading || !canProceed()}
-              className="flex-1 h-12 bg-primary hover:bg-primary/90 text-white font-medium transition-all shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)]"
+              className="flex-1 h-10 bg-primary/20 hover:bg-primary/30 font-medium transition-all duration-300 shadow-[0_0_20px_rgba(var(--primary),0.2)] hover:shadow-[0_0_30px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-[0.98] border border-primary/30 group"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : signupStep === 'phone' ? (
-                'Create Account'
+                <>
+                  Create Account
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
+                </>
               ) : (
                 <>
                   Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
                 </>
               )}
             </Button>
@@ -528,7 +872,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
                 className="font-medium text-primary hover:text-primary/80 transition-colors ml-1"
               >
                 Sign in
-                <ArrowRight className="w-4 h-4 ml-2" />
               </button>
             </p>
           )}
