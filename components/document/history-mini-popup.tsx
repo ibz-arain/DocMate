@@ -37,6 +37,7 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
       case 'quick-format': return <Table className={`h-3 w-3 ${isFullDocument ? 'text-green-600' : ''}`} />;
       case 'template-format': return <FileText className={`h-3 w-3 ${isFullDocument ? 'text-purple-600' : ''}`} />;
       case 'chat': return <MessageCircle className={`h-3 w-3 ${isFullDocument ? 'text-orange-600' : ''}`} />;
+      case 'chart-generator': return <Table className={`h-3 w-3 ${isFullDocument ? 'text-indigo-600' : ''}`} />;
     }
   };
 
@@ -46,7 +47,8 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
       'summary': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       'quick-format': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       'template-format': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'chat': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+      'chat': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      'chart-generator': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
     }[type];
     
     return isFullDocument ? `${baseColor} ring-1 ring-current` : baseColor;

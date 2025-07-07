@@ -1166,13 +1166,13 @@ export function ChatSidebar({
                         rangeLabel = startRef === endRef ? startRef : `${startRef}:${endRef}`;
                       }
                       return (
-                        <div key={snippet.id} className="inline-flex items-center border border-primary/20 rounded-md py-1.5 px-2 bg-primary/5 max-w-full group text-xs text-primary">
+                        <div key={snippet.id} className="inline-flex items-center border border-primary/20 rounded-md py-1.5 px-2 bg-primary/5 w-full group text-xs text-primary">
                           <FileText className="h-3 w-3 flex-shrink-0 mr-1" />
                           <span className="flex-1 truncate font-medium">
                             {rangeLabel ? `Cells: ${rangeLabel}` : (snippet.text ?? '').replace(/\n/g, ' ')}
                           </span>
                           {snippet.linesCount && (
-                            <span className="flex-shrink-0 opacity-70 ml-1">• {snippet.linesCount} lines</span>
+                            <span className="flex-shrink-0 opacity-70 ml-1">{snippet.linesCount} lines</span>
                           )}
                           <button
                             onClick={() => removeSnippet(snippet.id)}
