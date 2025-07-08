@@ -1809,16 +1809,9 @@ Focus on making the information easily accessible and well-organized.`;
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full relative">
-                    {/* Floating Document Info */}
-                    {pdfFile && (
-                      <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md">
-                        <p className="text-sm font-medium truncate max-w-[180px]">{pdfFile.name}</p>
-                      </div>
-                    )}
-                    
+                  <div className="w-full h-full relative">     
                     {/* Floating Page Navigation Controls */}
-                    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/80 backdrop-blur-sm rounded-lg shadow-md">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10  flex items-center bg-background/90 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
                       <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1826,8 +1819,8 @@ Focus on making the information easily accessible and well-organized.`;
                               <ChevronLeftIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <p>Previous page (← or Page Up)</p>
+                          <TooltipContent side="top" className="bg-background/80">
+                            <p>Previous page</p>
                           </TooltipContent>
                         </Tooltip>
                         
@@ -1841,23 +1834,23 @@ Focus on making the information easily accessible and well-organized.`;
                               <ChevronRightIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <p>Next page (→ or Page Down)</p>
+                          <TooltipContent side="top" className="bg-background/80">
+                            <p>Next page</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
                     
                     {/* Floating Zoom Controls */}
-                    <div className="absolute top-2 right-2 z-10 flex items-center bg-background/80 backdrop-blur-sm rounded-lg shadow-md">
-                      <TooltipProvider delayDuration={0}>
+                    <div className="absolute bottom-4 right-4 z-20 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
+                    <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={zoomOut} disabled={scale <= 0.5} className="h-8 w-8">
                               <MinusIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Zoom out (Ctrl + Scroll)</p>
                           </TooltipContent>
                         </Tooltip>
@@ -1878,7 +1871,7 @@ Focus on making the information easily accessible and well-organized.`;
                               </span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Reset zoom to 100%</p>
                           </TooltipContent>
                         </Tooltip>
@@ -1889,7 +1882,7 @@ Focus on making the information easily accessible and well-organized.`;
                               <PlusIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Zoom in (Ctrl + Scroll)</p>
                           </TooltipContent>
                         </Tooltip>
@@ -1902,7 +1895,7 @@ Focus on making the information easily accessible and well-organized.`;
                               <RotateCw className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Rotate page</p>
                           </TooltipContent>
                         </Tooltip>

@@ -93,7 +93,7 @@ export function CustomSidebar({
     {
       id: 'Document Editor',
       name: 'Document',
-      icon: <Edit className="h-5 w-5" />,
+      icon: <FileText className="h-5 w-5" />,
       href: '/playground/document'
     },
     {
@@ -103,14 +103,8 @@ export function CustomSidebar({
       href: '/playground/spreadsheet'
     },
     {
-      id: 'document',
-      name: 'Process Document',
-      icon: <FileText className="h-5 w-5" />,
-      href: '/playground/process'
-    },
-    {
       id: 'template',
-      name: 'Template Editor',
+      name: 'Template',
       icon: <Layout className="h-5 w-5" />,
       href: '/playground/templates'
     },

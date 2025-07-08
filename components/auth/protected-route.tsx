@@ -28,7 +28,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       <div className="flex h-screen w-full items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground font-mono">Authenticating...</p>
         </div>
       </div>
     );
