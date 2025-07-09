@@ -182,8 +182,8 @@ export function extractCellReferences(formula: string): string[] {
 }
 
 // Check if a string is a formula
-export function isFormula(value: string): boolean {
-  return value.startsWith('=');
+export function isFormula(value: any): boolean {
+  return typeof value === 'string' && value.startsWith('=');
 }
 
 // Get cell value from data
@@ -270,9 +270,9 @@ function evaluateArgument(arg: string, data: CellData[][], currentRow: number, c
 }
 
 // Calculate formula result
-export function calculateFormula(formula: string, data: CellData[][], currentRow: number, currentCol: number): string | number {
+export function calculateFormula(formula: any, data: CellData[][], currentRow: number, currentCol: number): string | number {
   try {
-    if (!formula.startsWith('=')) {
+    if (typeof formula !== 'string' || !formula.startsWith('=')) {
       return formula;
     }
 
@@ -334,8 +334,8 @@ function executeFunction(funcName: string, args: number[]): string | number {
 }
 
 // Get autocomplete suggestions
-export function getAutocompleteSuggestions(input: string): FormulaFunction[] {
-  if (!input) return FORMULA_FUNCTIONS;
+export function getAutocompleteSuggestions(input: any): FormulaFunction[] {
+  if (!input || typeof input !== 'string') return FORMULA_FUNCTIONS;
   
   const query = input.toUpperCase();
   return FORMULA_FUNCTIONS.filter(func => 
@@ -345,8 +345,8 @@ export function getAutocompleteSuggestions(input: string): FormulaFunction[] {
 }
 
 // Format formula for display
-export function formatFormula(formula: string): string {
-  if (!isFormula(formula)) return formula;
+export function formatFormula(formula: any): string {
+  if (typeof formula !== 'string' || !isFormula(formula)) return String(formula || '');
   
   // Add spaces around operators for better readability
   return formula
@@ -356,8 +356,8 @@ export function formatFormula(formula: string): string {
 }
 
 // Validate formula syntax
-export function validateFormula(formula: string): { isValid: boolean; error?: string } {
-  if (!isFormula(formula)) {
+export function validateFormula(formula: any): { isValid: boolean; error?: string } {
+  if (typeof formula !== 'string' || !isFormula(formula)) {
     return { isValid: true };
   }
   
