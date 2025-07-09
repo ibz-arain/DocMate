@@ -1901,7 +1901,7 @@ Focus on making the information easily accessible and well-organized.`;
                       </div>
                     )}
                     {/* Floating Page Navigation Controls */}
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/90 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center bg-background/90 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
                       <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
