@@ -165,6 +165,44 @@ export default function DocumentPage() {
     });
   };
 
+  // Add handler for exporting PDF with drawings
+  const handleExportPdf = async () => {
+    if (!pdfFile || !pdfUrl) {
+      toast({
+        title: "No document loaded",
+        description: "Please load a PDF document first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Show loading toast
+      toast({
+        title: "Exporting PDF",
+        description: "Generating PDF with your annotations...",
+      });
+
+      // Call the PDF viewer's export function
+      if ((window as any).pdfViewerExport) {
+        await (window as any).pdfViewerExport();
+        toast({
+          title: "Export successful",
+          description: "Your annotated PDF has been downloaded.",
+        });
+      } else {
+        throw new Error("Export function not available");
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export failed",
+        description: "Failed to export PDF. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Function to load drawings from localStorage
   const loadDrawingsFromStorage = (fileName: string) => {
     try {
@@ -2091,6 +2129,7 @@ Focus on making the information easily accessible and well-organized.`;
                         // Use regular PDF viewer for better zoom and page tracking
                         <PdfViewer
                           file={pdfUrl}
+                          pdfFile={pdfFile}
                           pageNumber={pageNumber}
                           scale={scale}
                           rotation={rotation}
@@ -2191,6 +2230,7 @@ Focus on making the information easily accessible and well-organized.`;
                 }
                 setShowHistoryPopup(!showHistoryPopup);
               }}
+              onExportPdf={handleExportPdf}
             />
           </div>
         </main>

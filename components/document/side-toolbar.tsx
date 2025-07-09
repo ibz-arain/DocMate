@@ -18,6 +18,7 @@ import {
   MessageCircle,
   X,
   FileTextIcon,
+  Download,
 } from "lucide-react";
 
 export interface Tool {
@@ -54,6 +55,7 @@ export interface SideToolbarProps {
   onHistoryToggle: () => void;
   onClearPdf: () => void;
   onHistoryPopupToggle: (buttonRef: HTMLButtonElement | null) => void;
+  onExportPdf: () => void;
 }
 
 export function SideToolbar({
@@ -75,6 +77,7 @@ export function SideToolbar({
   onHistoryToggle,
   onClearPdf,
   onHistoryPopupToggle,
+  onExportPdf,
 }: SideToolbarProps) {
   const historyButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -227,6 +230,22 @@ export function SideToolbar({
                   <p className="text-xs text-muted-foreground">
                     {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
                   </p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                    onClick={onExportPdf}
+                  >
+                    <Download className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left" align="center" className="text-green-600 dark:text-green-100 bg-green-500/10">
+                  <p>Export PDF</p>
                 </TooltipContent>
               </Tooltip>
               

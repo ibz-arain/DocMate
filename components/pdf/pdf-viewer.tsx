@@ -14,6 +14,7 @@ const configurePdfJs = () => {
 
 interface PdfViewerProps {
   file: string | null;
+  pdfFile?: File | null; // <-- Add this line
   pageNumber: number;
   scale: number;
   rotation: number;
@@ -45,6 +46,7 @@ export interface Drawing {
 
 export function PdfViewer({
   file,
+  pdfFile = null, // <-- Add this line
   pageNumber: externalPageNumber,
   scale,
   rotation,
@@ -981,9 +983,16 @@ export function PdfViewer({
     const canvas = canvasRefs.current[pageIndex];
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
+    // Get the page element to calculate scale-independent coordinates
+    const pageElement = pageRefs.current[pageIndex];
+    if (!pageElement) return;
+
+    const pageRect = pageElement.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    // Calculate coordinates relative to the page (scale-independent)
+    const x = (e.clientX - pageRect.left) / pageRect.width;
+    const y = (e.clientY - pageRect.top) / pageRect.height;
 
     // Only start drawing for actual drawing tools
     if (['draw', 'highlight', 'rectangle', 'circle', 'arrow', 'line'].includes(selectedEditTool)) {
@@ -1005,9 +1014,15 @@ export function PdfViewer({
     const ctx = drawingContexts.current[pageIndex];
     if (!canvas || !ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
+    // Get the page element to calculate scale-independent coordinates
+    const pageElement = pageRefs.current[pageIndex];
+    if (!pageElement) return;
+
+    const pageRect = pageElement.getBoundingClientRect();
+    
+    // Calculate coordinates relative to the page (scale-independent)
+    const x = (e.clientX - pageRect.left) / pageRect.width;
+    const y = (e.clientY - pageRect.top) / pageRect.height;
     
     // Add new point to current drawing
     const newPoints = [...currentDrawing.points, { x, y }];
@@ -1028,95 +1043,88 @@ export function PdfViewer({
     drawShape(ctx, updatedDrawing);
   };
 
-  const drawShape = (ctx: CanvasRenderingContext2D, drawing: Drawing) => {
+  // Update drawShape to accept width/height for export
+  function drawShape(ctx: CanvasRenderingContext2D, drawing: Drawing, canvasWidth?: number, canvasHeight?: number) {
     const { type, points, color } = drawing;
-    if (!color) return; // Skip drawing if no color is set
-
+    if (!color) return;
+    const width = canvasWidth || ctx.canvas.width;
+    const height = canvasHeight || ctx.canvas.height;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
     ctx.lineWidth = type === 'highlight' ? 20 : 2;
     ctx.globalAlpha = type === 'highlight' ? 0.3 : 1;
-
     switch (type) {
       case 'draw':
         if (points.length < 2) return;
         ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
+        ctx.moveTo(points[0].x * width, points[0].y * height);
         for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
+          ctx.lineTo(points[i].x * width, points[i].y * height);
         }
         ctx.stroke();
         break;
-
       case 'highlight':
         if (points.length < 2) return;
         ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
+        ctx.moveTo(points[0].x * width, points[0].y * height);
         for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
+          ctx.lineTo(points[i].x * width, points[i].y * height);
         }
         ctx.stroke();
         break;
-
       case 'rectangle':
         if (points.length < 2) return;
         const [start, end] = [points[0], points[points.length - 1]];
         ctx.beginPath();
         ctx.rect(
-          start.x,
-          start.y,
-          end.x - start.x,
-          end.y - start.y
+          start.x * width,
+          start.y * height,
+          (end.x - start.x) * width,
+          (end.y - start.y) * height
         );
         ctx.stroke();
         break;
-
       case 'circle':
         if (points.length < 2) return;
         const [center, edge] = [points[0], points[points.length - 1]];
         const radius = Math.sqrt(
-          Math.pow(edge.x - center.x, 2) + Math.pow(edge.y - center.y, 2)
+          Math.pow((edge.x - center.x) * width, 2) + Math.pow((edge.y - center.y) * height, 2)
         );
         ctx.beginPath();
-        ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
+        ctx.arc(center.x * width, center.y * height, radius, 0, 2 * Math.PI);
         ctx.stroke();
         break;
-
       case 'arrow':
         if (points.length < 2) return;
         const [from, to] = [points[0], points[points.length - 1]];
-        drawArrow(ctx, from.x, from.y, to.x, to.y);
+        drawArrow(ctx, from.x * width, from.y * height, to.x * width, to.y * height);
         break;
-
       case 'line':
         if (points.length < 2) return;
         const [lineStart, lineEnd] = [points[0], points[points.length - 1]];
         ctx.beginPath();
-        ctx.moveTo(lineStart.x, lineStart.y);
-        ctx.lineTo(lineEnd.x, lineEnd.y);
+        ctx.moveTo(lineStart.x * width, lineStart.y * height);
+        ctx.lineTo(lineEnd.x * width, lineEnd.y * height);
         ctx.stroke();
         break;
-
       case 'text':
-        if (isTextDrawing(drawing) && drawing.text) {
+        if (drawing.text) {
           const fontSize = (drawing.fontSize || 16);
           ctx.font = `${fontSize}px Arial`;
-          ctx.fillText(drawing.text, points[0].x, points[0].y);
+          ctx.fillText(drawing.text, points[0].x * width, points[0].y * height);
         }
         break;
-
       case 'image':
         if (drawing.imageData) {
-          const img = new Image();
+          const img = new window.Image();
           img.src = drawing.imageData;
           img.onload = () => {
-            const width = 100;
-            const height = (img.height / img.width) * width;
-            ctx.drawImage(img, points[0].x, points[0].y, width, height);
+            const w = 100;
+            const h = (img.height / img.width) * w;
+            ctx.drawImage(img, points[0].x * width, points[0].y * height, w, h);
           };
         }
         break;
-
       case 'sticky':
         if (drawing.stickyNote) {
           const padding = 10;
@@ -1124,20 +1132,15 @@ export function PdfViewer({
           ctx.font = `${fontSize}px Arial`;
           const textWidth = ctx.measureText(drawing.stickyNote).width;
           const textHeight = fontSize;
-
-          // Draw sticky note background
           ctx.fillStyle = '#FFEB3B';
-          ctx.fillRect(points[0].x, points[0].y, textWidth + padding * 2, textHeight + padding * 2);
-          
-          // Draw text
+          ctx.fillRect(points[0].x * width, points[0].y * height, textWidth + padding * 2, textHeight + padding * 2);
           ctx.fillStyle = color;
-          ctx.fillText(drawing.stickyNote, points[0].x + padding, points[0].y + padding + textHeight);
+          ctx.fillText(drawing.stickyNote, points[0].x * width + padding, points[0].y * height + padding + textHeight);
         }
         break;
     }
-
     ctx.globalAlpha = 1;
-  };
+  }
 
   const endDrawing = () => {
     if (!isDrawing || !currentDrawing) return;
@@ -1196,9 +1199,13 @@ export function PdfViewer({
     const canvas = canvasRefs.current[pageIndex];
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
+    // Get the page element to calculate scale-independent coordinates
+    const pageElement = pageRefs.current[pageIndex];
+    if (!pageElement) return;
+
+    const pageRect = pageElement.getBoundingClientRect();
+    const x = (e.clientX - pageRect.left) / pageRect.width;
+    const y = (e.clientY - pageRect.top) / pageRect.height;
 
     setTextInputPosition({ x, y, pageIndex });
     setIsInsertingText(true);
@@ -1402,27 +1409,90 @@ export function PdfViewer({
       }
     };
 
+    // Export function that combines PDF with drawings
+    const exportHandler = async () => {
+      try {
+        if (!pdfFile) throw new Error('Original PDF file not available');
+        // Read the original PDF as ArrayBuffer
+        const arrayBuffer = await pdfFile.arrayBuffer();
+        const { PDFDocument } = await import('pdf-lib');
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const pages = pdfDoc.getPages();
+
+        // For each page, overlay the drawings
+        for (let i = 0; i < pages.length; i++) {
+          const page = pages[i];
+          const { width, height } = page.getSize();
+
+          // Create a canvas for this page
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(width);
+          canvas.height = Math.round(height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) continue;
+
+          // Draw all saved drawings for this page
+          const pageDrawings = drawings.filter(d => d.pageNumber === i + 1);
+          pageDrawings.forEach(drawing => drawShape(ctx, drawing, width, height));
+
+          // Convert canvas to PNG
+          const dataUrl = canvas.toDataURL('image/png');
+          const pngImageBytes = await fetch(dataUrl).then(res => res.arrayBuffer());
+          const pngImage = await pdfDoc.embedPng(pngImageBytes);
+
+          // Draw the PNG image over the entire page
+          page.drawImage(pngImage, {
+            x: 0,
+            y: 0,
+            width,
+            height,
+          });
+        }
+
+        // Serialize the PDF
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `annotated-document-${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Export error:', error);
+        throw error;
+      }
+    };
+
     // Store handlers in a way that parent can access them
     (window as any).pdfViewerUndo = undoHandler;
     (window as any).pdfViewerRedo = redoHandler;
+    (window as any).pdfViewerExport = exportHandler;
 
     return () => {
       delete (window as any).pdfViewerUndo;
       delete (window as any).pdfViewerRedo;
+      delete (window as any).pdfViewerExport;
     };
-  }, [historyIndex, drawingHistory, onDrawingChange]);
+  }, [historyIndex, drawingHistory, onDrawingChange, drawings, pdfFile]);
 
   // Handle eraser tool
   const handleEraser = (e: React.MouseEvent<HTMLCanvasElement>, pageIndex: number) => {
     const canvas = canvasRefs.current[pageIndex];
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
+    // Get the page element to calculate scale-independent coordinates
+    const pageElement = pageRefs.current[pageIndex];
+    if (!pageElement) return;
 
-    // Find drawings to erase (within 10px radius)
-    const eraserRadius = 10;
+    const pageRect = pageElement.getBoundingClientRect();
+    const x = (e.clientX - pageRect.left) / pageRect.width;
+    const y = (e.clientY - pageRect.top) / pageRect.height;
+
+    // Find drawings to erase (within 0.01 radius in normalized coordinates)
+    const eraserRadius = 0.01;
     const remainingDrawings = drawings.filter(drawing => {
       if (drawing.pageNumber !== pageIndex + 1) return true;
 
@@ -1451,11 +1521,14 @@ export function PdfViewer({
         const reader = new FileReader();
         reader.onload = () => {
           const imageData = reader.result as string;
-          const rect = canvasRefs.current[pageIndex]?.getBoundingClientRect();
-          if (!rect) return;
+          
+          // Get the page element to calculate scale-independent coordinates
+          const pageElement = pageRefs.current[pageIndex];
+          if (!pageElement) return;
 
-          const x = (e.clientX - rect.left);
-          const y = (e.clientY - rect.top);
+          const pageRect = pageElement.getBoundingClientRect();
+          const x = (e.clientX - pageRect.left) / pageRect.width;
+          const y = (e.clientY - pageRect.top) / pageRect.height;
 
           const newDrawing: Drawing = {
             type: 'image',
@@ -1478,11 +1551,13 @@ export function PdfViewer({
 
   // Handle sticky note
   const handleStickyNote = (e: React.MouseEvent<HTMLCanvasElement>, pageIndex: number) => {
-    const rect = canvasRefs.current[pageIndex]?.getBoundingClientRect();
-    if (!rect) return;
+    // Get the page element to calculate scale-independent coordinates
+    const pageElement = pageRefs.current[pageIndex];
+    if (!pageElement) return;
 
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
+    const pageRect = pageElement.getBoundingClientRect();
+    const x = (e.clientX - pageRect.left) / pageRect.width;
+    const y = (e.clientY - pageRect.top) / pageRect.height;
 
     const note = prompt('Enter sticky note text:');
     if (note) {
@@ -1512,12 +1587,18 @@ export function PdfViewer({
       const canvas = canvasRefs.current[currentDrawing.pageNumber - 1];
       if (!canvas) return;
 
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left);
-      const y = (e.clientY - rect.top);
+      // Get the page element to calculate scale-independent coordinates
+      const pageElement = pageRefs.current[currentDrawing.pageNumber - 1];
+      if (!pageElement) return;
 
-      // Only draw if mouse is within canvas bounds
-      if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+      const pageRect = pageElement.getBoundingClientRect();
+      
+      // Calculate coordinates relative to the page (scale-independent)
+      const x = (e.clientX - pageRect.left) / pageRect.width;
+      const y = (e.clientY - pageRect.top) / pageRect.height;
+
+      // Only draw if mouse is within page bounds
+      if (x >= 0 && x <= 1 && y >= 0 && y <= 1) {
         
         // Add new point to current drawing
         const newPoints = [...currentDrawing.points, { x, y }];
@@ -1747,8 +1828,9 @@ export function PdfViewer({
                     <div
                       className="absolute z-30"
                       style={{
-                        left: textInputPosition.x,
-                        top: textInputPosition.y - 20, // Position slightly above click point
+                        left: `${textInputPosition.x * 100}%`,
+                        top: `${textInputPosition.y * 100}%`,
+                        transform: 'translateY(-20px)', // Position slightly above click point
                       }}
                     >
                       <textarea
