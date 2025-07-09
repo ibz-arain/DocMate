@@ -25,6 +25,7 @@ import {
   Loader2,
   History,
   MessageCircle,
+  Edit as EditIcon,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
@@ -51,6 +52,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useDropzone } from "react-dropzone";
 import { toast } from "@/components/ui/use-toast";
+import { EditToolbar } from "@/components/document/edit-toolbar";
 
 export default function DocumentPage() {
   const { history, clearHistory } = useHistory(); // Add clearHistory to clear history when PDF is cleared
@@ -123,6 +125,62 @@ export default function DocumentPage() {
   // Text that should be pre-filled into the chat input (but not sent)
   const [chatPrefillText, setChatPrefillText] = useState<string>("");
   const [chatSidebarWidth, setChatSidebarWidth] = useState(0);
+
+  // Add new state for edit mode
+  const [selectedEditTool, setSelectedEditTool] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState("#000000");
+
+  // Add state for undo/redo
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const [drawings, setDrawings] = useState<Array<{
+    type: string;
+    points: Array<{ x: number; y: number }>;
+    color: string;
+    pageNumber: number;
+    text?: string;
+    fontSize?: number;
+    imageData?: string;
+    stampType?: string;
+    stickyNote?: string;
+  }>>([]);
+
+  // Add handlers for undo/redo state
+  const handleUndoStateChange = (canUndo: boolean, canRedo: boolean) => {
+    setCanUndo(canUndo);
+    setCanRedo(canRedo);
+  };
+
+  // Add handler for drawings change
+  const handleDrawingsChange = (newDrawings: any[]) => {
+    setDrawings(newDrawings);
+  };
+
+  // Add handler for saving drawings
+  const handleSaveDrawings = () => {
+    // Here you would implement the logic to save the drawings
+    // For now, we'll just show a toast
+    toast({
+      title: "Drawings saved",
+      description: "Your annotations have been saved successfully.",
+    });
+  };
+
+  // Add undo handler
+  const handleUndo = () => {
+    // Call the PdfViewer's undo handler
+    if ((window as any).pdfViewerUndo) {
+      (window as any).pdfViewerUndo();
+    }
+  };
+
+  // Add redo handler
+  const handleRedo = () => {
+    // Call the PdfViewer's redo handler
+    if ((window as any).pdfViewerRedo) {
+      (window as any).pdfViewerRedo();
+    }
+  };
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -560,6 +618,11 @@ export default function DocumentPage() {
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
     
+    // Reset edit mode when switching tools
+    if (tool !== 'edit') {
+      setSelectedEditTool(null);
+    }
+    
     // Show tooltip briefly when tool is selected
     setShowToolTooltip(true);
     if (toolTooltipTimeoutRef.current) {
@@ -621,7 +684,8 @@ export default function DocumentPage() {
 
   const tools: Tool[] = [
     { id: 'text', label: 'Text Select', icon: <MousePointerIcon className="h-5 w-5" /> },
-    { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
+    { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> },
+    { id: 'edit', label: 'Edit', icon: <EditIcon className="h-5 w-5" /> }
   ];
 
 
@@ -1726,6 +1790,16 @@ Focus on making the information easily accessible and well-organized.`;
     return () => container.removeEventListener('scroll', handleScroll);
   }, [updateCurrentPageFromScroll, selectedText, menuPos]);
 
+  // Add handleEditToolSelect function
+  const handleEditToolSelect = (tool: string) => {
+    setSelectedEditTool(tool);
+  };
+
+  // Add handleColorSelect function
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color);
+  };
+
   return (
     <>
       <Head>
@@ -1809,9 +1883,25 @@ Focus on making the information easily accessible and well-organized.`;
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full relative">     
+                  <div className="w-full h-full relative">
+                    {/* Floating Edit Toolbar (INSIDE PDF VIEWER) */}
+                    {selectedTool === 'edit' && pdfUrl && (
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
+                        <EditToolbar
+                          selectedEditTool={selectedEditTool}
+                          onEditToolSelect={handleEditToolSelect}
+                          selectedColor={selectedColor}
+                          onColorSelect={handleColorSelect}
+                          canUndo={canUndo}
+                          canRedo={canRedo}
+                          onUndo={handleUndo}
+                          onRedo={handleRedo}
+                          onSave={handleSaveDrawings}
+                        />
+                      </div>
+                    )}
                     {/* Floating Page Navigation Controls */}
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10  flex items-center bg-background/90 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/90 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
                       <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1935,8 +2025,9 @@ Focus on making the information easily accessible and well-organized.`;
 
                     <div className="absolute inset-0">
                       <AnimatePresence>
-                        {!selectedText && pdfWorkerReady && showToolTooltip && (
-                          <div className="absolute top-12 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                        {/* Only show intro message for text or box select, not for edit mode */}
+                        {(!selectedText && pdfWorkerReady && showToolTooltip && (selectedTool === 'text' || selectedTool === 'box')) && (
+                          <div className="absolute top-4 left-0 right-0 flex justify-center z-20 pointer-events-none">
                             <motion.div
                               initial={{ opacity: 0, y: -10, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1944,9 +2035,8 @@ Focus on making the information easily accessible and well-organized.`;
                               transition={{ duration: 0.2, ease: "easeOut" }}
                               className="bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md text-sm whitespace-nowrap"
                             >
-                              {selectedTool === 'box' ? 'Drag a box within the PDF to capture content' : 
-                               selectedTool === 'text' ? 'Select text within the PDF to capture content' :
-                               'Select a tool from the sidebar to capture content'}
+                              {selectedTool === 'box' ? 'Drag a box within the PDF to capture content' :
+                               'Select text within the PDF to capture content'}
                             </motion.div>
                           </div>
                         )}
@@ -1971,7 +2061,9 @@ Focus on making the information easily accessible and well-organized.`;
                             console.error("Error loading PDF:", error);
                             setIsLoading(false);
                           }}
-                          selectionMode={selectedTool as 'text' | 'box' | null}
+                          selectionMode={selectedTool as 'text' | 'box' | 'edit' | null}
+                          selectedEditTool={selectedEditTool}
+                          selectedColor={selectedColor}
                           onSelection={handleSelection}
                           onScroll={(scrollDistance: number) => {
                             // Close context menu when PDF viewer scrolls more than 20 pixels
@@ -1979,6 +2071,9 @@ Focus on making the information easily accessible and well-organized.`;
                               clearSelection();
                             }
                           }}
+                          onDrawingChange={handleDrawingsChange}
+                          onUndoStateChange={handleUndoStateChange}
+                          onSaveDrawings={handleSaveDrawings}
                         />
                       )}
 
@@ -2147,8 +2242,6 @@ Focus on making the information easily accessible and well-organized.`;
         position={historyPopupPosition}
         onOpenEntry={handleOpenHistoryEntry}
       />
-
-
 
       {/* CSS for animated gradient background */}
       <style jsx global>{`
