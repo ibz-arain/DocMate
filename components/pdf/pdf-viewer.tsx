@@ -28,9 +28,10 @@ interface PdfViewerProps {
   onDrawingChange?: (drawings: Drawing[]) => void;
   onUndoStateChange?: (canUndo: boolean, canRedo: boolean) => void;
   onSaveDrawings?: () => void;
+  initialDrawings?: Drawing[]; // Add prop for initial drawings
 }
 
-interface Drawing {
+export interface Drawing {
   type: 'text' | 'draw' | 'highlight' | 'rectangle' | 'circle' | 'arrow' | 'line' | 'eraser' | 'image' | 'stamp' | 'sticky';
   points: { x: number; y: number }[];
   color: string;
@@ -58,6 +59,7 @@ export function PdfViewer({
   onDrawingChange = () => {},
   onUndoStateChange = () => {},
   onSaveDrawings = () => {},
+  initialDrawings = [], // Add default value
 }: PdfViewerProps) {
   // Memoize scale to reduce unnecessary re-renders
   const memoizedScale = useRef(scale);
@@ -102,7 +104,7 @@ export function PdfViewer({
   } | null>(null);
 
   // Add drawing state
-  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [drawings, setDrawings] = useState<Drawing[]>(initialDrawings);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentDrawing, setCurrentDrawing] = useState<Drawing | null>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
@@ -132,9 +134,19 @@ export function PdfViewer({
     pageDrawings.forEach(drawing => drawShape(ctx, drawing));
   };
 
-  // Redraw all canvases when edit mode is activated
+  // Initialize drawings when initialDrawings prop changes
   useEffect(() => {
-    if (selectionMode === 'edit') {
+    if (initialDrawings && initialDrawings.length > 0) {
+      setDrawings(initialDrawings);
+      // Initialize history with the initial drawings
+      setDrawingHistory([initialDrawings]);
+      setHistoryIndex(0);
+    }
+  }, [initialDrawings]);
+
+  // Redraw all canvases when edit mode is activated OR when drawings change
+  useEffect(() => {
+    if (selectionMode === 'edit' || drawings.length > 0) {
       // Immediate redraw
       canvasRefs.current.forEach((canvas, index) => {
         if (canvas) {
@@ -153,7 +165,7 @@ export function PdfViewer({
       
       return () => clearTimeout(timeoutId);
     }
-  }, [selectionMode]);
+  }, [selectionMode, drawings]);
 
   // Initialize canvas refs when number of pages changes
   useEffect(() => {
@@ -1707,30 +1719,28 @@ export function PdfViewer({
                     }
                   />
                   
-                  {/* Drawing Canvas Layer */}
-                  {selectionMode === 'edit' && (
-                    <canvas
-                      ref={el => { canvasRefs.current[index] = el; }}
-                      className="absolute inset-0"
-                      style={{
-                        cursor: getCursorStyle(),
-                        touchAction: 'none',
-                        pointerEvents: 'auto',
-                        width: '100%',
-                        height: '100%',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        zIndex: 10,
-                      }}
-                      onClick={e => handleCanvasClick(e, index)}
-                      onMouseDown={e => {
-                        if (selectedEditTool && selectedEditTool !== 'text' && selectedEditTool !== 'hand') {
-                          startDrawing(e, index);
-                        }
-                      }}
-                    />
-                  )}
+                  {/* Drawing Canvas Layer: always render, but only interactive in edit mode */}
+                  <canvas
+                    ref={el => { canvasRefs.current[index] = el; }}
+                    className="absolute inset-0"
+                    style={{
+                      cursor: getCursorStyle(),
+                      touchAction: selectionMode === 'edit' ? 'none' : undefined,
+                      pointerEvents: selectionMode === 'edit' ? 'auto' : 'none',
+                      width: '100%',
+                      height: '100%',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      zIndex: 10,
+                    }}
+                    onClick={e => selectionMode === 'edit' ? handleCanvasClick(e, index) : undefined}
+                    onMouseDown={e => {
+                      if (selectionMode === 'edit' && selectedEditTool && selectedEditTool !== 'text' && selectedEditTool !== 'hand') {
+                        startDrawing(e, index);
+                      }
+                    }}
+                  />
 
                   {/* Text Input Layer */}
                   {isInsertingText && textInputPosition && textInputPosition.pageIndex === index && (

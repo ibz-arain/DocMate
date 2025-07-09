@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils";
 import { useDropzone } from "react-dropzone";
 import { toast } from "@/components/ui/use-toast";
 import { EditToolbar } from "@/components/document/edit-toolbar";
+import type { Drawing } from "@/components/pdf/pdf-viewer";
 
 export default function DocumentPage() {
   const { history, clearHistory } = useHistory(); // Add clearHistory to clear history when PDF is cleared
@@ -133,17 +134,7 @@ export default function DocumentPage() {
   // Add state for undo/redo
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const [drawings, setDrawings] = useState<Array<{
-    type: string;
-    points: Array<{ x: number; y: number }>;
-    color: string;
-    pageNumber: number;
-    text?: string;
-    fontSize?: number;
-    imageData?: string;
-    stampType?: string;
-    stickyNote?: string;
-  }>>([]);
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
 
   // Add handlers for undo/redo state
   const handleUndoStateChange = (canUndo: boolean, canRedo: boolean) => {
@@ -154,6 +145,14 @@ export default function DocumentPage() {
   // Add handler for drawings change
   const handleDrawingsChange = (newDrawings: any[]) => {
     setDrawings(newDrawings);
+    // Save drawings to localStorage whenever they change
+    if (pdfFile) {
+      try {
+        localStorage.setItem(`docmate-drawings-${pdfFile.name}`, JSON.stringify(newDrawings));
+      } catch (error) {
+        console.error('Failed to save drawings to localStorage:', error);
+      }
+    }
   };
 
   // Add handler for saving drawings
@@ -164,6 +163,30 @@ export default function DocumentPage() {
       title: "Drawings saved",
       description: "Your annotations have been saved successfully.",
     });
+  };
+
+  // Function to load drawings from localStorage
+  const loadDrawingsFromStorage = (fileName: string) => {
+    try {
+      const storedDrawings = localStorage.getItem(`docmate-drawings-${fileName}`);
+      if (storedDrawings) {
+        const parsedDrawings = JSON.parse(storedDrawings) as Drawing[];
+        setDrawings(parsedDrawings);
+        return parsedDrawings;
+      }
+    } catch (error) {
+      console.error('Failed to load drawings from localStorage:', error);
+    }
+    return [];
+  };
+
+  // Function to clear drawings from localStorage
+  const clearDrawingsFromStorage = (fileName: string) => {
+    try {
+      localStorage.removeItem(`docmate-drawings-${fileName}`);
+    } catch (error) {
+      console.error('Failed to clear drawings from localStorage:', error);
+    }
   };
 
   // Add undo handler
@@ -216,6 +239,9 @@ export default function DocumentPage() {
           if (storedPageNumber) setPageNumber(parseInt(storedPageNumber));
           if (storedScale) setScale(parseFloat(storedScale));
           if (storedRotation) setRotation(parseInt(storedRotation));
+
+          // Load drawings for this PDF
+          loadDrawingsFromStorage(storedPdfName);
         }
       } catch (error) {
         console.error('Failed to load stored PDF:', error);
@@ -279,6 +305,11 @@ export default function DocumentPage() {
       URL.revokeObjectURL(pdfUrl);
     }
     
+    // Clear drawings from localStorage for the current PDF
+    if (pdfFile) {
+      clearDrawingsFromStorage(pdfFile.name);
+    }
+    
     setPdfFile(null);
     setPdfUrl(null);
     setPageNumber(1);
@@ -290,6 +321,11 @@ export default function DocumentPage() {
     setAnalysisResult(null);
     setMenuPos(null);
     setIsLoading(false);
+    
+    // Clear drawings state
+    setDrawings([]);
+    setCanUndo(false);
+    setCanRedo(false);
     
     // Clear all popup states
     setShowSummarizePopup(false);
@@ -601,6 +637,9 @@ export default function DocumentPage() {
     setScale(1.0); // Reset zoom when loading new document
     setRotation(0); // Reset rotation
     setIsLoading(true);
+
+    // Load drawings for the new PDF file
+    loadDrawingsFromStorage(file.name);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2074,6 +2113,7 @@ Focus on making the information easily accessible and well-organized.`;
                           onDrawingChange={handleDrawingsChange}
                           onUndoStateChange={handleUndoStateChange}
                           onSaveDrawings={handleSaveDrawings}
+                          initialDrawings={drawings}
                         />
                       )}
 
