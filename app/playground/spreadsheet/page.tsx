@@ -1183,12 +1183,14 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
               history={history}
               showHistoryPopup={showHistoryPopup}
               historyPopupPosition={historyPopupPosition}
+              documentType="spreadsheet"
               onDocumentSummarize={handleDocumentSummarize}
               onDocumentQuickFormat={handleDocumentQuickFormat}
               onFullDocTemplateFormatStart={handleFullDocTemplateFormatStart}
               onFullDocumentChat={handleFullDocumentChat}
               onHistoryToggle={() => {}}
               onClearPdf={clearSpreadsheet}
+              onExportPdf={() => {}}
               onHistoryPopupToggle={(buttonRef) => {
                 if (!showHistoryPopup && buttonRef) {
                   const rect = buttonRef.getBoundingClientRect();

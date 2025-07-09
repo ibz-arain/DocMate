@@ -47,6 +47,9 @@ export interface SideToolbarProps {
   showHistoryPopup: boolean;
   historyPopupPosition: { top: number; left: number };
   
+  // Document type - to determine if PDF export should be shown
+  documentType?: 'pdf' | 'spreadsheet';
+  
   // Event handlers
   onDocumentSummarize: () => void;
   onDocumentQuickFormat: () => void;
@@ -70,6 +73,7 @@ export function SideToolbar({
   history,
   showHistoryPopup,
   historyPopupPosition,
+  documentType = 'pdf',
   onDocumentSummarize,
   onDocumentQuickFormat,
   onFullDocTemplateFormatStart,
@@ -233,21 +237,23 @@ export function SideToolbar({
                 </TooltipContent>
               </Tooltip>
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 text-green-600 hover:text-green-700 hover:bg-green-500/10"
-                    onClick={onExportPdf}
-                  >
-                    <Download className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left" align="center" className="text-green-600 dark:text-green-100 bg-green-500/10">
-                  <p>Export PDF</p>
-                </TooltipContent>
-              </Tooltip>
+              {documentType === 'pdf' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                      onClick={onExportPdf}
+                    >
+                      <Download className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" align="center" className="text-green-600 dark:text-green-100 bg-green-500/10">
+                    <p>Export PDF</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
               
               <Tooltip>
                 <TooltipTrigger asChild>

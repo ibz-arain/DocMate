@@ -2214,6 +2214,7 @@ Focus on making the information easily accessible and well-organized.`;
               history={history}
               showHistoryPopup={showHistoryPopup}
               historyPopupPosition={historyPopupPosition}
+              documentType="pdf"
               onDocumentSummarize={handleDocumentSummarize}
               onDocumentQuickFormat={handleDocumentQuickFormat}
               onFullDocTemplateFormatStart={handleFullDocTemplateFormatStart}
