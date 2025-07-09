@@ -235,7 +235,18 @@ export default function SpreadsheetPage() {
                     cell === null || typeof cell === 'object' && cell !== null && 'value' in cell
                   )
                 )) {
-                  setSpreadsheetData(parsedData);
+                  // Ensure all cells have the new structure
+                  const validatedData = parsedData.map(row => 
+                    row.map((cell: any) => {
+                      if (cell === null) return { value: '', formula: undefined, calculatedValue: undefined };
+                      return {
+                        value: cell.value || '',
+                        formula: cell.formula || undefined,
+                        calculatedValue: cell.calculatedValue || undefined
+                      };
+                    })
+                  );
+                  setSpreadsheetData(validatedData);
                   setIsLoading(false); // Stop loading when cached data is loaded
                 } else {
                   console.warn('Cached data structure is invalid, falling back to original file');
@@ -300,15 +311,19 @@ export default function SpreadsheetPage() {
       try {
         // Ensure data consistency before saving
         const sanitizedData = spreadsheetData.map(row => 
-          row.map(cell => {
+          row.map((cell: any) => {
             if (cell === null || cell === undefined) {
-              return { value: '' };
+              return { value: '', formula: undefined, calculatedValue: undefined };
             }
             if (typeof cell === 'object' && cell !== null && 'value' in cell) {
-              return cell;
+              return {
+                value: cell.value || '',
+                formula: cell.formula || undefined,
+                calculatedValue: cell.calculatedValue || undefined
+              };
             }
             // Handle case where cell might be a string or other type
-            return { value: String(cell || '') };
+            return { value: String(cell || ''), formula: undefined, calculatedValue: undefined };
           })
         );
         localStorage.setItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`, JSON.stringify(sanitizedData));
@@ -348,45 +363,7 @@ export default function SpreadsheetPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!spreadsheetUrl) return;
 
-      // Tool selection shortcuts
-      if (e.key === '1') {
-        e.preventDefault();
-        handleToolSelect('cell');
-      }
-      else if (e.key === '2') {
-        e.preventDefault();
-        handleToolSelect('edit');
-      }
-      // Export shortcut (Ctrl/Cmd + E)
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault();
-        if (spreadsheetFile && spreadsheetData.length) {
-          handleExportSpreadsheet();
-        }
-      }
-      // Clear cached edits shortcut (Ctrl/Cmd + R)
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-        e.preventDefault();
-        if (spreadsheetFile) {
-          clearCachedEdits();
-        }
-      }
-      // Escape to clear selection
-      else if (e.key === 'Escape') {
-        if (selectedCells && menuPos) {
-          clearSelection();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [spreadsheetUrl, selectedCells, menuPos, handleToolSelect, spreadsheetFile, spreadsheetData, handleExportSpreadsheet, clearCachedEdits]);
 
   const processSpreadsheetFile = async (file: File): Promise<void> => {
     setIsLoading(true);
@@ -416,7 +393,11 @@ export default function SpreadsheetPage() {
         }
         
         // Convert to enhanced spreadsheet format
-        const data = rows.map(row => row.map(cell => ({ value: cell || '' })));
+        const data = rows.map(row => row.map(cell => ({ 
+          value: cell || '',
+          formula: undefined,
+          calculatedValue: undefined
+        })));
         setSpreadsheetData(data);
         setIsLoading(false);
       };
@@ -478,11 +459,22 @@ export default function SpreadsheetPage() {
         const parsedData = JSON.parse(cachedSpreadsheetData);
         // Validate that the cached data has the correct structure
         if (Array.isArray(parsedData) && parsedData.every(row => 
-          Array.isArray(row) && row.every(cell => 
+          Array.isArray(row) && row.every((cell: any) => 
             cell === null || typeof cell === 'object' && cell !== null && 'value' in cell
           )
         )) {
-          setSpreadsheetData(parsedData);
+          // Ensure all cells have the new structure
+          const validatedData = parsedData.map(row => 
+            row.map((cell: any) => {
+              if (cell === null) return { value: '', formula: undefined, calculatedValue: undefined };
+              return {
+                value: cell.value || '',
+                formula: cell.formula || undefined,
+                calculatedValue: cell.calculatedValue || undefined
+              };
+            })
+          );
+          setSpreadsheetData(validatedData);
           setIsLoading(false); // Stop loading when cached data is loaded
           toast({
             title: "Restored edits",
@@ -1171,30 +1163,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
     };
   }, [scale, spreadsheetUrl]);
 
-  // Keyboard shortcuts for zoom
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!spreadsheetUrl) return;
-      if (e.key === '=' || e.key === '+') {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          zoomIn();
-        }
-      } else if (e.key === '-') {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          zoomOut();
-        }
-      } else if (e.key === '0') {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          resetZoom();
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [spreadsheetUrl]);
+
 
   return (
     <>
@@ -1306,12 +1275,11 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                             </TooltipTrigger>
                             <TooltipContent side="bottom" align="start">
                               <div className="text-xs">
-                                <p className="font-medium">Keyboard Shortcuts:</p>
-                                <p>1 - Cell Select Mode</p>
-                                <p>2 - Edit Mode</p>
-                                <p>Ctrl+E - Export Excel</p>
-                                <p>Ctrl+R - Reset to Original</p>
-                                <p>Escape - Clear Selection</p>
+                                <p className="font-medium">Spreadsheet Features:</p>
+                                <p>• Cell Select Mode - Select and analyze cells</p>
+                                <p>• Edit Mode - Edit cells and use formulas</p>
+                                <p>• Export to Excel format</p>
+                                <p>• Reset to original file</p>
                               </div>
                             </TooltipContent>
                           </Tooltip>

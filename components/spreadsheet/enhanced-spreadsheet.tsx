@@ -2,9 +2,20 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { 
+  isFormula, 
+  calculateFormula, 
+  getAutocompleteSuggestions, 
+  formatFormula, 
+  validateFormula,
+  FORMULA_FUNCTIONS,
+  type FormulaFunction 
+} from '@/lib/formula-utils';
 
 interface CellData {
   value: string;
+  formula?: string;
+  calculatedValue?: string | number;
   row: number;
   col: number;
 }
@@ -63,9 +74,16 @@ export function EnhancedSpreadsheet({
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [lastCursorPosition, setLastCursorPosition] = useState<{ x: number; y: number } | null>(null);
   
+  // Formula autocomplete state
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<FormulaFunction[]>([]);
+  const [autocompletePosition, setAutocompletePosition] = useState<{ top: number; left: number } | null>(null);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
 
   // Constants
   const DEFAULT_COLUMN_WIDTH = 120;
@@ -141,14 +159,63 @@ export function EnhancedSpreadsheet({
     const cells: string[] = [];
     for (let row = range.startRow; row <= range.endRow; row++) {
       for (let col = range.startCol; col <= range.endCol; col++) {
-        const cellValue = data[row]?.[col]?.value || '';
-        if (cellValue) {
-          cells.push(`${getCellReference(row, col)}: ${cellValue}`);
+        const cellData = getCellDisplayValue(row, col);
+        if (cellData.value) {
+          cells.push(`${getCellReference(row, col)}: ${cellData.value}`);
         }
       }
     }
     return cells.join('\n');
   };
+
+  // Get cell display value (formula result or plain value)
+  const getCellDisplayValue = (row: number, col: number): { value: string; isError: boolean } => {
+    const cell = data[row]?.[col];
+    if (!cell) return { value: '', isError: false };
+    
+    if (cell.formula) {
+      const calculatedValue = cell.calculatedValue;
+      if (calculatedValue === '#ERROR!' || calculatedValue === '#NAME?' || calculatedValue === '#DIV/0!') {
+        return { value: String(calculatedValue), isError: true };
+      }
+      return { value: String(calculatedValue || cell.value || ''), isError: false };
+    }
+    
+    return { value: cell.value || '', isError: false };
+  };
+
+  // Calculate all formulas in the spreadsheet
+  const calculateAllFormulas = useCallback(() => {
+    const newData = [...data];
+    let hasChanges = false;
+
+    for (let row = 0; row < newData.length; row++) {
+      for (let col = 0; col < (newData[row]?.length || 0); col++) {
+        const cell = newData[row]?.[col];
+        if (cell?.formula) {
+          try {
+            const calculatedValue = calculateFormula(cell.formula, newData, row, col);
+            if (cell.calculatedValue !== calculatedValue) {
+              newData[row][col] = { ...cell, calculatedValue };
+              hasChanges = true;
+            }
+          } catch (error) {
+            newData[row][col] = { ...cell, calculatedValue: '#ERROR!' };
+            hasChanges = true;
+          }
+        }
+      }
+    }
+
+    if (hasChanges) {
+      onChange(newData);
+    }
+  }, [data, onChange]);
+
+  // Recalculate formulas when data changes
+  useEffect(() => {
+    calculateAllFormulas();
+  }, [calculateAllFormulas]);
 
   // Calculate menu position based on cursor or selection
   const calculateMenuPosition = (event: React.MouseEvent): { top: number; left: number } => {
@@ -273,8 +340,10 @@ export function EnhancedSpreadsheet({
       const selectedText = getSelectedCellsText(range);
       onCellSelection?.(selectedText, range, event);
       
-      // Show context menu immediately for extended selection
-      showContextMenu(range, event);
+      // Show context menu immediately for extended selection (only if not in edit mode)
+      if (!editable) {
+        showContextMenu(range, event);
+      }
     } else {
       // Single cell selection
       const range: SelectionRange = {
@@ -289,10 +358,12 @@ export function EnhancedSpreadsheet({
       const selectedText = getSelectedCellsText(range);
       onCellSelection?.(selectedText, range, event);
       
-      // Show context menu immediately for single cell selection
-      showContextMenu(range, event);
+      // Show context menu immediately for single cell selection (only if not in edit mode)
+      if (!editable) {
+        showContextMenu(range, event);
+      }
     }
-  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu]);
+  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle cell double click (start editing)
   const handleCellDoubleClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
@@ -304,7 +375,8 @@ export function EnhancedSpreadsheet({
     // Clear context menu when starting to edit
     clearContextMenu();
     
-    const cellValue = data[row]?.[col]?.value || '';
+    const cell = data[row]?.[col];
+    const cellValue = cell?.formula || cell?.value || '';
     setEditingCell({ row, col });
     setEditValue(cellValue);
     
@@ -356,9 +428,11 @@ export function EnhancedSpreadsheet({
     const selectedText = getSelectedCellsText(selectedRange);
     onCellSelection?.(selectedText, selectedRange, event);
     
-    // Show context menu when drag selection ends
-    showContextMenu(selectedRange, event);
-  }, [isSelecting, selectedRange, isResizing, onCellSelection, getSelectedCellsText, showContextMenu]);
+    // Show context menu when drag selection ends (only if not in edit mode)
+    if (!editable) {
+      showContextMenu(selectedRange, event);
+    }
+  }, [isSelecting, selectedRange, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle right click
   const handleRightClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
@@ -385,9 +459,11 @@ export function EnhancedSpreadsheet({
     const selectedText = getSelectedCellsText(range);
     onRightClick?.(selectedText, range, event);
     
-    // Show context menu for right-click
-    showContextMenu(range, event);
-  }, [selectedRange, isResizing, onRightClick, getSelectedCellsText, showContextMenu]);
+    // Show context menu for right-click (only if not in edit mode)
+    if (!editable) {
+      showContextMenu(range, event);
+    }
+  }, [selectedRange, isResizing, onRightClick, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle cell value change
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
@@ -403,9 +479,62 @@ export function EnhancedSpreadsheet({
       newData[row].push({ value: '' });
     }
     
-    newData[row][col] = { value };
+    // Handle formula input
+    if (isFormula(value)) {
+      newData[row][col] = { 
+        value: value.substring(1), // Store without '='
+        formula: value,
+        calculatedValue: undefined
+      };
+    } else {
+      newData[row][col] = { value };
+    }
+    
     onChange(newData);
   }, [data, onChange]);
+
+  // Handle autocomplete for formulas
+  const handleFormulaAutocomplete = useCallback((input: string) => {
+    if (!input.startsWith('=')) {
+      setShowAutocomplete(false);
+      return;
+    }
+
+    const query = input.substring(1).toUpperCase();
+    const suggestions = getAutocompleteSuggestions(query);
+    
+    if (suggestions.length > 0) {
+      setAutocompleteSuggestions(suggestions);
+      setSelectedSuggestionIndex(0);
+      setShowAutocomplete(true);
+      
+      // Position autocomplete dropdown
+      if (editInputRef.current) {
+        const rect = editInputRef.current.getBoundingClientRect();
+        setAutocompletePosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX
+        });
+      }
+    } else {
+      setShowAutocomplete(false);
+    }
+  }, []);
+
+  // Handle autocomplete selection
+  const handleAutocompleteSelect = useCallback((suggestion: FormulaFunction) => {
+    if (!editingCell) return;
+    
+    const currentValue = editValue.startsWith('=') ? editValue.substring(1) : editValue;
+    const newValue = `=${suggestion.name}(`;
+    setEditValue(newValue);
+    setShowAutocomplete(false);
+    
+    // Focus back to input
+    setTimeout(() => {
+      editInputRef.current?.focus();
+    }, 0);
+  }, [editingCell, editValue]);
 
   // Handle cell editing save
   const handleCellSave = useCallback(() => {
@@ -475,9 +604,11 @@ export function EnhancedSpreadsheet({
     const selectedText = getSelectedCellsText(range);
     onCellSelection?.(selectedText, range, event);
     
-    // Show context menu immediately for column selection
-    showContextMenu(range, event);
-  }, [isResizing, rows, onCellSelection, getSelectedCellsText, showContextMenu]);
+    // Show context menu immediately for column selection (only if not in edit mode)
+    if (!editable) {
+      showContextMenu(range, event);
+    }
+  }, [isResizing, rows, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle row header click (select entire row)
   const handleRowHeaderClick = useCallback((rowIndex: number, event: React.MouseEvent) => {
@@ -499,9 +630,11 @@ export function EnhancedSpreadsheet({
     const selectedText = getSelectedCellsText(range);
     onCellSelection?.(selectedText, range, event);
     
-    // Show context menu immediately for row selection
-    showContextMenu(range, event);
-  }, [isResizing, cols, onCellSelection, getSelectedCellsText, showContextMenu]);
+    // Show context menu immediately for row selection (only if not in edit mode)
+    if (!editable) {
+      showContextMenu(range, event);
+    }
+  }, [isResizing, cols, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle column resize
   const handleColumnResizeStart = useCallback((colIndex: number, event: React.MouseEvent) => {
@@ -632,89 +765,7 @@ export function EnhancedSpreadsheet({
     };
   }, [isSelecting, isResizing, handleResizeMove, handleResizeEnd, menuPosition, clearContextMenu]);
 
-  // Handle keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Ignore key events if focus is inside an input/textarea or content-editable (e.g. chat sidebar)
-      const target = event.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as HTMLElement).isContentEditable)) {
-        return;
-      }
 
-      if (editingCell || !activeCell) return;
-      
-      let newRow = activeCell.row;
-      let newCol = activeCell.col;
-      
-      switch (event.key) {
-        case 'ArrowUp':
-          event.preventDefault();
-          newRow = Math.max(0, newRow - 1);
-          break;
-        case 'ArrowDown':
-          event.preventDefault();
-          newRow = Math.min(rows - 1, newRow + 1);
-          break;
-        case 'ArrowLeft':
-          event.preventDefault();
-          newCol = Math.max(0, newCol - 1);
-          break;
-        case 'ArrowRight':
-          event.preventDefault();
-          newCol = Math.min(cols - 1, newCol + 1);
-          break;
-        case 'Enter':
-          event.preventDefault();
-          // Start editing current cell only if editable
-          if (editable) {
-            handleCellDoubleClick(activeCell.row, activeCell.col, new MouseEvent('dblclick') as any);
-          }
-          return;
-        case 'Delete':
-        case 'Backspace':
-          event.preventDefault();
-          // Clear selected cells only if editable
-          if (editable && selectedRange) {
-            for (let row = selectedRange.startRow; row <= selectedRange.endRow; row++) {
-              for (let col = selectedRange.startCol; col <= selectedRange.endCol; col++) {
-                handleCellChange(row, col, '');
-              }
-            }
-          }
-          return;
-        case 'Escape':
-          event.preventDefault();
-          // Clear context menu if open
-          if (menuPosition) {
-            clearContextMenu();
-            return;
-          }
-          break;
-        default:
-          // If it's a printable character, start editing only if editable
-          if (editable && event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
-            event.preventDefault();
-            setEditingCell(activeCell);
-            setEditValue(event.key);
-            setTimeout(() => {
-              editInputRef.current?.focus();
-            }, 0);
-          }
-          return;
-      }
-      
-      setActiveCell({ row: newRow, col: newCol });
-      setSelectedRange({
-        startRow: newRow,
-        startCol: newCol,
-        endRow: newRow,
-        endCol: newCol
-      });
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeCell, editingCell, selectedRange, rows, cols, handleCellChange, handleCellDoubleClick, menuPosition, clearContextMenu, editable]);
 
   // Check if cell is selected
   const isCellSelected = (row: number, col: number): boolean => {
@@ -937,9 +988,43 @@ export function EnhancedSpreadsheet({
                           ref={editInputRef}
                           type="text"
                           value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={handleEditKeyPress}
-                          onBlur={handleCellSave}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setEditValue(newValue);
+                            handleFormulaAutocomplete(newValue);
+                          }}
+                          onKeyDown={(e) => {
+                            if (showAutocomplete) {
+                              if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                setSelectedSuggestionIndex(prev => 
+                                  Math.min(prev + 1, autocompleteSuggestions.length - 1)
+                                );
+                              } else if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                setSelectedSuggestionIndex(prev => Math.max(prev - 1, 0));
+                              } else if (e.key === 'Enter' || e.key === 'Tab') {
+                                e.preventDefault();
+                                if (autocompleteSuggestions[selectedSuggestionIndex]) {
+                                  handleAutocompleteSelect(autocompleteSuggestions[selectedSuggestionIndex]);
+                                } else {
+                                  handleEditKeyPress(e);
+                                }
+                              } else if (e.key === 'Escape') {
+                                setShowAutocomplete(false);
+                              } else {
+                                handleEditKeyPress(e);
+                              }
+                            } else {
+                              handleEditKeyPress(e);
+                            }
+                          }}
+                          onBlur={() => {
+                            setTimeout(() => {
+                              setShowAutocomplete(false);
+                            }, 200);
+                            handleCellSave();
+                          }}
                           className={cn(
                             "w-full h-full border-none outline-none px-3 py-2 text-sm",
                             "bg-background text-foreground",
@@ -948,13 +1033,20 @@ export function EnhancedSpreadsheet({
                         />
                       ) : (
                         <div
-                                                className={cn(
-                        "w-full h-full px-3 py-2 text-sm overflow-hidden whitespace-nowrap text-ellipsis flex items-center",
-                        "text-foreground",
-                        isSelected && "select-none"
-                      )}
+                          className={cn(
+                            "w-full h-full px-3 py-2 text-sm overflow-hidden whitespace-nowrap text-ellipsis flex items-center",
+                            "text-foreground",
+                            isSelected && "select-none"
+                          )}
                         >
-                          {cellData?.value || ''}
+                          {(() => {
+                            const cellData = getCellDisplayValue(row, col);
+                            return (
+                              <span className={cn(cellData.isError && "text-red-500 font-medium")}>
+                                {cellData.value}
+                              </span>
+                            );
+                          })()}
                         </div>
                       )}
                       {/* Selection border - show around entire range */}
@@ -1040,6 +1132,43 @@ export function EnhancedSpreadsheet({
             cursor: headerHover.type === 'column' ? 'col-resize' : 'row-resize'
           }}
         />
+      )}
+
+      {/* Formula Autocomplete Dropdown */}
+      {showAutocomplete && autocompletePosition && (
+        <div
+          ref={autocompleteRef}
+          className="fixed z-50 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto"
+          style={{
+            top: autocompletePosition.top,
+            left: autocompletePosition.left,
+            minWidth: '200px'
+          }}
+        >
+          {autocompleteSuggestions.map((suggestion, index) => (
+            <div
+              key={suggestion.name}
+              className={cn(
+                "px-3 py-2 cursor-pointer hover:bg-muted transition-colors",
+                index === selectedSuggestionIndex && "bg-primary/10 text-primary"
+              )}
+              onClick={() => handleAutocompleteSelect(suggestion)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-sm">{suggestion.name}</div>
+                  <div className="text-xs text-muted-foreground">{suggestion.description}</div>
+                </div>
+                <div className="text-xs text-muted-foreground">{suggestion.category}</div>
+              </div>
+              {suggestion.examples.length > 0 && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Example: {suggestion.examples[0]}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
