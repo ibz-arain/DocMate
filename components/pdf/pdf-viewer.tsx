@@ -148,7 +148,7 @@ export function PdfViewer({
 
   // Redraw all canvases when edit mode is activated OR when drawings change
   useEffect(() => {
-    if (selectionMode === 'edit' || drawings.length > 0) {
+    if (drawings.length > 0) {
       // Immediate redraw
       canvasRefs.current.forEach((canvas, index) => {
         if (canvas) {
@@ -167,7 +167,7 @@ export function PdfViewer({
       
       return () => clearTimeout(timeoutId);
     }
-  }, [selectionMode, drawings]);
+  }, [drawings]);
 
   // Initialize canvas refs when number of pages changes
   useEffect(() => {
@@ -183,31 +183,43 @@ export function PdfViewer({
 
   // Setup canvas context for each page
   useEffect(() => {
-    canvasRefs.current.forEach((canvas, index) => {
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Set up context properties
-          drawingContexts.current[index] = ctx;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
+    // Initialize canvas contexts immediately when pages are available
+    const initializeCanvasContexts = () => {
+      canvasRefs.current.forEach((canvas, index) => {
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Set up context properties
+            drawingContexts.current[index] = ctx;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
 
-          // Set initial canvas size
-          const pageElement = pageRefs.current[index];
-          if (pageElement) {
-            const rect = pageElement.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            redrawCanvas(index);
+            // Set initial canvas size
+            const pageElement = pageRefs.current[index];
+            if (pageElement) {
+              const rect = pageElement.getBoundingClientRect();
+              if (rect.width > 0 && rect.height > 0) {
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                redrawCanvas(index);
+              }
+            }
           }
         }
-      }
-    });
+      });
+    };
+
+    // Initialize immediately
+    initializeCanvasContexts();
+
+    // Also initialize after a short delay to ensure pages are fully rendered
+    const timeoutId = setTimeout(initializeCanvasContexts, 100);
 
     // Cleanup function to clear contexts
     return () => {
+      clearTimeout(timeoutId);
       drawingContexts.current.forEach((ctx, index) => {
         if (ctx && canvasRefs.current[index]) {
           ctx.clearRect(0, 0, canvasRefs.current[index]!.width, canvasRefs.current[index]!.height);
@@ -215,7 +227,7 @@ export function PdfViewer({
       });
       drawingContexts.current = [];
     };
-  }, [numPages, scale, selectionMode]);
+  }, [numPages, scale]);
 
   // Handle window resize
   useEffect(() => {
@@ -370,6 +382,10 @@ export function PdfViewer({
     setCurrentPage(Math.min(externalPageNumber, numPages));
     pageRefs.current = new Array(numPages).fill(null);
     onDocumentLoadSuccess({ numPages });
+
+    // Initialize canvas refs immediately
+    canvasRefs.current = new Array(numPages).fill(null);
+    drawingContexts.current = new Array(numPages).fill(null);
 
     // Ensure we scroll to the correct page after the pages have actually rendered
     // We use a small timeout to wait for refs to be attached.
