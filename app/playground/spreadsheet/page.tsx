@@ -19,6 +19,7 @@ import {
   FileTextIcon,
   MinusIcon,
   PlusIcon,
+  Pencil,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -118,6 +119,71 @@ export default function SpreadsheetPage() {
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
   };
+
+  // Clear cached edits for current spreadsheet
+  const clearCachedEdits = () => {
+    if (spreadsheetFile) {
+      localStorage.removeItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`);
+      // Reload the original file data
+      processSpreadsheetFile(spreadsheetFile);
+      toast({
+        title: "Cached edits cleared",
+        description: "Spreadsheet has been reset to original state.",
+      });
+    }
+  };
+
+  // Export spreadsheet to Excel
+  const handleExportSpreadsheet = async () => {
+    if (!spreadsheetFile || !spreadsheetData.length) {
+      toast({
+        title: "No spreadsheet loaded",
+        description: "Please load a spreadsheet first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Show loading toast
+      toast({
+        title: "Exporting spreadsheet",
+        description: "Generating Excel file...",
+      });
+
+      // Convert spreadsheet data to format suitable for XLSX
+      const worksheetData = spreadsheetData.map(row => 
+        row.map(cell => cell?.value || '')
+      );
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+      // Generate filename based on original file name
+      const originalName = spreadsheetFile.name;
+      const nameWithoutExtension = originalName.replace(/\.(csv|xls|xlsx)$/i, '');
+      const exportFileName = `${nameWithoutExtension}-exported.xlsx`;
+
+      // Write to file and download
+      XLSX.writeFile(workbook, exportFileName);
+
+      toast({
+        title: "Export successful",
+        description: "Your Excel file has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export failed",
+        description: "Failed to export spreadsheet. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   
   // Cached results for history
   const [cachedSummaryResult, setCachedSummaryResult] = useState<any>(null);
@@ -150,13 +216,57 @@ export default function SpreadsheetPage() {
           const newUrl = URL.createObjectURL(file);
           setSpreadsheetUrl(newUrl);
           setIsLoading(true);
-          await processSpreadsheetFile(file);
+          
+          // Add a timeout to prevent infinite loading
+          const loadingTimeout = setTimeout(() => {
+            console.warn('Loading timeout reached, stopping loading state');
+            setIsLoading(false);
+          }, 10000); // 10 second timeout
+          
+          try {
+            // Load cached spreadsheet data if available
+            const cachedSpreadsheetData = localStorage.getItem(`docmate-spreadsheet-edits-${storedSpreadsheetName}`);
+            if (cachedSpreadsheetData) {
+              try {
+                const parsedData = JSON.parse(cachedSpreadsheetData);
+                // Validate that the cached data has the correct structure
+                if (Array.isArray(parsedData) && parsedData.every(row => 
+                  Array.isArray(row) && row.every(cell => 
+                    cell === null || typeof cell === 'object' && cell !== null && 'value' in cell
+                  )
+                )) {
+                  setSpreadsheetData(parsedData);
+                  setIsLoading(false); // Stop loading when cached data is loaded
+                } else {
+                  console.warn('Cached data structure is invalid, falling back to original file');
+                  await processSpreadsheetFile(file);
+                }
+              } catch (error) {
+                console.error('Failed to parse cached spreadsheet data:', error);
+                // Fall back to processing the original file
+                await processSpreadsheetFile(file);
+              }
+            } else {
+              // No cached edits, process the original file
+              await processSpreadsheetFile(file);
+            }
+            
+            // Restore selected tool if available
+            const storedSelectedTool = localStorage.getItem('docmate-spreadsheet-tool');
+            if (storedSelectedTool) {
+              setSelectedTool(storedSelectedTool);
+            }
+          } finally {
+            clearTimeout(loadingTimeout);
+          }
         }
       } catch (error) {
         console.error('Failed to load stored spreadsheet:', error);
         // Clear corrupted data
         localStorage.removeItem('docmate-spreadsheet-data');
         localStorage.removeItem('docmate-spreadsheet-name');
+        localStorage.removeItem('docmate-spreadsheet-tool');
+        setIsLoading(false); // Ensure loading is stopped even on error
       }
     };
 
@@ -183,6 +293,41 @@ export default function SpreadsheetPage() {
       saveSpreadsheetToStorage();
     }
   }, [spreadsheetFile, spreadsheetUrl]);
+
+  // Save spreadsheet edits to localStorage whenever data changes
+  useEffect(() => {
+    if (spreadsheetFile && spreadsheetData.length > 0) {
+      try {
+        // Ensure data consistency before saving
+        const sanitizedData = spreadsheetData.map(row => 
+          row.map(cell => {
+            if (cell === null || cell === undefined) {
+              return { value: '' };
+            }
+            if (typeof cell === 'object' && cell !== null && 'value' in cell) {
+              return cell;
+            }
+            // Handle case where cell might be a string or other type
+            return { value: String(cell || '') };
+          })
+        );
+        localStorage.setItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`, JSON.stringify(sanitizedData));
+      } catch (error) {
+        console.error('Failed to save spreadsheet edits to storage:', error);
+      }
+    }
+  }, [spreadsheetData, spreadsheetFile]);
+
+  // Save selected tool to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedTool) {
+      try {
+        localStorage.setItem('docmate-spreadsheet-tool', selectedTool);
+      } catch (error) {
+        console.error('Failed to save selected tool to storage:', error);
+      }
+    }
+  }, [selectedTool]);
 
   // Clean up URL object when component unmounts
   useEffect(() => {
@@ -213,6 +358,24 @@ export default function SpreadsheetPage() {
         e.preventDefault();
         handleToolSelect('cell');
       }
+      else if (e.key === '2') {
+        e.preventDefault();
+        handleToolSelect('edit');
+      }
+      // Export shortcut (Ctrl/Cmd + E)
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        if (spreadsheetFile && spreadsheetData.length) {
+          handleExportSpreadsheet();
+        }
+      }
+      // Clear cached edits shortcut (Ctrl/Cmd + R)
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        if (spreadsheetFile) {
+          clearCachedEdits();
+        }
+      }
       // Escape to clear selection
       else if (e.key === 'Escape') {
         if (selectedCells && menuPos) {
@@ -223,7 +386,7 @@ export default function SpreadsheetPage() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [spreadsheetUrl, selectedCells, menuPos]);
+  }, [spreadsheetUrl, selectedCells, menuPos, handleToolSelect, spreadsheetFile, spreadsheetData, handleExportSpreadsheet, clearCachedEdits]);
 
   const processSpreadsheetFile = async (file: File): Promise<void> => {
     setIsLoading(true);
@@ -298,11 +461,44 @@ export default function SpreadsheetPage() {
       URL.revokeObjectURL(spreadsheetUrl);
     }
     
+    // Clear cached edits from previous file if different
+    if (spreadsheetFile && spreadsheetFile.name !== file.name) {
+      localStorage.removeItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`);
+    }
+    
     setSpreadsheetFile(file);
     const newUrl = URL.createObjectURL(file);
     setSpreadsheetUrl(newUrl);
     setIsLoading(true);
-    await processSpreadsheetFile(file);
+    
+    // Check if we have cached edits for this file
+    const cachedSpreadsheetData = localStorage.getItem(`docmate-spreadsheet-edits-${file.name}`);
+    if (cachedSpreadsheetData) {
+      try {
+        const parsedData = JSON.parse(cachedSpreadsheetData);
+        // Validate that the cached data has the correct structure
+        if (Array.isArray(parsedData) && parsedData.every(row => 
+          Array.isArray(row) && row.every(cell => 
+            cell === null || typeof cell === 'object' && cell !== null && 'value' in cell
+          )
+        )) {
+          setSpreadsheetData(parsedData);
+          setIsLoading(false); // Stop loading when cached data is loaded
+          toast({
+            title: "Restored edits",
+            description: "Your previous edits have been restored.",
+          });
+        } else {
+          console.warn('Cached data structure is invalid, falling back to original file');
+          await processSpreadsheetFile(file);
+        }
+      } catch (error) {
+        console.error('Failed to parse cached spreadsheet data:', error);
+        await processSpreadsheetFile(file);
+      }
+    } else {
+      await processSpreadsheetFile(file);
+    }
   };
 
   // Clear spreadsheet and localStorage
@@ -337,6 +533,15 @@ export default function SpreadsheetPage() {
     // Clear localStorage
     localStorage.removeItem('docmate-spreadsheet-data');
     localStorage.removeItem('docmate-spreadsheet-name');
+    localStorage.removeItem('docmate-spreadsheet-tool');
+    
+    // Clear cached edits for the current file
+    if (spreadsheetFile) {
+      localStorage.removeItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`);
+    }
+    
+    // Reset to cell select mode when clearing
+    setSelectedTool('cell');
     
     // Clear history when spreadsheet is cleared
     clearHistory();
@@ -693,7 +898,9 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
         const rowData = row
           .map((cell, colIndex) => {
             const columnLetter = String.fromCharCode(65 + colIndex);
-            return `${columnLetter}${rowIndex + 1}: ${cell.value || ''}`;
+            // Handle null/undefined cells and ensure cell.value exists
+            const cellValue = cell?.value || '';
+            return `${columnLetter}${rowIndex + 1}: ${cellValue}`;
           })
           .filter(cell => cell.split(': ')[1].trim() !== '')
           .join(', ');
@@ -837,6 +1044,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
   // Tools for sidebar
   const tools: Tool[] = [
     { id: 'cell', label: 'Cell Select', icon: <Table className="h-5 w-5" /> },
+    { id: 'edit', label: 'Edit', icon: <Pencil className="h-5 w-5" /> },
   ];
 
   // Smooth zoom update function
@@ -1080,6 +1288,35 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
 
                     {spreadsheetUrl && (
                       <>
+                        {/* Mode Indicator - Top Left */}
+                        <TooltipProvider delayDuration={0}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="absolute top-4 left-4 z-20 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg px-3 py-1.5 cursor-help">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  Mode: <span className="text-primary">{selectedTool === 'edit' ? 'Edit' : 'Cell Select'}</span>
+                                  {spreadsheetData.length > 0 && (
+                                    <span className="ml-2 text-green-600">• Export Ready</span>
+                                  )}
+                                  {spreadsheetFile && localStorage.getItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`) && (
+                                    <span className="ml-2 text-blue-600">• Edits Cached</span>
+                                  )}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" align="start">
+                              <div className="text-xs">
+                                <p className="font-medium">Keyboard Shortcuts:</p>
+                                <p>1 - Cell Select Mode</p>
+                                <p>2 - Edit Mode</p>
+                                <p>Ctrl+E - Export Excel</p>
+                                <p>Ctrl+R - Reset to Original</p>
+                                <p>Escape - Clear Selection</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
                         {/* Zoom Controls Bottom Center */}
                         <div className="absolute bottom-4 right-4 z-20 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
                           <TooltipProvider delayDuration={0}>
@@ -1145,6 +1382,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                       onContextMenu={handleContextMenu}
                       className="w-full h-full"
                       scale={scale}
+                      editable={selectedTool === 'edit'}
                     />
                   </div>
                 )}
@@ -1191,6 +1429,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
               onHistoryToggle={() => {}}
               onClearPdf={clearSpreadsheet}
               onExportPdf={() => {}}
+              onExportSpreadsheet={handleExportSpreadsheet}
               onHistoryPopupToggle={(buttonRef) => {
                 if (!showHistoryPopup && buttonRef) {
                   const rect = buttonRef.getBoundingClientRect();

@@ -36,6 +36,7 @@ interface EnhancedSpreadsheetProps {
   ) => void;
   className?: string;
   scale?: number;
+  editable?: boolean;
 }
 
 export function EnhancedSpreadsheet({
@@ -45,7 +46,8 @@ export function EnhancedSpreadsheet({
   onRightClick,
   onContextMenu,
   className,
-  scale = 1.0
+  scale = 1.0,
+  editable = true
 }: EnhancedSpreadsheetProps) {
   const [selectedRange, setSelectedRange] = useState<SelectionRange | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -294,7 +296,7 @@ export function EnhancedSpreadsheet({
 
   // Handle cell double click (start editing)
   const handleCellDoubleClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
-    if (isResizing) return;
+    if (isResizing || !editable) return;
     
     event.preventDefault();
     event.stopPropagation();
@@ -311,7 +313,7 @@ export function EnhancedSpreadsheet({
       editInputRef.current?.focus();
       editInputRef.current?.select();
     }, 0);
-  }, [data, isResizing, clearContextMenu]);
+  }, [data, isResizing, clearContextMenu, editable]);
 
   // Handle mouse down for selection
   const handleMouseDown = useCallback((row: number, col: number, event: React.MouseEvent) => {
@@ -663,14 +665,16 @@ export function EnhancedSpreadsheet({
           break;
         case 'Enter':
           event.preventDefault();
-          // Start editing current cell
-          handleCellDoubleClick(activeCell.row, activeCell.col, new MouseEvent('dblclick') as any);
+          // Start editing current cell only if editable
+          if (editable) {
+            handleCellDoubleClick(activeCell.row, activeCell.col, new MouseEvent('dblclick') as any);
+          }
           return;
         case 'Delete':
         case 'Backspace':
           event.preventDefault();
-          // Clear selected cells
-          if (selectedRange) {
+          // Clear selected cells only if editable
+          if (editable && selectedRange) {
             for (let row = selectedRange.startRow; row <= selectedRange.endRow; row++) {
               for (let col = selectedRange.startCol; col <= selectedRange.endCol; col++) {
                 handleCellChange(row, col, '');
@@ -687,8 +691,8 @@ export function EnhancedSpreadsheet({
           }
           break;
         default:
-          // If it's a printable character, start editing
-          if (event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
+          // If it's a printable character, start editing only if editable
+          if (editable && event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
             event.preventDefault();
             setEditingCell(activeCell);
             setEditValue(event.key);
@@ -710,7 +714,7 @@ export function EnhancedSpreadsheet({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeCell, editingCell, selectedRange, rows, cols, handleCellChange, handleCellDoubleClick, menuPosition, clearContextMenu]);
+  }, [activeCell, editingCell, selectedRange, rows, cols, handleCellChange, handleCellDoubleClick, menuPosition, clearContextMenu, editable]);
 
   // Check if cell is selected
   const isCellSelected = (row: number, col: number): boolean => {
