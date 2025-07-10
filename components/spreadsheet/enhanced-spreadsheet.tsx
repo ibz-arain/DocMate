@@ -224,11 +224,7 @@ export function EnhancedSpreadsheet({
   useEffect(() => {
     // If switching from cell select to edit mode
     if (!prevEditable && editable) {
-      // Clear any existing selection
-      setSelectedRange(null);
-      setActiveCell(null);
-      setIsSelecting(false);
-      setSelectionStart(null);
+      // Keep existing selection but clear menu
       setMenuPosition(null);
       setLastCursorPosition(null);
       
@@ -364,22 +360,7 @@ export function EnhancedSpreadsheet({
       handleCellSave();
     }
     
-    // In edit mode, only allow editing - no cell selection
-    if (editable) {
-      const cell = data[row]?.[col];
-      const cellValue = cell?.formula || cell?.value || '';
-      setEditingCell({ row, col });
-      setEditValue(cellValue);
-      
-      // Focus the input after state update
-      setTimeout(() => {
-        editInputRef.current?.focus();
-        editInputRef.current?.select();
-      }, 0);
-      return;
-    }
-    
-    // Cell select mode behavior
+    // Handle cell selection first (works in both modes)
     if (event.shiftKey && activeCell) {
       // Extend selection
       const range: SelectionRange = {
@@ -392,8 +373,10 @@ export function EnhancedSpreadsheet({
       const selectedText = getSelectedCellsText(range);
       onCellSelection?.(selectedText, range, event);
       
-      // Show context menu immediately for extended selection
-      showContextMenu(range, event);
+      // Show context menu immediately for extended selection (only in select mode)
+      if (!editable) {
+        showContextMenu(range, event);
+      }
     } else {
       // Single cell selection
       const range: SelectionRange = {
@@ -408,8 +391,24 @@ export function EnhancedSpreadsheet({
       const selectedText = getSelectedCellsText(range);
       onCellSelection?.(selectedText, range, event);
       
-      // Show context menu immediately for single cell selection
-      showContextMenu(range, event);
+      // Show context menu immediately for single cell selection (only in select mode)
+      if (!editable) {
+        showContextMenu(range, event);
+      }
+    }
+    
+    // In edit mode, also start editing the clicked cell
+    if (editable) {
+      const cell = data[row]?.[col];
+      const cellValue = cell?.formula || cell?.value || '';
+      setEditingCell({ row, col });
+      setEditValue(cellValue);
+      
+      // Focus the input after state update
+      setTimeout(() => {
+        editInputRef.current?.focus();
+        editInputRef.current?.select();
+      }, 0);
     }
   }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable, data]);
 
@@ -418,9 +417,6 @@ export function EnhancedSpreadsheet({
   // Handle mouse down for selection
   const handleMouseDown = useCallback((row: number, col: number, event: React.MouseEvent) => {
     if (event.button !== 0 || isResizing) return; // Only handle left clicks
-    
-    // In edit mode, don't allow drag selection
-    if (editable) return;
     
     setIsSelecting(true);
     setSelectionStart({ row, col });
@@ -434,11 +430,11 @@ export function EnhancedSpreadsheet({
     
     setSelectedRange(range);
     setActiveCell({ row, col });
-  }, [isResizing, editable]);
+  }, [isResizing]);
 
   // Handle mouse enter for drag selection
   const handleMouseEnter = useCallback((row: number, col: number) => {
-    if (!isSelecting || !selectionStart || isResizing || editable) return;
+    if (!isSelecting || !selectionStart || isResizing) return;
     
     const range: SelectionRange = {
       startRow: Math.min(selectionStart.row, row),
@@ -448,19 +444,21 @@ export function EnhancedSpreadsheet({
     };
     
     setSelectedRange(range);
-  }, [isSelecting, selectionStart, isResizing, editable]);
+  }, [isSelecting, selectionStart, isResizing]);
 
   // Handle mouse up
   const handleMouseUp = useCallback((event: React.MouseEvent) => {
-    if (!isSelecting || !selectedRange || isResizing || editable) return;
+    if (!isSelecting || !selectedRange || isResizing) return;
     
     setIsSelecting(false);
     
     const selectedText = getSelectedCellsText(selectedRange);
     onCellSelection?.(selectedText, selectedRange, event);
     
-    // Show context menu when drag selection ends
-    showContextMenu(selectedRange, event);
+    // Show context menu when drag selection ends (only in select mode)
+    if (!editable) {
+      showContextMenu(selectedRange, event);
+    }
   }, [isSelecting, selectedRange, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle right click
@@ -499,29 +497,61 @@ export function EnhancedSpreadsheet({
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
     const newData = [...data];
     
-    // Ensure the row exists
-    while (newData.length <= row) {
-      newData.push([]);
-    }
-    
-    // Ensure the column exists in this row
-    while (newData[row].length <= col) {
-      newData[row].push({ value: '' });
-    }
-    
-    // Handle formula input
-    if (isFormula(value)) {
-      newData[row][col] = { 
-        value: value.substring(1), // Store without '='
-        formula: value,
-        calculatedValue: undefined
-      };
+    // If we have a multi-cell selection and we're in edit mode, apply to all selected cells
+    if (editable && selectedRange && 
+        (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol)) {
+      
+      // Apply the same value to all selected cells
+      for (let r = selectedRange.startRow; r <= selectedRange.endRow; r++) {
+        for (let c = selectedRange.startCol; c <= selectedRange.endCol; c++) {
+          // Ensure the row exists
+          while (newData.length <= r) {
+            newData.push([]);
+          }
+          
+          // Ensure the column exists in this row
+          while (newData[r].length <= c) {
+            newData[r].push({ value: '' });
+          }
+          
+          // Handle formula input
+          if (isFormula(value)) {
+            newData[r][c] = { 
+              value: value.substring(1), // Store without '='
+              formula: value,
+              calculatedValue: undefined
+            };
+          } else {
+            newData[r][c] = { value };
+          }
+        }
+      }
     } else {
-      newData[row][col] = { value };
+      // Single cell editing
+      // Ensure the row exists
+      while (newData.length <= row) {
+        newData.push([]);
+      }
+      
+      // Ensure the column exists in this row
+      while (newData[row].length <= col) {
+        newData[row].push({ value: '' });
+      }
+      
+      // Handle formula input
+      if (isFormula(value)) {
+        newData[row][col] = { 
+          value: value.substring(1), // Store without '='
+          formula: value,
+          calculatedValue: undefined
+        };
+      } else {
+        newData[row][col] = { value };
+      }
     }
     
     onChange(newData);
-  }, [data, onChange]);
+  }, [data, onChange, editable, selectedRange]);
 
   // Handle autocomplete for formulas
   const handleFormulaAutocomplete = useCallback((input: string) => {
@@ -621,9 +651,6 @@ export function EnhancedSpreadsheet({
     event.preventDefault();
     event.stopPropagation();
     
-    // In edit mode, don't allow column selection
-    if (editable) return;
-    
     const range: SelectionRange = {
       startRow: 0,
       startCol: colIndex,
@@ -637,8 +664,10 @@ export function EnhancedSpreadsheet({
     const selectedText = getSelectedCellsText(range);
     onCellSelection?.(selectedText, range, event);
     
-    // Show context menu immediately for column selection
-    showContextMenu(range, event);
+    // Show context menu immediately for column selection (only in select mode)
+    if (!editable) {
+      showContextMenu(range, event);
+    }
   }, [isResizing, rows, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle row header click (select entire row)
@@ -647,9 +676,6 @@ export function EnhancedSpreadsheet({
     
     event.preventDefault();
     event.stopPropagation();
-    
-    // In edit mode, don't allow row selection
-    if (editable) return;
     
     const range: SelectionRange = {
       startRow: rowIndex,
@@ -664,8 +690,10 @@ export function EnhancedSpreadsheet({
     const selectedText = getSelectedCellsText(range);
     onCellSelection?.(selectedText, range, event);
     
-    // Show context menu immediately for row selection
-    showContextMenu(range, event);
+    // Show context menu immediately for row selection (only in select mode)
+    if (!editable) {
+      showContextMenu(range, event);
+    }
   }, [isResizing, cols, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
 
   // Handle column resize
@@ -1063,8 +1091,18 @@ export function EnhancedSpreadsheet({
                           className={cn(
                             "w-full h-full border-none outline-none px-3 py-2 text-sm",
                             "bg-background text-foreground",
-                            "focus:bg-background focus:ring-0"
+                            "focus:bg-background focus:ring-0",
+                            // Add visual indicator for multi-cell editing
+                            selectedRange && 
+                            (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol) &&
+                            "ring-2 ring-blue-500 ring-inset"
                           )}
+                          placeholder={
+                            selectedRange && 
+                            (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol)
+                              ? `Editing ${(selectedRange.endRow - selectedRange.startRow + 1) * (selectedRange.endCol - selectedRange.startCol + 1)} cells`
+                              : undefined
+                          }
                         />
                       ) : (
                         <div
@@ -1085,7 +1123,7 @@ export function EnhancedSpreadsheet({
                         </div>
                       )}
                       {/* Selection border - show around entire range */}
-                      {selectedRange && !isEditing && (
+                      {selectedRange && (
                         <>
                           {/* Top border for first row */}
                           {row === selectedRange.startRow && (
