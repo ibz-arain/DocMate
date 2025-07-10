@@ -1226,11 +1226,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
       setRedoStack(r => [currentState, ...r]);
       isPushingHistory.current = true;
       setSpreadsheetData(JSON.parse(JSON.stringify(previousState)));
-      
-      toast({
-        title: "Undo",
-        description: "Previous state restored",
-      });
+    
       
       return prev.slice(0, -1);
     });
@@ -1252,11 +1248,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
         setSpreadsheetData(JSON.parse(JSON.stringify(nextState)));
         return [...h, JSON.parse(JSON.stringify(nextState))];
       });
-      
-      toast({
-        title: "Redo",
-        description: "Next state restored",
-      });
+    
       
       return prev.slice(1);
     });
@@ -1374,42 +1366,6 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
 
                     {spreadsheetUrl && (
                       <>
-                        {/* Mode Indicator - Top Left */}
-                        <TooltipProvider delayDuration={0}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="absolute top-4 left-4 z-20 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg px-3 py-1.5 cursor-help">
-                                <span className="text-xs font-medium text-muted-foreground">
-                                  Mode: <span className="text-primary">{selectedTool === 'edit' ? 'Edit' : 'Cell Select'}</span>
-                                  {spreadsheetData.length > 0 && (
-                                    <span className="ml-2 text-green-600">• Export Ready</span>
-                                  )}
-                                  {spreadsheetFile && localStorage.getItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`) && (
-                                    <span className="ml-2 text-blue-600">• Edits Cached</span>
-                                  )}
-                                  {historyStack.length > 1 && (
-                                    <span className="ml-2 text-orange-600">• Undo Available</span>
-                                  )}
-                                  {redoStack.length > 0 && (
-                                    <span className="ml-2 text-purple-600">• Redo Available</span>
-                                  )}
-                                </span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start">
-                              <div className="text-xs">
-                                <p className="font-medium">Spreadsheet Features:</p>
-                                <p>• Cell Select Mode - Select and analyze cells</p>
-                                <p>• Edit Mode - Edit cells and use formulas</p>
-                                <p>• Export to Excel format</p>
-                                <p>• Reset to original file</p>
-                                <p>• Undo/Redo: Ctrl+Z / Ctrl+Shift+Z</p>
-                                <p>• History: {historyStack.length} states, {redoStack.length} redo</p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        
                         {/* Zoom Controls Bottom Center */}
                         <div className="absolute bottom-4 right-4 z-20 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
                           <TooltipProvider delayDuration={0}>
