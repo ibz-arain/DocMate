@@ -87,6 +87,13 @@ export function EnhancedSpreadsheet({
   const [autocompletePosition, setAutocompletePosition] = useState<{ top: number; left: number } | null>(null);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   
+  // Drag fill state
+  const [isDraggingFill, setIsDraggingFill] = useState(false);
+  const [dragFillStart, setDragFillStart] = useState<{ row: number; col: number; value: string } | null>(null);
+  const [dragFillDirection, setDragFillDirection] = useState<'horizontal' | 'vertical' | null>(null);
+  const [dragFillPreview, setDragFillPreview] = useState<{ row: number; col: number } | null>(null);
+  const [dragFillMode, setDragFillMode] = useState<'copy' | 'series' | null>(null);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -615,11 +622,38 @@ export function EnhancedSpreadsheet({
   // Handle edit input key press
   const handleEditKeyPress = useCallback((event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
+      event.preventDefault();
       handleCellSave();
       
-      // Move to next row
-      if (activeCell && activeCell.row < rows - 1) {
-        const nextRow = activeCell.row + 1;
+      // If no active cell, start with the first cell
+      if (!activeCell) {
+        const firstCell = { row: 0, col: 0 };
+        setActiveCell(firstCell);
+        setSelectedRange({
+          startRow: firstCell.row,
+          startCol: firstCell.col,
+          endRow: firstCell.row,
+          endCol: firstCell.col
+        });
+        
+        const cell = data[firstCell.row]?.[firstCell.col];
+        const cellValue = cell?.formula || cell?.value || '';
+        setEditingCell(firstCell);
+        setEditValue(cellValue);
+        
+        setTimeout(() => {
+          editInputRef.current?.focus();
+          editInputRef.current?.select();
+        }, 0);
+        return;
+      }
+      
+      // Move to next row (or previous row with Shift)
+      const direction = event.shiftKey ? -1 : 1;
+      const nextRow = activeCell.row + direction;
+      
+      // Check bounds
+      if (nextRow >= 0 && nextRow < rows) {
         const nextCol = activeCell.col;
         setActiveCell({ row: nextRow, col: nextCol });
         setSelectedRange({
@@ -644,16 +678,43 @@ export function EnhancedSpreadsheet({
         }, 0);
       }
     } else if (event.key === 'Escape') {
+      event.preventDefault();
       setEditingCell(null);
       setEditValue("");
     } else if (event.key === 'Tab') {
       event.preventDefault();
       handleCellSave();
       
-      // Move to next column
-      if (activeCell && activeCell.col < cols - 1) {
+      // If no active cell, start with the first cell
+      if (!activeCell) {
+        const firstCell = { row: 0, col: 0 };
+        setActiveCell(firstCell);
+        setSelectedRange({
+          startRow: firstCell.row,
+          startCol: firstCell.col,
+          endRow: firstCell.row,
+          endCol: firstCell.col
+        });
+        
+        const cell = data[firstCell.row]?.[firstCell.col];
+        const cellValue = cell?.formula || cell?.value || '';
+        setEditingCell(firstCell);
+        setEditValue(cellValue);
+        
+        setTimeout(() => {
+          editInputRef.current?.focus();
+          editInputRef.current?.select();
+        }, 0);
+        return;
+      }
+      
+      // Move to next column (or previous column with Shift)
+      const direction = event.shiftKey ? -1 : 1;
+      const nextCol = activeCell.col + direction;
+      
+      // Check bounds
+      if (nextCol >= 0 && nextCol < cols) {
         const nextRow = activeCell.row;
-        const nextCol = activeCell.col + 1;
         setActiveCell({ row: nextRow, col: nextCol });
         setSelectedRange({
           startRow: nextRow,
@@ -678,6 +739,57 @@ export function EnhancedSpreadsheet({
       }
     }
   }, [handleCellSave, activeCell, rows, cols, data, onChange]);
+
+  // Handle arrow key navigation when not editing
+  const handleArrowKeyNavigation = useCallback((event: React.KeyboardEvent) => {
+    if (editingCell || !activeCell) return;
+    
+    let newRow = activeCell.row;
+    let newCol = activeCell.col;
+    
+    switch (event.key) {
+      case 'ArrowUp':
+        event.preventDefault();
+        newRow = Math.max(0, activeCell.row - 1);
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        newRow = Math.min(rows - 1, activeCell.row + 1);
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        newCol = Math.max(0, activeCell.col - 1);
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        newCol = Math.min(cols - 1, activeCell.col + 1);
+        break;
+      default:
+        return;
+    }
+    
+    // Update selection
+    setActiveCell({ row: newRow, col: newCol });
+    setSelectedRange({
+      startRow: newRow,
+      startCol: newCol,
+      endRow: newRow,
+      endCol: newCol
+    });
+    
+    // If in edit mode, start editing the new cell
+    if (editable) {
+      const cell = data[newRow]?.[newCol];
+      const cellValue = cell?.formula || cell?.value || '';
+      setEditingCell({ row: newRow, col: newCol });
+      setEditValue(cellValue);
+      
+      setTimeout(() => {
+        editInputRef.current?.focus();
+        editInputRef.current?.select();
+      }, 0);
+    }
+  }, [editingCell, activeCell, rows, cols, editable, data]);
 
   // Handle column header click (select entire column)
   const handleColumnHeaderClick = useCallback((colIndex: number, event: React.MouseEvent) => {
@@ -821,6 +933,238 @@ export function EnhancedSpreadsheet({
     setResizeStart(null);
   }, []);
 
+  // Check if cell is selected
+  const isCellSelected = (row: number, col: number): boolean => {
+    if (!selectedRange) return false;
+    return row >= selectedRange.startRow && row <= selectedRange.endRow &&
+           col >= selectedRange.startCol && col <= selectedRange.endCol;
+  };
+
+  // Check if cell is in drag fill preview
+  const isCellInDragPreview = (row: number, col: number): boolean => {
+    if (!isDraggingFill || !dragFillStart || !dragFillPreview) return false;
+    
+    const startRow = dragFillStart.row;
+    const startCol = dragFillStart.col;
+    const endRow = dragFillPreview.row;
+    const endCol = dragFillPreview.col;
+    
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    return row >= minRow && row <= maxRow && col >= minCol && col <= maxCol;
+  };
+
+  // Check if cell is active
+  const isCellActive = (row: number, col: number): boolean => {
+    return activeCell?.row === row && activeCell?.col === col;
+  };
+
+  // Drag fill helper functions
+  const isDragHandle = (event: React.MouseEvent, row: number, col: number): boolean => {
+    if (!editable) return false;
+    
+    const cell = event.currentTarget as HTMLElement;
+    const rect = cell.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    // Check if mouse is near the bottom-right corner (drag handle area)
+    const handleSize = 8;
+    const isNearBottom = y >= rect.height - handleSize;
+    const isNearRight = x >= rect.width - handleSize;
+    
+    return isNearBottom && isNearRight;
+  };
+
+  const detectSeriesPattern = (value: string): { isSeries: boolean; pattern: string; increment: number } => {
+    // Check for common patterns
+    const patterns = [
+      // Numbers
+      { regex: /^(\d+)$/, increment: 1 },
+      // Text with numbers
+      { regex: /^([A-Za-z]+)(\d+)$/, increment: 1 },
+      // Dates (simple format)
+      { regex: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, increment: 1 },
+      // Months
+      { regex: /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/, increment: 1 },
+      // Days
+      { regex: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/, increment: 1 }
+    ];
+
+    for (const pattern of patterns) {
+      const match = value.match(pattern.regex);
+      if (match) {
+        return { isSeries: true, pattern: pattern.regex.source, increment: pattern.increment };
+      }
+    }
+
+    return { isSeries: false, pattern: '', increment: 0 };
+  };
+
+  const generateSeriesValue = (baseValue: string, index: number, pattern: string): string => {
+    // Handle numbers
+    if (/^\d+$/.test(baseValue)) {
+      return String(parseInt(baseValue) + index);
+    }
+    
+    // Handle text with numbers (e.g., "Item1", "Item2")
+    const textNumberMatch = baseValue.match(/^([A-Za-z]+)(\d+)$/);
+    if (textNumberMatch) {
+      const [, text, number] = textNumberMatch;
+      return `${text}${parseInt(number) + index}`;
+    }
+    
+    // Handle months
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIndex = months.indexOf(baseValue);
+    if (monthIndex !== -1) {
+      return months[(monthIndex + index) % 12];
+    }
+    
+    // Handle days
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayIndex = days.indexOf(baseValue);
+    if (dayIndex !== -1) {
+      return days[(dayIndex + index) % 7];
+    }
+    
+    // Default: just copy the value
+    return baseValue;
+  };
+
+  const handleDragFillStart = useCallback((row: number, col: number, event: React.MouseEvent) => {
+    if (!editable || !isDragHandle(event, row, col)) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const cell = data[row]?.[col];
+    const cellValue = cell?.formula || cell?.value || '';
+    
+    if (!cellValue.trim()) return;
+    
+    setIsDraggingFill(true);
+    setDragFillStart({ row, col, value: cellValue });
+    setDragFillPreview({ row, col });
+    
+    // Detect if this could be a series
+    const { isSeries } = detectSeriesPattern(cellValue);
+    setDragFillMode(isSeries ? 'series' : 'copy');
+  }, [editable, data]);
+
+  const handleDragFillMove = useCallback((event: MouseEvent) => {
+    if (!isDraggingFill || !dragFillStart) return;
+    
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    // Convert screen coordinates to grid coordinates
+    const cellWidth = columnWidths[dragFillStart.col] || DEFAULT_COLUMN_WIDTH;
+    const cellHeight = rowHeights[dragFillStart.row] || DEFAULT_ROW_HEIGHT;
+    
+    // Calculate grid position
+    let col = Math.floor((x - HEADER_WIDTH * scale) / (cellWidth * scale));
+    let row = Math.floor((y - HEADER_HEIGHT * scale) / (cellHeight * scale));
+    
+    // Clamp to valid range
+    col = Math.max(0, Math.min(cols - 1, col));
+    row = Math.max(0, Math.min(rows - 1, row));
+    
+    // Determine direction
+    const deltaRow = row - dragFillStart.row;
+    const deltaCol = col - dragFillStart.col;
+    
+    if (Math.abs(deltaRow) > Math.abs(deltaCol)) {
+      setDragFillDirection('vertical');
+    } else {
+      setDragFillDirection('horizontal');
+    }
+    
+    setDragFillPreview({ row, col });
+  }, [isDraggingFill, dragFillStart, columnWidths, rowHeights, scale, cols, rows]);
+
+  const handleDragFillEnd = useCallback((event: MouseEvent) => {
+    if (!isDraggingFill || !dragFillStart || !dragFillPreview) return;
+    
+    const newData = [...data];
+    const startRow = dragFillStart.row;
+    const startCol = dragFillStart.col;
+    const endRow = dragFillPreview.row;
+    const endCol = dragFillPreview.col;
+    
+    // Calculate the range to fill
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    // Fill the range
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        // Skip the original cell
+        if (row === startRow && col === startCol) continue;
+        
+        // Ensure the row exists
+        while (newData.length <= row) {
+          newData.push([]);
+        }
+        
+        // Ensure the column exists in this row
+        while (newData[row].length <= col) {
+          newData[row].push({ value: '' });
+        }
+        
+        let newValue: string;
+        
+        if (dragFillMode === 'series') {
+          // Calculate index for series
+          const index = Math.abs(row - startRow) + Math.abs(col - startCol);
+          newValue = generateSeriesValue(dragFillStart.value, index, '');
+        } else {
+          // Copy mode
+          newValue = dragFillStart.value;
+        }
+        
+        // Handle formula input
+        if (isFormula(newValue)) {
+          newData[row][col] = { 
+            value: newValue.substring(1), // Store without '='
+            formula: newValue,
+            calculatedValue: undefined
+          };
+        } else {
+          newData[row][col] = { value: newValue };
+        }
+      }
+    }
+    
+    onChange(newData);
+    
+    // Update selection to the filled range
+    const filledRange: SelectionRange = {
+      startRow: minRow,
+      startCol: minCol,
+      endRow: maxRow,
+      endCol: maxCol
+    };
+    setSelectedRange(filledRange);
+    setActiveCell({ row: minRow, col: minCol });
+    
+    // Reset drag state
+    setIsDraggingFill(false);
+    setDragFillStart(null);
+    setDragFillDirection(null);
+    setDragFillPreview(null);
+    setDragFillMode(null);
+  }, [isDraggingFill, dragFillStart, dragFillPreview, dragFillMode, data, onChange]);
+
   // Global mouse event handlers
   useEffect(() => {
     const handleGlobalMouseUp = (event: MouseEvent) => {
@@ -830,11 +1174,17 @@ export function EnhancedSpreadsheet({
       if (isResizing) {
         handleResizeEnd();
       }
+      if (isDraggingFill) {
+        handleDragFillEnd(event);
+      }
     };
 
     const handleGlobalMouseMove = (event: MouseEvent) => {
       if (isResizing) {
         handleResizeMove(event);
+      }
+      if (isDraggingFill) {
+        handleDragFillMove(event);
       }
     };
 
@@ -858,21 +1208,7 @@ export function EnhancedSpreadsheet({
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSelecting, isResizing, handleResizeMove, handleResizeEnd, menuPosition, clearContextMenu]);
-
-
-
-  // Check if cell is selected
-  const isCellSelected = (row: number, col: number): boolean => {
-    if (!selectedRange) return false;
-    return row >= selectedRange.startRow && row <= selectedRange.endRow &&
-           col >= selectedRange.startCol && col <= selectedRange.endCol;
-  };
-
-  // Check if cell is active
-  const isCellActive = (row: number, col: number): boolean => {
-    return activeCell?.row === row && activeCell?.col === col;
-  };
+  }, [isSelecting, isResizing, isDraggingFill, handleResizeMove, handleResizeEnd, handleDragFillMove, handleDragFillEnd, menuPosition, clearContextMenu]);
 
   // Add refs for scroll sync
   const gridScrollRef = useRef<HTMLDivElement>(null);
@@ -909,6 +1245,65 @@ export function EnhancedSpreadsheet({
           }
         }
       }
+      
+      // Handle Enter and Tab to start editing when not currently editing
+      if (editable && !editingCell && (e.key === 'Enter' || e.key === 'Tab') && activeCell) {
+        e.preventDefault();
+        const cell = data[activeCell.row]?.[activeCell.col];
+        const cellValue = cell?.formula || cell?.value || '';
+        setEditingCell(activeCell);
+        setEditValue(cellValue);
+        
+        setTimeout(() => {
+          editInputRef.current?.focus();
+          editInputRef.current?.select();
+        }, 0);
+        return;
+      }
+      
+      // Handle arrow key navigation when not editing
+      if (!editingCell && activeCell && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        let newRow = activeCell.row;
+        let newCol = activeCell.col;
+        
+        switch (e.key) {
+          case 'ArrowUp':
+            newRow = Math.max(0, activeCell.row - 1);
+            break;
+          case 'ArrowDown':
+            newRow = Math.min(rows - 1, activeCell.row + 1);
+            break;
+          case 'ArrowLeft':
+            newCol = Math.max(0, activeCell.col - 1);
+            break;
+          case 'ArrowRight':
+            newCol = Math.min(cols - 1, activeCell.col + 1);
+            break;
+        }
+        
+        // Update selection
+        setActiveCell({ row: newRow, col: newCol });
+        setSelectedRange({
+          startRow: newRow,
+          startCol: newCol,
+          endRow: newRow,
+          endCol: newCol
+        });
+        
+        // If in edit mode, start editing the new cell
+        if (editable) {
+          const cell = data[newRow]?.[newCol];
+          const cellValue = cell?.formula || cell?.value || '';
+          setEditingCell({ row: newRow, col: newCol });
+          setEditValue(cellValue);
+          
+          setTimeout(() => {
+            editInputRef.current?.focus();
+            editInputRef.current?.select();
+          }, 0);
+        }
+      }
     };
     const container = containerRef.current;
     if (container) {
@@ -919,7 +1314,7 @@ export function EnhancedSpreadsheet({
         container.removeEventListener('keydown', handleKeyDown);
       }
     };
-  }, [onUndo, onRedo]);
+  }, [onUndo, onRedo, editingCell, activeCell, rows, cols, editable, data]);
 
   // Handle undo while editing a cell
   const handleUndoWhileEditing = useCallback(() => {
@@ -1130,6 +1525,7 @@ export function EnhancedSpreadsheet({
                   const isSelected = isCellSelected(row, col);
                   const isActive = isCellActive(row, col);
                   const isEditing = editingCell?.row === row && editingCell?.col === col;
+                  const isInDragPreview = isCellInDragPreview(row, col);
                   return (
                     <div
                       key={col}
@@ -1137,8 +1533,9 @@ export function EnhancedSpreadsheet({
                         "border-b border-r border-border relative cursor-cell transition-colors flex-shrink-0",
                         "bg-background text-foreground",
                         isSelected && "bg-primary/10 border-primary/30",
+                        isInDragPreview && "bg-primary/10 border-primary/30",
                         isActive && !selectedRange && "ring-2 ring-primary ring-inset",
-                        !isSelected && !isActive && "hover:bg-muted/30"
+                        !isSelected && !isActive && !isInDragPreview && "hover:bg-muted/30"
                       )}
                       style={{
                         width: columnWidths[col] || DEFAULT_COLUMN_WIDTH,
@@ -1151,67 +1548,87 @@ export function EnhancedSpreadsheet({
                       onContextMenu={(e) => handleRightClick(row, col, e)}
                     >
                       {isEditing ? (
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => {
-                            const newValue = e.target.value;
-                            setEditValue(newValue);
-                            handleFormulaAutocomplete(newValue);
-                          }}
-                          onClick={(e) => {
-                            // Allow cursor positioning when clicking inside the input
-                            e.stopPropagation();
-                          }}
-                          onKeyDown={(e) => {
-                            if (showAutocomplete) {
-                              if (e.key === 'ArrowDown') {
-                                e.preventDefault();
-                                setSelectedSuggestionIndex(prev => 
-                                  Math.min(prev + 1, autocompleteSuggestions.length - 1)
-                                );
-                              } else if (e.key === 'ArrowUp') {
-                                e.preventDefault();
-                                setSelectedSuggestionIndex(prev => Math.max(prev - 1, 0));
-                              } else if (e.key === 'Enter' || e.key === 'Tab') {
-                                e.preventDefault();
-                                if (autocompleteSuggestions[selectedSuggestionIndex]) {
-                                  handleAutocompleteSelect(autocompleteSuggestions[selectedSuggestionIndex]);
+                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                          <input
+                            ref={editInputRef}
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => {
+                              const newValue = e.target.value;
+                              setEditValue(newValue);
+                              handleFormulaAutocomplete(newValue);
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            onKeyDown={(e) => {
+                              if (showAutocomplete) {
+                                if (e.key === 'ArrowDown') {
+                                  e.preventDefault();
+                                  setSelectedSuggestionIndex(prev => 
+                                    Math.min(prev + 1, autocompleteSuggestions.length - 1)
+                                  );
+                                } else if (e.key === 'ArrowUp') {
+                                  e.preventDefault();
+                                  setSelectedSuggestionIndex(prev => Math.max(prev - 1, 0));
+                                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                                  e.preventDefault();
+                                  if (autocompleteSuggestions[selectedSuggestionIndex]) {
+                                    handleAutocompleteSelect(autocompleteSuggestions[selectedSuggestionIndex]);
+                                  } else {
+                                    handleEditKeyPress(e);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setShowAutocomplete(false);
                                 } else {
                                   handleEditKeyPress(e);
                                 }
-                              } else if (e.key === 'Escape') {
-                                setShowAutocomplete(false);
                               } else {
                                 handleEditKeyPress(e);
                               }
-                            } else {
-                              handleEditKeyPress(e);
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                setShowAutocomplete(false);
+                              }, 200);
+                              handleCellSave();
+                            }}
+                            className={cn(
+                              "w-full h-full border-none outline-none px-3 py-2 text-sm",
+                              "bg-background text-foreground",
+                              "focus:bg-background focus:ring-0",
+                              // Add visual indicator for multi-cell editing
+                              selectedRange && 
+                              (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol) &&
+                              "ring-2 ring-blue-500 ring-inset"
+                            )}
+                            placeholder={
+                              selectedRange && 
+                              (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol)
+                                ? `Editing ${(selectedRange.endRow - selectedRange.startRow + 1) * (selectedRange.endCol - selectedRange.startCol + 1)} cells`
+                                : undefined
                             }
-                          }}
-                          onBlur={() => {
-                            setTimeout(() => {
-                              setShowAutocomplete(false);
-                            }, 200);
-                            handleCellSave();
-                          }}
-                          className={cn(
-                            "w-full h-full border-none outline-none px-3 py-2 text-sm",
-                            "bg-background text-foreground",
-                            "focus:bg-background focus:ring-0",
-                            // Add visual indicator for multi-cell editing
-                            selectedRange && 
-                            (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol) &&
-                            "ring-2 ring-blue-500 ring-inset"
-                          )}
-                          placeholder={
-                            selectedRange && 
-                            (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol)
-                              ? `Editing ${(selectedRange.endRow - selectedRange.startRow + 1) * (selectedRange.endCol - selectedRange.startCol + 1)} cells`
-                              : undefined
-                          }
-                        />
+                          />
+                                                     {/* Drag handle for fill/copy */}
+                           {editable && !isDraggingFill && (
+                             <div
+                               onMouseDown={(e) => handleDragFillStart(row, col, e)}
+                               style={{
+                                 position: 'absolute',
+                                 right: 3,
+                                 bottom: 3,
+                                 width: 0,
+                                 height: 0,
+                                 borderStyle: 'solid',
+                                 borderWidth: '0 0 8px 8px',
+                                 borderColor: 'transparent transparent #2cbfa7 transparent',
+                                 cursor: 'crosshair',
+                                 zIndex: 20,
+                               }}
+                               title="Drag to fill/copy"
+                             />
+                           )}
+                        </div>
                       ) : (
                         <div
                           className={cn(
@@ -1231,7 +1648,7 @@ export function EnhancedSpreadsheet({
                         </div>
                       )}
                       {/* Selection border - show around entire range */}
-                      {selectedRange && (
+                      {selectedRange && !isDraggingFill && (
                         <>
                           {/* Top border for first row */}
                           {row === selectedRange.startRow && (
@@ -1275,6 +1692,52 @@ export function EnhancedSpreadsheet({
                           )}
                         </>
                       )}
+
+                      {/* Drag fill border - show around entire drag range */}
+                      {isDraggingFill && dragFillStart && dragFillPreview && (
+                        <>
+                          {/* Top border for first row */}
+                          {row === Math.min(dragFillStart.row, dragFillPreview.row) && (
+                            <div 
+                              className="absolute top-0 left-0 right-0 border-t-2 border-primary pointer-events-none z-10"
+                              style={{
+                                left: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto',
+                                right: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                          {/* Bottom border for last row */}
+                          {row === Math.max(dragFillStart.row, dragFillPreview.row) && (
+                            <div 
+                              className="absolute bottom-0 left-0 right-0 border-b-2 border-primary pointer-events-none z-10"
+                              style={{
+                                left: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto',
+                                right: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                          {/* Left border for first column */}
+                          {col === Math.min(dragFillStart.col, dragFillPreview.col) && (
+                            <div 
+                              className="absolute top-0 bottom-0 left-0 border-l-2 border-primary pointer-events-none z-10"
+                              style={{
+                                top: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto',
+                                bottom: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                          {/* Right border for last column */}
+                          {col === Math.max(dragFillStart.col, dragFillPreview.col) && (
+                            <div 
+                              className="absolute top-0 bottom-0 right-0 border-r-2 border-primary pointer-events-none z-10"
+                              style={{
+                                top: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto',
+                                bottom: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto'
+                              }}
+                            />
+                          )}
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -1293,6 +1756,27 @@ export function EnhancedSpreadsheet({
           <span className="p-1 text-sm min-w-[4.5rem] text-center font-medium text-foreground">
             <span className="text-sm text-muted-foreground">Selected: </span>
             {getRangeReference(selectedRange)}
+          </span>
+        </div>
+      )}
+
+      {/* Drag fill info - bottom middle when dragging */}
+      {isDraggingFill && dragFillPreview && dragFillStart && (
+        <div
+          className={cn(
+            "absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg px-4 py-1.5 pointer-events-none"
+          )}
+        >
+          <span className="p-1 text-sm min-w-[4.5rem] text-center font-medium text-foreground">
+            <span className="text-sm text-muted-foreground">
+              {dragFillMode === 'series' ? 'Fill Series' : 'Copy'} - 
+            </span>
+            {getRangeReference({
+              startRow: Math.min(dragFillStart.row, dragFillPreview.row),
+              startCol: Math.min(dragFillStart.col, dragFillPreview.col),
+              endRow: Math.max(dragFillStart.row, dragFillPreview.row),
+              endCol: Math.max(dragFillStart.col, dragFillPreview.col)
+            })}
           </span>
         </div>
       )}
