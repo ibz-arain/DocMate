@@ -48,6 +48,8 @@ interface EnhancedSpreadsheetProps {
   className?: string;
   scale?: number;
   editable?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export function EnhancedSpreadsheet({
@@ -58,7 +60,9 @@ export function EnhancedSpreadsheet({
   onContextMenu,
   className,
   scale = 1.0,
-  editable = true
+  editable = true,
+  onUndo,
+  onRedo
 }: EnhancedSpreadsheetProps) {
   const [selectedRange, setSelectedRange] = useState<SelectionRange | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -404,13 +408,16 @@ export function EnhancedSpreadsheet({
       setEditingCell({ row, col });
       setEditValue(cellValue);
       
+      // Save current state to history before starting to edit
+      onChange([...data]);
+      
       // Focus the input after state update
       setTimeout(() => {
         editInputRef.current?.focus();
         editInputRef.current?.select();
       }, 0);
     }
-  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable, data]);
+  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable, data, onChange]);
 
 
 
@@ -621,6 +628,20 @@ export function EnhancedSpreadsheet({
           endRow: nextRow,
           endCol: nextCol
         });
+        
+        // Start editing the next cell
+        const cell = data[nextRow]?.[nextCol];
+        const cellValue = cell?.formula || cell?.value || '';
+        setEditingCell({ row: nextRow, col: nextCol });
+        setEditValue(cellValue);
+        
+        // Save current state to history before starting to edit next cell
+        onChange([...data]);
+        
+        setTimeout(() => {
+          editInputRef.current?.focus();
+          editInputRef.current?.select();
+        }, 0);
       }
     } else if (event.key === 'Escape') {
       setEditingCell(null);
@@ -640,9 +661,23 @@ export function EnhancedSpreadsheet({
           endRow: nextRow,
           endCol: nextCol
         });
+        
+        // Start editing the next cell
+        const cell = data[nextRow]?.[nextCol];
+        const cellValue = cell?.formula || cell?.value || '';
+        setEditingCell({ row: nextRow, col: nextCol });
+        setEditValue(cellValue);
+        
+        // Save current state to history before starting to edit next cell
+        onChange([...data]);
+        
+        setTimeout(() => {
+          editInputRef.current?.focus();
+          editInputRef.current?.select();
+        }, 0);
       }
     }
-  }, [handleCellSave, activeCell, rows, cols]);
+  }, [handleCellSave, activeCell, rows, cols, data, onChange]);
 
   // Handle column header click (select entire column)
   const handleColumnHeaderClick = useCallback((colIndex: number, event: React.MouseEvent) => {
@@ -857,6 +892,79 @@ export function EnhancedSpreadsheet({
     grid.addEventListener('scroll', handleScroll);
     return () => grid.removeEventListener('scroll', handleScroll);
   }, [scale, cols, rows]);
+
+  // Keyboard shortcut handling for undo/redo when spreadsheet is focused
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          if (onRedo) {
+            e.preventDefault();
+            onRedo();
+          }
+        } else {
+          if (onUndo) {
+            e.preventDefault();
+            onUndo();
+          }
+        }
+      }
+    };
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      if (container) {
+        container.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+  }, [onUndo, onRedo]);
+
+  // Handle undo while editing a cell
+  const handleUndoWhileEditing = useCallback(() => {
+    if (editingCell) {
+      const originalCell = data[editingCell.row]?.[editingCell.col];
+      const originalValue = originalCell?.formula || originalCell?.value || '';
+      setEditValue(originalValue);
+    }
+  }, [editingCell, data]);
+
+  // Add keyboard handler for undo while editing
+  useEffect(() => {
+    const handleEditKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (editingCell) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Check if the current edit value is different from the original
+          const originalCell = data[editingCell.row]?.[editingCell.col];
+          const originalValue = originalCell?.formula || originalCell?.value || '';
+          
+          if (editValue !== originalValue) {
+            // First undo: restore the original value of the current cell
+            setEditValue(originalValue);
+          } else {
+            // Second undo: call the parent's undo function to undo previous changes
+            if (onUndo) {
+              onUndo();
+            }
+          }
+        }
+      }
+    };
+    
+    const input = editInputRef.current;
+    if (input) {
+      input.addEventListener('keydown', handleEditKeyDown);
+    }
+    return () => {
+      if (input) {
+        input.removeEventListener('keydown', handleEditKeyDown);
+      }
+    };
+  }, [editingCell, editValue, data, onUndo]);
 
   return (
     <div

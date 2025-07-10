@@ -59,6 +59,11 @@ export default function SpreadsheetPage() {
   const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
   const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
+  // Undo/redo state
+  const [historyStack, setHistoryStack] = useState<any[][][]>([]);
+  const [redoStack, setRedoStack] = useState<any[][][]>([]);
+  const isPushingHistory = useRef(false);
+  const isInitialized = useRef(false);
   const [dropText, setDropText] = useState("Drag & drop your CSV or Excel file here");
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -452,6 +457,11 @@ export default function SpreadsheetPage() {
     setSpreadsheetUrl(newUrl);
     setIsLoading(true);
     
+    // Reset undo/redo history for new file
+    setHistoryStack([]);
+    setRedoStack([]);
+    isInitialized.current = false;
+    
     // Check if we have cached edits for this file
     const cachedSpreadsheetData = localStorage.getItem(`docmate-spreadsheet-edits-${file.name}`);
     if (cachedSpreadsheetData) {
@@ -506,6 +516,11 @@ export default function SpreadsheetPage() {
     setSelectedRange(null);
     setMenuPos(null);
     setIsLoading(false);
+    
+    // Clear undo/redo history
+    setHistoryStack([]);
+    setRedoStack([]);
+    isInitialized.current = false;
     
     // Clear all popup states
     setShowSummarizePopup(false);
@@ -1163,6 +1178,108 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
     };
   }, [scale, spreadsheetUrl]);
 
+  // Initialize history when spreadsheet data is first loaded
+  useEffect(() => {
+    if (spreadsheetData.length > 0 && !isInitialized.current) {
+      setHistoryStack([spreadsheetData]);
+      isInitialized.current = true;
+    }
+  }, [spreadsheetData]);
+
+  // Push to history stack on data change
+  useEffect(() => {
+    if (isPushingHistory.current) {
+      isPushingHistory.current = false;
+      return;
+    }
+    
+    // Only add to history if we have data and it's different from the last entry
+    if (spreadsheetData.length > 0) {
+      setHistoryStack(prev => {
+        const lastEntry = prev[prev.length - 1];
+        // Deep compare to see if data actually changed
+        const hasChanged = !lastEntry || JSON.stringify(lastEntry) !== JSON.stringify(spreadsheetData);
+        
+        if (hasChanged) {
+          return [...prev, JSON.parse(JSON.stringify(spreadsheetData))];
+        }
+        return prev;
+      });
+      // Clear redo stack on new change
+      setRedoStack([]);
+    }
+  }, [spreadsheetData]);
+
+  // Undo handler
+  const handleUndo = useCallback(() => {
+    console.log('Undo triggered', { historyLength: historyStack.length, redoLength: redoStack.length });
+    setHistoryStack(prev => {
+      if (prev.length <= 1) {
+        console.log('Cannot undo - no history');
+        return prev;
+      }
+      
+      const currentState = prev[prev.length - 1];
+      const previousState = prev[prev.length - 2];
+      
+      console.log('Undoing to previous state');
+      setRedoStack(r => [currentState, ...r]);
+      isPushingHistory.current = true;
+      setSpreadsheetData(JSON.parse(JSON.stringify(previousState)));
+      
+      toast({
+        title: "Undo",
+        description: "Previous state restored",
+      });
+      
+      return prev.slice(0, -1);
+    });
+  }, [historyStack.length, redoStack.length]);
+
+  // Redo handler
+  const handleRedo = useCallback(() => {
+    console.log('Redo triggered', { historyLength: historyStack.length, redoLength: redoStack.length });
+    setRedoStack(prev => {
+      if (prev.length === 0) {
+        console.log('Cannot redo - no redo stack');
+        return prev;
+      }
+      
+      const nextState = prev[0];
+      console.log('Redoing to next state');
+      setHistoryStack(h => {
+        isPushingHistory.current = true;
+        setSpreadsheetData(JSON.parse(JSON.stringify(nextState)));
+        return [...h, JSON.parse(JSON.stringify(nextState))];
+      });
+      
+      toast({
+        title: "Redo",
+        description: "Next state restored",
+      });
+      
+      return prev.slice(1);
+    });
+  }, [historyStack.length, redoStack.length]);
+
+  // Keyboard shortcut handling
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.shiftKey) {
+          console.log('Ctrl+Shift+Z pressed - Redo');
+          handleRedo();
+        } else {
+          console.log('Ctrl+Z pressed - Undo');
+          handleUndo();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
 
   return (
@@ -1270,6 +1387,12 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                                   {spreadsheetFile && localStorage.getItem(`docmate-spreadsheet-edits-${spreadsheetFile.name}`) && (
                                     <span className="ml-2 text-blue-600">• Edits Cached</span>
                                   )}
+                                  {historyStack.length > 1 && (
+                                    <span className="ml-2 text-orange-600">• Undo Available</span>
+                                  )}
+                                  {redoStack.length > 0 && (
+                                    <span className="ml-2 text-purple-600">• Redo Available</span>
+                                  )}
                                 </span>
                               </div>
                             </TooltipTrigger>
@@ -1280,6 +1403,8 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                                 <p>• Edit Mode - Edit cells and use formulas</p>
                                 <p>• Export to Excel format</p>
                                 <p>• Reset to original file</p>
+                                <p>• Undo/Redo: Ctrl+Z / Ctrl+Shift+Z</p>
+                                <p>• History: {historyStack.length} states, {redoStack.length} redo</p>
                               </div>
                             </TooltipContent>
                           </Tooltip>
@@ -1351,6 +1476,8 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                       className="w-full h-full"
                       scale={scale}
                       editable={selectedTool === 'edit'}
+                      onUndo={handleUndo}
+                      onRedo={handleRedo}
                     />
                   </div>
                 )}
