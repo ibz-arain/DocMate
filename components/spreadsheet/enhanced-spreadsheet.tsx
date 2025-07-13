@@ -2090,6 +2090,17 @@ export function EnhancedSpreadsheet({
         />
       )}
 
+      {/* Formula editing hint */}
+      {editingCell && isFormula(editValue) && (
+        <div
+          className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-background/95 border border-primary/30 shadow-lg backdrop-blur-sm rounded-lg px-4 py-2 pointer-events-none"
+        >
+          <span className="text-sm text-muted-foreground font-medium">
+            Press Enter or Tab to leave cell
+          </span>
+        </div>
+      )}
+
       {/* Formula Autocomplete Dropdown */}
       {showAutocomplete && autocompletePosition && (
         <div
