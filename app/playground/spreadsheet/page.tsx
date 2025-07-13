@@ -58,7 +58,26 @@ export default function SpreadsheetPage() {
   const { history, clearHistory, addHistoryEntry } = useHistory();
   const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
-  const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
+  const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([
+    [
+      { value: '10' },
+      { value: '20' },
+      { value: '30', formula: '=A1+B1', calculatedValue: 30 },
+      { value: 'Product A' }
+    ],
+    [
+      { value: '15' },
+      { value: '25' },
+      { value: '40', formula: '=A2+B2', calculatedValue: 40 },
+      { value: 'Product B' }
+    ],
+    [
+      { value: '', formula: '=SUM(A1:A2)', calculatedValue: 25 },
+      { value: '', formula: '=SUM(B1:B2)', calculatedValue: 45 },
+      { value: '', formula: '=SUM(C1:C2)', calculatedValue: 70 },
+      { value: 'Total' }
+    ]
+  ]);
   // Undo/redo state
   const [historyStack, setHistoryStack] = useState<any[][][]>([]);
   const [redoStack, setRedoStack] = useState<any[][][]>([]);

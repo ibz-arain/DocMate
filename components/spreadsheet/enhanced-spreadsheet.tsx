@@ -9,7 +9,10 @@ import {
   formatFormula, 
   validateFormula,
   FORMULA_FUNCTIONS,
-  type FormulaFunction 
+  type FormulaFunction,
+  extractFormulaReferences,
+  insertCellReferenceIntoFormula,
+  getCellReference
 } from '@/lib/formula-utils';
 
 interface CellData {
@@ -25,6 +28,13 @@ interface SelectionRange {
   startCol: number;
   endRow: number;
   endCol: number;
+}
+
+interface FormulaReference {
+  type: 'cell' | 'range';
+  text: string;
+  position: { start: number; end: number };
+  cellRange: SelectionRange;
 }
 
 interface EnhancedSpreadsheetProps {
@@ -86,6 +96,15 @@ export function EnhancedSpreadsheet({
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<FormulaFunction[]>([]);
   const [autocompletePosition, setAutocompletePosition] = useState<{ top: number; left: number } | null>(null);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  
+  // Enhanced formula building state
+  const [isFormulaMode, setIsFormulaMode] = useState(false);
+  const [formulaReferences, setFormulaReferences] = useState<FormulaReference[]>([]);
+  const [formulaValidation, setFormulaValidation] = useState<{ isValid: boolean; error?: string } | null>(null);
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [highlightedReferences, setHighlightedReferences] = useState<Set<string>>(new Set());
+  const [isFormulaSelecting, setIsFormulaSelecting] = useState(false);
+  const [selectedFormulaText, setSelectedFormulaText] = useState<{ start: number; end: number; text: string } | null>(null);
   
   // Drag fill state
   const [isDraggingFill, setIsDraggingFill] = useState(false);
@@ -157,14 +176,14 @@ export function EnhancedSpreadsheet({
   };
 
   // Get cell reference (A1, B2, etc.)
-  const getCellReference = (row: number, col: number): string => {
+  const getCellReferenceLocal = (row: number, col: number): string => {
     return `${getColumnLetter(col)}${row + 1}`;
   };
 
   // Get range reference (A1:B3, etc.)
   const getRangeReference = (range: SelectionRange): string => {
-    const startRef = getCellReference(range.startRow, range.startCol);
-    const endRef = getCellReference(range.endRow, range.endCol);
+    const startRef = getCellReferenceLocal(range.startRow, range.startCol);
+    const endRef = getCellReferenceLocal(range.endRow, range.endCol);
     return startRef === endRef ? startRef : `${startRef}:${endRef}`;
   };
 
@@ -175,7 +194,7 @@ export function EnhancedSpreadsheet({
       for (let col = range.startCol; col <= range.endCol; col++) {
         const cellData = getCellDisplayValue(row, col);
         if (cellData.value) {
-          cells.push(`${getCellReference(row, col)}: ${cellData.value}`);
+          cells.push(`${getCellReferenceLocal(row, col)}: ${cellData.value}`);
         }
       }
     }
@@ -189,7 +208,10 @@ export function EnhancedSpreadsheet({
     
     if (cell.formula) {
       const calculatedValue = cell.calculatedValue;
-      if (calculatedValue === '#ERROR!' || calculatedValue === '#NAME?' || calculatedValue === '#DIV/0!') {
+      if (typeof calculatedValue === 'string' && 
+          (calculatedValue.startsWith('#') || calculatedValue === 'ERROR' || 
+           calculatedValue === 'NAME?' || calculatedValue === 'DIV/0!' || 
+           calculatedValue === 'REF!' || calculatedValue === 'CIRCULAR!')) {
         return { value: String(calculatedValue), isError: true };
       }
       return { value: String(calculatedValue || cell.value || ''), isError: false };
@@ -197,6 +219,69 @@ export function EnhancedSpreadsheet({
     
     return { value: cell.value || '', isError: false };
   };
+
+  // Enhanced formula validation and reference extraction
+  const validateAndExtractFormula = useCallback((formula: string) => {
+    if (!isFormula(formula)) {
+      setFormulaReferences([]);
+      setFormulaValidation(null);
+      setHighlightedReferences(new Set());
+      return;
+    }
+
+    // Validate formula
+    const validation = validateFormula(formula);
+    setFormulaValidation(validation);
+
+    // Extract references for highlighting
+    try {
+      const references = extractFormulaReferences(formula);
+      const formattedReferences: FormulaReference[] = references.map(ref => {
+        let cellRange: SelectionRange;
+        
+        if (ref.type === 'cell') {
+          const cellRef = ref.reference as any;
+          cellRange = {
+            startRow: cellRef.row,
+            startCol: cellRef.col,
+            endRow: cellRef.row,
+            endCol: cellRef.col
+          };
+        } else {
+          const rangeRef = ref.reference as any;
+          cellRange = {
+            startRow: rangeRef.startRow,
+            startCol: rangeRef.startCol,
+            endRow: rangeRef.endRow,
+            endCol: rangeRef.endCol
+          };
+        }
+        
+        return {
+          type: ref.type,
+          text: ref.text,
+          position: ref.position,
+          cellRange
+        };
+      });
+      
+      setFormulaReferences(formattedReferences);
+      
+      // Set highlighted cell references
+      const highlightedCells = new Set<string>();
+      formattedReferences.forEach(ref => {
+        for (let row = ref.cellRange.startRow; row <= ref.cellRange.endRow; row++) {
+          for (let col = ref.cellRange.startCol; col <= ref.cellRange.endCol; col++) {
+            highlightedCells.add(`${row},${col}`);
+          }
+        }
+      });
+      setHighlightedReferences(highlightedCells);
+    } catch (error) {
+      setFormulaReferences([]);
+      setHighlightedReferences(new Set());
+    }
+  }, []);
 
   // Calculate all formulas in the spreadsheet
   const calculateAllFormulas = useCallback(() => {
@@ -230,6 +315,25 @@ export function EnhancedSpreadsheet({
   useEffect(() => {
     calculateAllFormulas();
   }, [calculateAllFormulas]);
+
+  // Handle formula mode activation
+  useEffect(() => {
+    const isInFormulaMode = isFormula(editValue);
+    if (isInFormulaMode !== isFormulaMode) {
+      setIsFormulaMode(isInFormulaMode);
+      
+      if (isInFormulaMode) {
+        validateAndExtractFormula(editValue);
+      } else {
+        setFormulaReferences([]);
+        setFormulaValidation(null);
+        setHighlightedReferences(new Set());
+        // Reset formula selection state when exiting formula mode
+        setIsFormulaSelecting(false);
+        setSelectedFormulaText(null);
+      }
+    }
+  }, [editValue, isFormulaMode, validateAndExtractFormula]);
 
   // Handle mode switching (cell select vs edit)
   useEffect(() => {
@@ -359,154 +463,6 @@ export function EnhancedSpreadsheet({
     return Math.max(maxHeight, MIN_ROW_HEIGHT);
   };
 
-  // Handle cell click
-  const handleCellClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
-    if (isResizing) return;
-    
-    event.preventDefault();
-    event.stopPropagation();
-    
-    // If we're editing a cell, save the value first
-    if (editingCell) {
-      handleCellSave();
-    }
-    
-    // Handle cell selection first (works in both modes)
-    if (event.shiftKey && activeCell) {
-      // Extend selection
-      const range: SelectionRange = {
-        startRow: Math.min(activeCell.row, row),
-        startCol: Math.min(activeCell.col, col),
-        endRow: Math.max(activeCell.row, row),
-        endCol: Math.max(activeCell.col, col)
-      };
-      setSelectedRange(range);
-      const selectedText = getSelectedCellsText(range);
-      onCellSelection?.(selectedText, range, event);
-      
-      // Show context menu immediately for extended selection (only in select mode)
-      if (!editable) {
-        showContextMenu(range, event);
-      }
-    } else {
-      // Single cell selection
-      const range: SelectionRange = {
-        startRow: row,
-        startCol: col,
-        endRow: row,
-        endCol: col
-      };
-      setSelectedRange(range);
-      setActiveCell({ row, col });
-      
-      const selectedText = getSelectedCellsText(range);
-      onCellSelection?.(selectedText, range, event);
-      
-      // Show context menu immediately for single cell selection (only in select mode)
-      if (!editable) {
-        showContextMenu(range, event);
-      }
-    }
-    
-    // In edit mode, also start editing the clicked cell
-    if (editable) {
-      const cell = data[row]?.[col];
-      const cellValue = cell?.formula || cell?.value || '';
-      setEditingCell({ row, col });
-      setEditValue(cellValue);
-      
-      // Save current state to history before starting to edit
-      onChange([...data]);
-      
-      // Focus the input after state update
-      setTimeout(() => {
-        editInputRef.current?.focus();
-        editInputRef.current?.select();
-      }, 0);
-    }
-  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable, data, onChange]);
-
-
-
-  // Handle mouse down for selection
-  const handleMouseDown = useCallback((row: number, col: number, event: React.MouseEvent) => {
-    if (event.button !== 0 || isResizing) return; // Only handle left clicks
-    
-    setIsSelecting(true);
-    setSelectionStart({ row, col });
-    
-    const range: SelectionRange = {
-      startRow: row,
-      startCol: col,
-      endRow: row,
-      endCol: col
-    };
-    
-    setSelectedRange(range);
-    setActiveCell({ row, col });
-  }, [isResizing]);
-
-  // Handle mouse enter for drag selection
-  const handleMouseEnter = useCallback((row: number, col: number) => {
-    if (!isSelecting || !selectionStart || isResizing) return;
-    
-    const range: SelectionRange = {
-      startRow: Math.min(selectionStart.row, row),
-      startCol: Math.min(selectionStart.col, col),
-      endRow: Math.max(selectionStart.row, row),
-      endCol: Math.max(selectionStart.col, col)
-    };
-    
-    setSelectedRange(range);
-  }, [isSelecting, selectionStart, isResizing]);
-
-  // Handle mouse up
-  const handleMouseUp = useCallback((event: React.MouseEvent) => {
-    if (!isSelecting || !selectedRange || isResizing) return;
-    
-    setIsSelecting(false);
-    
-    const selectedText = getSelectedCellsText(selectedRange);
-    onCellSelection?.(selectedText, selectedRange, event);
-    
-    // Show context menu when drag selection ends (only in select mode)
-    if (!editable) {
-      showContextMenu(selectedRange, event);
-    }
-  }, [isSelecting, selectedRange, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable]);
-
-  // Handle right click
-  const handleRightClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
-    if (isResizing) return;
-    
-    event.preventDefault();
-    
-    // In edit mode, don't allow right-click context menu
-    if (editable) return;
-    
-    // If right-clicking on an existing selection, keep it
-    // Otherwise, select the single cell
-    let range = selectedRange;
-    if (!range || 
-        row < range.startRow || row > range.endRow || 
-        col < range.startCol || col > range.endCol) {
-      range = {
-        startRow: row,
-        startCol: col,
-        endRow: row,
-        endCol: col
-      };
-      setSelectedRange(range);
-      setActiveCell({ row, col });
-    }
-    
-    const selectedText = getSelectedCellsText(range);
-    onRightClick?.(selectedText, range, event);
-    
-    // Show context menu for right-click
-    showContextMenu(range, event);
-  }, [selectedRange, isResizing, onRightClick, getSelectedCellsText, showContextMenu, editable]);
-
   // Handle cell value change
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
     const newData = [...data];
@@ -567,6 +523,273 @@ export function EnhancedSpreadsheet({
     onChange(newData);
   }, [data, onChange, editable, selectedRange]);
 
+  // Handle cell click
+  const handleCellClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
+    if (isResizing) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // If we're in formula mode and editing, handle cell reference insertion or replacement
+    if (isFormulaMode && editingCell && editInputRef.current) {
+      // If clicking on the same cell that's being edited, allow normal editing
+      if (editingCell.row === row && editingCell.col === col) {
+        // Let the normal editing flow continue - don't prevent anything
+        return;
+      }
+      
+      // If user has selected text in the formula input and it's a valid cell reference, allow replacement
+      if (selectedFormulaText && isValidCellReference(selectedFormulaText.text)) {
+        // Replace the selected text with the new cell reference
+        const newCellRef = getCellReferenceLocal(row, col);
+        const newFormula = editValue.substring(0, selectedFormulaText.start) + 
+                          newCellRef + 
+                          editValue.substring(selectedFormulaText.end);
+        setEditValue(newFormula);
+        setSelectedFormulaText(null);
+        // Set cursor position after the replaced text
+        const newCursorPos = selectedFormulaText.start + newCellRef.length;
+        setTimeout(() => {
+          if (editInputRef.current) {
+            editInputRef.current.focus();
+            editInputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+          }
+        }, 0);
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      // Only block new insertions if formula ends with ')' AND no text is selected for replacement
+      if (editValue.trim().endsWith(")") && !selectedFormulaText) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      // Prevent any further processing of the click event
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    
+    // If we're editing a cell and NOT in formula mode, save the value first
+    if (editingCell && !isFormulaMode) {
+      handleCellChange(editingCell.row, editingCell.col, editValue);
+      setEditingCell(null);
+      setEditValue("");
+      setIsFormulaSelecting(false);
+    }
+    
+    // Don't do normal cell selection when in formula mode
+    if (isFormulaMode) {
+      return;
+    }
+    
+    // Handle cell selection first (works in both modes)
+    if (event.shiftKey && activeCell) {
+      // Extend selection
+      const range: SelectionRange = {
+        startRow: Math.min(activeCell.row, row),
+        startCol: Math.min(activeCell.col, col),
+        endRow: Math.max(activeCell.row, row),
+        endCol: Math.max(activeCell.col, col)
+      };
+      setSelectedRange(range);
+      const selectedText = getSelectedCellsText(range);
+      onCellSelection?.(selectedText, range, event);
+      
+      // Show context menu immediately for extended selection (only in select mode)
+      if (!editable) {
+        showContextMenu(range, event);
+      }
+    } else {
+      // Single cell selection
+      const range: SelectionRange = {
+        startRow: row,
+        startCol: col,
+        endRow: row,
+        endCol: col
+      };
+      setSelectedRange(range);
+      setActiveCell({ row, col });
+      
+      const selectedText = getSelectedCellsText(range);
+      onCellSelection?.(selectedText, range, event);
+      
+      // Show context menu immediately for single cell selection (only in select mode)
+      if (!editable) {
+        showContextMenu(range, event);
+      }
+    }
+    
+    // In edit mode, also start editing the clicked cell
+    if (editable) {
+      const cell = data[row]?.[col];
+      const cellValue = cell?.formula || cell?.value || '';
+      setEditingCell({ row, col });
+      setEditValue(cellValue);
+      
+      // Save current state to history before starting to edit
+      onChange([...data]);
+      
+      // Focus the input after state update
+      setTimeout(() => {
+        editInputRef.current?.focus();
+        editInputRef.current?.select();
+      }, 0);
+    }
+  }, [activeCell, editingCell, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable, data, onChange, isFormulaMode, editValue, handleCellChange]);
+
+
+
+  // Handle mouse down for selection
+  const handleMouseDown = useCallback((row: number, col: number, event: React.MouseEvent) => {
+    if (event.button !== 0 || isResizing) return; // Only handle left clicks
+    
+        // If we're in formula mode and editing, start formula selection
+    if (isFormulaMode && editingCell) {
+      // If clicking on the same cell that's being edited, allow normal mouse interaction
+      if (editingCell.row === row && editingCell.col === col) {
+        // Let normal mouse down behavior continue - don't prevent anything
+        return;
+      }
+      // If user has selected text in the formula input and it's a valid cell reference, always allow replacement
+      if (editInputRef.current && selectedFormulaText && isValidCellReference(selectedFormulaText.text)) {
+        // Allow replacement (handled in click handler)
+        return;
+      }
+      // Only block new insertions if formula ends with ')' AND no text is selected for replacement
+      if (editValue.trim().endsWith(")") && !selectedFormulaText) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      setIsFormulaSelecting(true);
+      setIsSelecting(true);
+      setSelectionStart({ row, col });
+      const range: SelectionRange = {
+        startRow: row,
+        startCol: col,
+        endRow: row,
+        endCol: col
+      };
+      setSelectedRange(range);
+      return;
+    }
+    
+    setIsSelecting(true);
+    setSelectionStart({ row, col });
+    
+    const range: SelectionRange = {
+      startRow: row,
+      startCol: col,
+      endRow: row,
+      endCol: col
+    };
+    
+    setSelectedRange(range);
+    setActiveCell({ row, col });
+  }, [isResizing, isFormulaMode, editingCell, editValue]);
+
+  // Handle mouse enter for drag selection
+  const handleMouseEnter = useCallback((row: number, col: number) => {
+    if (!isSelecting || !selectionStart || isResizing) return;
+    
+    const range: SelectionRange = {
+      startRow: Math.min(selectionStart.row, row),
+      startCol: Math.min(selectionStart.col, col),
+      endRow: Math.max(selectionStart.row, row),
+      endCol: Math.max(selectionStart.col, col)
+    };
+    
+    setSelectedRange(range);
+  }, [isSelecting, selectionStart, isResizing]);
+
+  // Handle mouse up
+  const handleMouseUp = useCallback((event: React.MouseEvent) => {
+    if (!isSelecting || !selectedRange || isResizing) return;
+    
+    // Handle formula selection completion
+    if (isFormulaSelecting && editingCell && editInputRef.current) {
+      const startRef = getCellReferenceLocal(selectedRange.startRow, selectedRange.startCol);
+      const endRef = getCellReferenceLocal(selectedRange.endRow, selectedRange.endCol);
+      const rangeRef = startRef === endRef ? startRef : `${startRef}:${endRef}`;
+      
+
+      
+      const input = editInputRef.current;
+      const cursorPos = input.selectionStart || 0;
+      
+      // Insert range reference at cursor position
+      let result = insertCellReferenceIntoFormula(editValue, rangeRef, cursorPos);
+
+      // If it's a function call and doesn't end with ')', auto-close
+      if (needsClosingParen(result.newFormula)) {
+        result.newFormula += ")";
+        result.newCursorPosition = result.newFormula.length;
+      }
+      setEditValue(result.newFormula);
+      setCursorPosition(result.newCursorPosition);
+      
+      // Set cursor position after state update
+      setTimeout(() => {
+        if (editInputRef.current) {
+          editInputRef.current.focus();
+          editInputRef.current.setSelectionRange(result.newCursorPosition, result.newCursorPosition);
+        }
+      }, 0);
+      
+      // Reset formula selection state
+      setIsFormulaSelecting(false);
+      setIsSelecting(false);
+      setSelectedRange(null);
+      return;
+    }
+    
+    setIsSelecting(false);
+    
+    const selectedText = getSelectedCellsText(selectedRange);
+    onCellSelection?.(selectedText, selectedRange, event);
+    
+    // Show context menu when drag selection ends (only in select mode)
+    if (!editable) {
+      showContextMenu(selectedRange, event);
+    }
+  }, [isSelecting, selectedRange, isResizing, onCellSelection, getSelectedCellsText, showContextMenu, editable, isFormulaMode, editingCell, isFormulaSelecting, editValue]);
+
+  // Handle right click
+  const handleRightClick = useCallback((row: number, col: number, event: React.MouseEvent) => {
+    if (isResizing) return;
+    
+    event.preventDefault();
+    
+    // In edit mode, don't allow right-click context menu
+    if (editable) return;
+    
+    // If right-clicking on an existing selection, keep it
+    // Otherwise, select the single cell
+    let range = selectedRange;
+    if (!range || 
+        row < range.startRow || row > range.endRow || 
+        col < range.startCol || col > range.endCol) {
+      range = {
+        startRow: row,
+        startCol: col,
+        endRow: row,
+        endCol: col
+      };
+      setSelectedRange(range);
+      setActiveCell({ row, col });
+    }
+    
+    const selectedText = getSelectedCellsText(range);
+    onRightClick?.(selectedText, range, event);
+    
+    // Show context menu for right-click
+    showContextMenu(range, event);
+  }, [selectedRange, isResizing, onRightClick, getSelectedCellsText, showContextMenu, editable]);
+
   // Handle autocomplete for formulas
   const handleFormulaAutocomplete = useCallback((input: string) => {
     if (!input.startsWith('=')) {
@@ -616,6 +839,9 @@ export function EnhancedSpreadsheet({
       handleCellChange(editingCell.row, editingCell.col, editValue);
       setEditingCell(null);
       setEditValue("");
+      // Reset formula selection state when saving
+      setIsFormulaSelecting(false);
+      setSelectedFormulaText(null);
     }
   }, [editingCell, editValue, handleCellChange]);
 
@@ -681,6 +907,7 @@ export function EnhancedSpreadsheet({
       event.preventDefault();
       setEditingCell(null);
       setEditValue("");
+      setIsFormulaSelecting(false);
     } else if (event.key === 'Tab') {
       event.preventDefault();
       handleCellSave();
@@ -1361,6 +1588,19 @@ export function EnhancedSpreadsheet({
     };
   }, [editingCell, editValue, data, onUndo]);
 
+  // Utility: Check if formula is a function call and needs closing parenthesis
+  const needsClosingParen = (formula: string) => {
+    // e.g. =SUM(A1:B2
+    const match = formula.match(/^=\s*([A-Z]+)\([^)]*$/i);
+    return !!match && !formula.trim().endsWith(")");
+  };
+
+  // Utility: Check if selected text is a valid cell reference
+  const isValidCellReference = (text: string) => {
+    // Match single cell (A1, B2, etc.) or range (A1:B2, etc.)
+    return /^[A-Z]+\d+(:[A-Z]+\d+)?$/i.test(text.trim());
+  };
+
   return (
     <div
       ref={containerRef}
@@ -1526,16 +1766,24 @@ export function EnhancedSpreadsheet({
                   const isActive = isCellActive(row, col);
                   const isEditing = editingCell?.row === row && editingCell?.col === col;
                   const isInDragPreview = isCellInDragPreview(row, col);
+                  const isFormulaHighlighted = isFormulaMode && highlightedReferences.has(`${row},${col}`);
+                  const isInFormulaSelection = isFormulaSelecting && isSelected;
+                  const isCurrentlyEditingCell = editingCell?.row === row && editingCell?.col === col;
                   return (
                     <div
                       key={col}
                       className={cn(
-                        "border-b border-r border-border relative cursor-cell transition-colors flex-shrink-0",
+                        "border-b border-r border-border relative transition-colors flex-shrink-0",
                         "bg-background text-foreground",
+                        selectedFormulaText && isValidCellReference(selectedFormulaText.text) && !isCurrentlyEditingCell ? "cursor-pointer" :
+                        isFormulaSelecting && !isCurrentlyEditingCell ? "cursor-crosshair" : 
+                        isCurrentlyEditingCell ? "cursor-text" : "cursor-cell",
                         isSelected && "bg-primary/10 border-primary/30",
                         isInDragPreview && "bg-primary/10 border-primary/30",
                         isActive && !selectedRange && "ring-2 ring-primary ring-inset",
-                        !isSelected && !isActive && !isInDragPreview && "hover:bg-muted/30"
+                        isFormulaHighlighted && "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600 ring-1 ring-blue-400 dark:ring-blue-500",
+                        isInFormulaSelection && "bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 ring-1 ring-green-400 dark:ring-green-500",
+                        !isSelected && !isActive && !isInDragPreview && !isFormulaHighlighted && !isInFormulaSelection && "hover:bg-muted/30"
                       )}
                       style={{
                         width: columnWidths[col] || DEFAULT_COLUMN_WIDTH,
@@ -1560,6 +1808,30 @@ export function EnhancedSpreadsheet({
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
+                            }}
+                            onSelect={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              const start = target.selectionStart || 0;
+                              const end = target.selectionEnd || 0;
+                              
+                              if (start !== end) {
+                                const selectedText = editValue.substring(start, end);
+                                setSelectedFormulaText({ start, end, text: selectedText });
+                              } else {
+                                setSelectedFormulaText(null);
+                              }
+                            }}
+                            onKeyUp={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              const start = target.selectionStart || 0;
+                              const end = target.selectionEnd || 0;
+                              
+                              if (start !== end) {
+                                const selectedText = editValue.substring(start, end);
+                                setSelectedFormulaText({ start, end, text: selectedText });
+                              } else {
+                                setSelectedFormulaText(null);
+                              }
                             }}
                             onKeyDown={(e) => {
                               if (showAutocomplete) {
@@ -1587,7 +1859,18 @@ export function EnhancedSpreadsheet({
                                 handleEditKeyPress(e);
                               }
                             }}
-                            onBlur={() => {
+                            onBlur={(e) => {
+                              // Don't save if we're in formula mode and just selecting cells
+                              if (isFormulaMode && isFormulaSelecting) {
+                                // Refocus the input to maintain formula editing
+                                setTimeout(() => {
+                                  if (editInputRef.current) {
+                                    editInputRef.current.focus();
+                                  }
+                                }, 0);
+                                return;
+                              }
+                              
                               setTimeout(() => {
                                 setShowAutocomplete(false);
                               }, 200);
@@ -1600,13 +1883,21 @@ export function EnhancedSpreadsheet({
                               // Add visual indicator for multi-cell editing
                               selectedRange && 
                               (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol) &&
-                              "ring-2 ring-blue-500 ring-inset"
+                              "ring-2 ring-blue-500 ring-inset",
+                              // Add visual indicator for formula selection mode
+                              isFormulaSelecting && "ring-2 ring-green-500 ring-inset",
+                              // Add visual indicator for text replacement mode
+                              selectedFormulaText && isValidCellReference(selectedFormulaText.text) && "ring-2 ring-yellow-500 ring-inset"
                             )}
                             placeholder={
-                              selectedRange && 
-                              (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol)
-                                ? `Editing ${(selectedRange.endRow - selectedRange.startRow + 1) * (selectedRange.endCol - selectedRange.startCol + 1)} cells`
-                                : undefined
+                              selectedFormulaText && isValidCellReference(selectedFormulaText.text)
+                                ? `Click a cell to replace "${selectedFormulaText.text}"`
+                                : isFormulaSelecting
+                                  ? "Drag to select cell range for formula..."
+                                  : selectedRange && 
+                                    (selectedRange.startRow !== selectedRange.endRow || selectedRange.startCol !== selectedRange.endCol)
+                                    ? `Editing ${(selectedRange.endRow - selectedRange.startRow + 1) * (selectedRange.endCol - selectedRange.startCol + 1)} cells`
+                                    : undefined
                             }
                           />
                                                      {/* Drag handle for fill/copy */}

@@ -370,3 +370,53 @@ We acknowledge and appreciate the exceptional technologies that power DocMate:
 **🏆 WinHacks 2025 Champions | 🥇 #1 out of 30 Teams | 🚀 The Future of Document Processing**
 
 </div>
+
+## DocMate - AI-Powered Document Processing Platform
+
+DocMate is a sophisticated platform that combines document processing capabilities with advanced spreadsheet functionality and AI-powered analysis.
+
+## Features
+
+### 📊 Excel-like Spreadsheet Functionality
+
+Our enhanced spreadsheet component provides comprehensive Excel-like features:
+
+#### Formula Support
+- **Formula Entry**: Type `=` to enter formula mode with real-time validation
+- **Cell References**: Click cells during formula entry to insert references (A1, B2, etc.)
+- **Range References**: Support for ranges like A1:B10
+- **Absolute References**: Support for $A$1, $A1, A$1 reference types
+- **Function Library**: SUM, AVERAGE, COUNT, MAX, MIN, ROUND, ABS, SQRT, POWER, CONCATENATE, LEFT, RIGHT, LEN, UPPER, LOWER, IF, AND, OR, NOT, COUNTA
+
+#### Visual Formula Building
+- **Reference Highlighting**: Referenced cells are highlighted during formula editing
+- **Real-time Validation**: Formula errors shown immediately with specific error types
+- **Autocomplete**: Function suggestions with descriptions and examples
+- **Error Display**: Comprehensive error codes (#ERROR!, #NAME?, #DIV/0!, #REF!, #CIRCULAR!, #NUM!, #VALUE!)
+
+#### Excel-like Interactions
+- **Cell Selection**: Click and drag to select ranges
+- **Formula Mode**: Click cells to insert references during formula building
+- **Drag Fill**: Auto-fill cells with series or copy values
+- **Series Detection**: Automatic detection of number sequences, dates, months, days
+- **Multi-cell Editing**: Apply values to multiple selected cells
+- **Keyboard Navigation**: Arrow keys, Enter, Tab for navigation
+
+#### Advanced Features
+- **Circular Reference Detection**: Prevents infinite calculation loops
+- **Dependency Tracking**: Automatic recalculation when referenced cells change
+- **Undo/Redo**: Full history support with Ctrl+Z/Ctrl+Y
+- **Column/Row Resizing**: Drag headers to resize
+- **Context Menus**: Right-click for additional options
+
+#### Formula Examples
+```
+=SUM(A1:A10)          // Sum range
+=AVERAGE(B1:B5)       // Average of range
+=A1+B1*C1            // Arithmetic operations
+=IF(A1>10,"High","Low") // Conditional logic
+=CONCATENATE(A1," ",B1) // Text joining
+=ROUND(A1/B1,2)       // Rounding with precision
+```
+
+### 🤖 AI-Powered Document Analysis
