@@ -468,7 +468,7 @@ export function hasCircularReference(
       const cell = data[cellRef.row]?.[cellRef.col];
       
       if (cell?.formula) {
-        if (hasCircularReference(cell.formula, cellRef.row, cellRef.col, data, new Set(visited))) {
+        if (hasCircularReference(cell.formula, cellRef.row, cellRef.col, data, new Set(Array.from(visited)))) {
           return true;
         }
       }
@@ -480,7 +480,7 @@ export function hasCircularReference(
           const cell = data[row]?.[col];
           
           if (cell?.formula) {
-            if (hasCircularReference(cell.formula, row, col, data, new Set([...visited]))) {
+            if (hasCircularReference(cell.formula, row, col, data, new Set(Array.from(visited)))) {
               return true;
             }
           }
@@ -674,14 +674,19 @@ function evaluateArithmeticExpression(expression: string, data: CellData[][], cu
     references.sort((a, b) => b.position.start - a.position.start);
     
     for (const ref of references) {
-      const value = ref.type === 'cell' 
-        ? getCellValue(data[ref.reference.row]?.[ref.reference.col])
-        : 0; // Range handling would be more complex
-      
-      const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
-      evaluatedExpression = evaluatedExpression.substring(0, ref.position.start) + 
-                           numValue + 
-                           evaluatedExpression.substring(ref.position.end);
+      if (ref.type === 'cell') {
+        const cellRef = ref.reference as CellReference;
+        const value = getCellValue(data[cellRef.row]?.[cellRef.col]);
+        const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+        evaluatedExpression = evaluatedExpression.substring(0, ref.position.start) + 
+                             numValue + 
+                             evaluatedExpression.substring(ref.position.end);
+      } else if (ref.type === 'range') {
+        // Range handling would be more complex; for now, replace with 0
+        evaluatedExpression = evaluatedExpression.substring(0, ref.position.start) + 
+                             '0' + 
+                             evaluatedExpression.substring(ref.position.end);
+      }
     }
     
     // Basic safety check for dangerous operations
@@ -934,5 +939,5 @@ export function getFormulaDependencies(formula: string): string[] {
     }
   }
   
-  return [...new Set(dependencies)]; // Remove duplicates
+  return Array.from(new Set(dependencies)); // Remove duplicates
 } 
