@@ -110,7 +110,8 @@ export function EnhancedSpreadsheet({
   const [isDraggingFill, setIsDraggingFill] = useState(false);
   const [dragFillStart, setDragFillStart] = useState<{ row: number; col: number; value: string } | null>(null);
   const [dragFillDirection, setDragFillDirection] = useState<'horizontal' | 'vertical' | null>(null);
-  const [dragFillPreview, setDragFillPreview] = useState<{ row: number; col: number } | null>(null);
+  const dragFillPreviewRef = useRef<{ row: number; col: number } | null>(null);
+  const [dragFillPreviewState, setDragFillPreviewState] = useState<{ row: number; col: number } | null>(null); // only for final update
   const [dragFillMode, setDragFillMode] = useState<'copy' | 'series' | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -324,6 +325,13 @@ export function EnhancedSpreadsheet({
       
       if (isInFormulaMode) {
         validateAndExtractFormula(editValue);
+        // Reset drag fill state when entering formula mode
+        setIsDraggingFill(false);
+        setDragFillStart(null);
+        setDragFillDirection(null);
+        dragFillPreviewRef.current = null;
+        setDragFillPreviewState(null);
+        setDragFillMode(null);
       } else {
         setFormulaReferences([]);
         setFormulaValidation(null);
@@ -1169,18 +1177,17 @@ export function EnhancedSpreadsheet({
 
   // Check if cell is in drag fill preview
   const isCellInDragPreview = (row: number, col: number): boolean => {
-    if (!isDraggingFill || !dragFillStart || !dragFillPreview) return false;
-    
+    if (!isDraggingFill || !dragFillStart || !(dragFillPreviewRef.current || dragFillPreviewState)) return false;
+    const preview = dragFillPreviewRef.current || dragFillPreviewState;
+    if (!preview) return false;
     const startRow = dragFillStart.row;
     const startCol = dragFillStart.col;
-    const endRow = dragFillPreview.row;
-    const endCol = dragFillPreview.col;
-    
+    const endRow = preview.row;
+    const endCol = preview.col;
     const minRow = Math.min(startRow, endRow);
     const maxRow = Math.max(startRow, endRow);
     const minCol = Math.min(startCol, endCol);
     const maxCol = Math.max(startCol, endCol);
-    
     return row >= minRow && row <= maxRow && col >= minCol && col <= maxCol;
   };
 
@@ -1265,6 +1272,9 @@ export function EnhancedSpreadsheet({
   const handleDragFillStart = useCallback((row: number, col: number, event: React.MouseEvent) => {
     if (!editable || !isDragHandle(event, row, col)) return;
     
+    // Don't start drag fill if we're in formula mode and editing
+    if (isFormulaMode && editingCell) return;
+    
     event.preventDefault();
     event.stopPropagation();
     
@@ -1275,94 +1285,72 @@ export function EnhancedSpreadsheet({
     
     setIsDraggingFill(true);
     setDragFillStart({ row, col, value: cellValue });
-    setDragFillPreview({ row, col });
+    dragFillPreviewRef.current = { row, col };
     
     // Detect if this could be a series
     const { isSeries } = detectSeriesPattern(cellValue);
     setDragFillMode(isSeries ? 'series' : 'copy');
-  }, [editable, data]);
+  }, [editable, data, isFormulaMode, editingCell]);
 
   const handleDragFillMove = useCallback((event: MouseEvent) => {
     if (!isDraggingFill || !dragFillStart) return;
-    
     const container = containerRef.current;
     if (!container) return;
-    
     const rect = container.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    
     // Convert screen coordinates to grid coordinates
     const cellWidth = columnWidths[dragFillStart.col] || DEFAULT_COLUMN_WIDTH;
     const cellHeight = rowHeights[dragFillStart.row] || DEFAULT_ROW_HEIGHT;
-    
-    // Calculate grid position
     let col = Math.floor((x - HEADER_WIDTH * scale) / (cellWidth * scale));
     let row = Math.floor((y - HEADER_HEIGHT * scale) / (cellHeight * scale));
-    
-    // Clamp to valid range
     col = Math.max(0, Math.min(cols - 1, col));
     row = Math.max(0, Math.min(rows - 1, row));
-    
     // Determine direction
     const deltaRow = row - dragFillStart.row;
     const deltaCol = col - dragFillStart.col;
-    
     if (Math.abs(deltaRow) > Math.abs(deltaCol)) {
       setDragFillDirection('vertical');
     } else {
       setDragFillDirection('horizontal');
     }
-    
-    setDragFillPreview({ row, col });
+    dragFillPreviewRef.current = { row, col };
+    // Optionally, throttle a state update for visual feedback (not every move)
   }, [isDraggingFill, dragFillStart, columnWidths, rowHeights, scale, cols, rows]);
 
   const handleDragFillEnd = useCallback((event: MouseEvent) => {
-    if (!isDraggingFill || !dragFillStart || !dragFillPreview) return;
-    
+    if (!isDraggingFill || !dragFillStart || !(dragFillPreviewRef.current)) return;
+    setDragFillPreviewState(dragFillPreviewRef.current); // update state for final render
     const newData = [...data];
     const startRow = dragFillStart.row;
     const startCol = dragFillStart.col;
-    const endRow = dragFillPreview.row;
-    const endCol = dragFillPreview.col;
-    
+    const endRow = dragFillPreviewRef.current.row;
+    const endCol = dragFillPreviewRef.current.col;
     // Calculate the range to fill
     const minRow = Math.min(startRow, endRow);
     const maxRow = Math.max(startRow, endRow);
     const minCol = Math.min(startCol, endCol);
     const maxCol = Math.max(startCol, endCol);
-    
     // Fill the range
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
-        // Skip the original cell
         if (row === startRow && col === startCol) continue;
-        
-        // Ensure the row exists
         while (newData.length <= row) {
           newData.push([]);
         }
-        
-        // Ensure the column exists in this row
         while (newData[row].length <= col) {
           newData[row].push({ value: '' });
         }
-        
         let newValue: string;
-        
         if (dragFillMode === 'series') {
-          // Calculate index for series
           const index = Math.abs(row - startRow) + Math.abs(col - startCol);
           newValue = generateSeriesValue(dragFillStart.value, index, '');
         } else {
-          // Copy mode
           newValue = dragFillStart.value;
         }
-        
-        // Handle formula input
         if (isFormula(newValue)) {
           newData[row][col] = { 
-            value: newValue.substring(1), // Store without '='
+            value: newValue.substring(1),
             formula: newValue,
             calculatedValue: undefined
           };
@@ -1371,10 +1359,7 @@ export function EnhancedSpreadsheet({
         }
       }
     }
-    
     onChange(newData);
-    
-    // Update selection to the filled range
     const filledRange: SelectionRange = {
       startRow: minRow,
       startCol: minCol,
@@ -1383,14 +1368,13 @@ export function EnhancedSpreadsheet({
     };
     setSelectedRange(filledRange);
     setActiveCell({ row: minRow, col: minCol });
-    
-    // Reset drag state
     setIsDraggingFill(false);
     setDragFillStart(null);
     setDragFillDirection(null);
-    setDragFillPreview(null);
+    dragFillPreviewRef.current = null;
+    setDragFillPreviewState(null);
     setDragFillMode(null);
-  }, [isDraggingFill, dragFillStart, dragFillPreview, dragFillMode, data, onChange]);
+  }, [isDraggingFill, dragFillStart, dragFillMode, data, onChange]);
 
   // Global mouse event handlers
   useEffect(() => {
@@ -1426,16 +1410,19 @@ export function EnhancedSpreadsheet({
       }
     };
 
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    document.addEventListener('mousemove', handleGlobalMouseMove);
-    document.addEventListener('mousedown', handleClickOutside);
+    // Only add event listeners if not in formula editing mode
+    if (!isFormulaMode || !editingCell) {
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     
     return () => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSelecting, isResizing, isDraggingFill, handleResizeMove, handleResizeEnd, handleDragFillMove, handleDragFillEnd, menuPosition, clearContextMenu]);
+  }, [isSelecting, isResizing, isDraggingFill, handleResizeMove, handleResizeEnd, handleDragFillMove, handleDragFillEnd, menuPosition, clearContextMenu, isFormulaMode, editingCell]);
 
   // Add refs for scroll sync
   const gridScrollRef = useRef<HTMLDivElement>(null);
@@ -1901,7 +1888,7 @@ export function EnhancedSpreadsheet({
                             }
                           />
                                                      {/* Drag handle for fill/copy */}
-                           {editable && !isDraggingFill && (
+                           {editable && !isDraggingFill && !isFormulaMode && (
                              <div
                                onMouseDown={(e) => handleDragFillStart(row, col, e)}
                                style={{
@@ -1985,50 +1972,58 @@ export function EnhancedSpreadsheet({
                       )}
 
                       {/* Drag fill border - show around entire drag range */}
-                      {isDraggingFill && dragFillStart && dragFillPreview && (
-                        <>
-                          {/* Top border for first row */}
-                          {row === Math.min(dragFillStart.row, dragFillPreview.row) && (
-                            <div 
-                              className="absolute top-0 left-0 right-0 border-t-2 border-primary pointer-events-none z-10"
-                              style={{
-                                left: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto',
-                                right: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto'
-                              }}
-                            />
-                          )}
-                          {/* Bottom border for last row */}
-                          {row === Math.max(dragFillStart.row, dragFillPreview.row) && (
-                            <div 
-                              className="absolute bottom-0 left-0 right-0 border-b-2 border-primary pointer-events-none z-10"
-                              style={{
-                                left: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto',
-                                right: col >= Math.min(dragFillStart.col, dragFillPreview.col) && col <= Math.max(dragFillStart.col, dragFillPreview.col) ? 0 : 'auto'
-                              }}
-                            />
-                          )}
-                          {/* Left border for first column */}
-                          {col === Math.min(dragFillStart.col, dragFillPreview.col) && (
-                            <div 
-                              className="absolute top-0 bottom-0 left-0 border-l-2 border-primary pointer-events-none z-10"
-                              style={{
-                                top: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto',
-                                bottom: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto'
-                              }}
-                            />
-                          )}
-                          {/* Right border for last column */}
-                          {col === Math.max(dragFillStart.col, dragFillPreview.col) && (
-                            <div 
-                              className="absolute top-0 bottom-0 right-0 border-r-2 border-primary pointer-events-none z-10"
-                              style={{
-                                top: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto',
-                                bottom: row >= Math.min(dragFillStart.row, dragFillPreview.row) && row <= Math.max(dragFillStart.row, dragFillPreview.row) ? 0 : 'auto'
-                              }}
-                            />
-                          )}
-                        </>
-                      )}
+                      {isDraggingFill && (dragFillPreviewRef.current || dragFillPreviewState) && dragFillStart && (() => {
+                        const preview = dragFillPreviewRef.current || dragFillPreviewState;
+                        if (!preview) return null;
+                        const minRow = Math.min(dragFillStart.row, preview.row);
+                        const maxRow = Math.max(dragFillStart.row, preview.row);
+                        const minCol = Math.min(dragFillStart.col, preview.col);
+                        const maxCol = Math.max(dragFillStart.col, preview.col);
+                        return (
+                          <>
+                            {/* Top border for first row */}
+                            {row === minRow && (
+                              <div 
+                                className="absolute top-0 left-0 right-0 border-t-2 border-primary pointer-events-none z-10"
+                                style={{
+                                  left: col >= minCol && col <= maxCol ? 0 : 'auto',
+                                  right: col >= minCol && col <= maxCol ? 0 : 'auto'
+                                }}
+                              />
+                            )}
+                            {/* Bottom border for last row */}
+                            {row === maxRow && (
+                              <div 
+                                className="absolute bottom-0 left-0 right-0 border-b-2 border-primary pointer-events-none z-10"
+                                style={{
+                                  left: col >= minCol && col <= maxCol ? 0 : 'auto',
+                                  right: col >= minCol && col <= maxCol ? 0 : 'auto'
+                                }}
+                              />
+                            )}
+                            {/* Left border for first column */}
+                            {col === minCol && (
+                              <div 
+                                className="absolute top-0 bottom-0 left-0 border-l-2 border-primary pointer-events-none z-10"
+                                style={{
+                                  top: row >= minRow && row <= maxRow ? 0 : 'auto',
+                                  bottom: row >= minRow && row <= maxRow ? 0 : 'auto'
+                                }}
+                              />
+                            )}
+                            {/* Right border for last column */}
+                            {col === maxCol && (
+                              <div 
+                                className="absolute top-0 bottom-0 right-0 border-r-2 border-primary pointer-events-none z-10"
+                                style={{
+                                  top: row >= minRow && row <= maxRow ? 0 : 'auto',
+                                  bottom: row >= minRow && row <= maxRow ? 0 : 'auto'
+                                }}
+                              />
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -2052,25 +2047,29 @@ export function EnhancedSpreadsheet({
       )}
 
       {/* Drag fill info - bottom middle when dragging */}
-      {isDraggingFill && dragFillPreview && dragFillStart && (
-        <div
-          className={cn(
-            "absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg px-4 py-1.5 pointer-events-none"
-          )}
-        >
-          <span className="p-1 text-sm min-w-[4.5rem] text-center font-medium text-foreground">
-            <span className="text-sm text-muted-foreground">
-              {dragFillMode === 'series' ? 'Fill Series' : 'Copy'} - 
+      {isDraggingFill && (dragFillPreviewRef.current || dragFillPreviewState) && dragFillStart && (() => {
+        const preview = dragFillPreviewRef.current || dragFillPreviewState;
+        if (!preview) return null;
+        return (
+          <div
+            className={cn(
+              "absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg px-4 py-1.5 pointer-events-none"
+            )}
+          >
+            <span className="p-1 text-sm min-w-[4.5rem] text-center font-medium text-foreground">
+              <span className="text-sm text-muted-foreground">
+                {dragFillMode === 'series' ? 'Fill Series' : 'Copy'} - 
+              </span>
+              {getRangeReference({
+                startRow: Math.min(dragFillStart.row, preview.row),
+                startCol: Math.min(dragFillStart.col, preview.col),
+                endRow: Math.max(dragFillStart.row, preview.row),
+                endCol: Math.max(dragFillStart.col, preview.col)
+              })}
             </span>
-            {getRangeReference({
-              startRow: Math.min(dragFillStart.row, dragFillPreview.row),
-              startCol: Math.min(dragFillStart.col, dragFillPreview.col),
-              endRow: Math.max(dragFillStart.row, dragFillPreview.row),
-              endCol: Math.max(dragFillStart.col, dragFillPreview.col)
-            })}
-          </span>
-        </div>
-      )}
+          </div>
+        );
+      })()}
       {/* Resize cursor overlay */}
       {isResizing && (
         <div
