@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
     // Get user from database
     const result = await db.execute({
       sql: `SELECT user_id, first_name, last_name, email, phone_number, 
-                   email_verified, phone_verified, is_active, created_at, updated_at 
+                   email_verified, phone_verified, is_active, plan_type, plan_limits, 
+                   created_at, updated_at 
             FROM users WHERE user_id = ? AND is_active = 1`,
       args: [payload.userId]
     });
@@ -107,7 +108,7 @@ export async function PATCH(request: NextRequest) {
       args.push(phone_number || null);
     }
 
-    sql += ' WHERE user_id = ? RETURNING user_id, first_name, last_name, email, phone_number, email_verified, phone_verified, is_active, created_at, updated_at';
+    sql += ' WHERE user_id = ? RETURNING user_id, first_name, last_name, email, phone_number, email_verified, phone_verified, is_active, plan_type, plan_limits, created_at, updated_at';
     args.push(payload.userId);
 
     // Update user

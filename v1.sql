@@ -8,6 +8,8 @@ CREATE TABLE users (
     email_verified BOOLEAN NOT NULL DEFAULT 0,
     phone_verified BOOLEAN NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT 1,
+    plan_type VARCHAR(20) NOT NULL DEFAULT 'free',
+    plan_limits INTEGER,
     created_at DATE NOT NULL DEFAULT CURRENT_DATE,
     updated_at DATE NOT NULL DEFAULT CURRENT_DATE
 );

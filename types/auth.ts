@@ -8,6 +8,8 @@ export interface User {
   email_verified: boolean;
   phone_verified: boolean;
   is_active: boolean;
+  plan_type: string;
+  plan_limits?: number;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +23,8 @@ export interface PublicUser {
   email_verified: boolean;
   phone_verified: boolean;
   is_active: boolean;
+  plan_type: string;
+  plan_limits?: number;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +46,11 @@ export interface UpdateUserRequest {
   first_name?: string;
   last_name?: string;
   phone_number?: string;
+}
+
+export interface UpdatePlanRequest {
+  plan_type: string;
+  plan_limits?: number;
 }
 
 export interface AuthResponse {

@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
     // Get all users (without password hashes)
     const result = await db.execute(`
       SELECT user_id, first_name, last_name, email, phone_number, 
-             email_verified, phone_verified, is_active, created_at, updated_at 
+             email_verified, phone_verified, is_active, plan_type, plan_limits, 
+             created_at, updated_at 
       FROM users 
       ORDER BY created_at DESC
     `);
