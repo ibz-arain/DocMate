@@ -250,7 +250,7 @@ Guidelines:
 
     // Generate response using AI with full conversation context
     const result = await generateText({
-      model: google('gemini-2.0-flash'),
+      model: google('gemini-2.5-flash'),
       messages: conversationMessages,
       maxTokens: 1000, // Reasonable limit for chat responses
       temperature: 0.7, // Slightly creative for conversational tone
