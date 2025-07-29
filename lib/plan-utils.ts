@@ -1,84 +1,95 @@
 import { db } from './db';
 
-// Plan configurations
-export const PLAN_CONFIGS = {
-  free: {
-    name: 'Free Forever',
-    price: '$0',
-    period: '/month',
-    document_analyses_per_month: 50,
-    features: ['50 document analyses per month', 'Unlimited document and spreadsheet access', 'Document history', 'Email support']
+export interface PlanConfig {
+  plan_type: string;
+  plan_limits: number;
+  description: string;
+}
+
+export const DEFAULT_PLANS: PlanConfig[] = [
+  {
+    plan_type: 'free',
+    plan_limits: 50,
+    description: 'Free tier with 50 API calls per month'
   },
-  hobby: {
-    name: 'Hobby',
-    price: '$19',
-    period: '/month',
-    document_analyses_per_month: 500,
-    features: ['500 document analyses per month', 'Everything in Free Forever', 'Email support']
+  {
+    plan_type: 'basic',
+    plan_limits: 500,
+    description: 'Basic plan with 500 API calls per month'
   },
-  pro: {
-    name: 'Pro',
-    price: '$29',
-    period: '/month',
-    document_analyses_per_month: 1000,
-    features: ['1,000 document analyses per month', 'Everything in Hobby', 'Usage tracking and analytics', 'Email support']
+  {
+    plan_type: 'pro',
+    plan_limits: 5000,
+    description: 'Pro plan with 5000 API calls per month'
   },
-  business: {
-    name: 'Business',
-    price: '$99',
-    period: '/month',
-    document_analyses_per_month: 5000,
-    features: ['5,000 document analyses per month', 'Everything in Pro', '24/7 phone support', 'Email support']
-  },
-  enterprise: {
-    name: 'Enterprise',
-    price: '$179',
-    period: '/month',
-    document_analyses_per_month: 10000,
-    features: ['10,000 document analyses per month', 'Everything in Business', 'Access to our API (for developers)', '24/7 phone support', 'Email support']
-  },
-  custom: {
-    name: 'Contact Us',
-    price: '',
-    period: '',
-    document_analyses_per_month: -1, // Unlimited
-    features: ['Unlimited document analyses', 'Pay as you go pricing', 'Everything in Enterprise', 'We can integrate into your apps', '24/7 phone support', 'Email support']
+  {
+    plan_type: 'enterprise',
+    plan_limits: 50000,
+    description: 'Enterprise plan with 50000 API calls per month'
   }
-};
+];
 
-export type PlanType = keyof typeof PLAN_CONFIGS;
+/**
+ * Set a user's plan and limits
+ */
+export async function setUserPlan(userId: number, planType: string, customLimit?: number): Promise<void> {
+  const plan = DEFAULT_PLANS.find(p => p.plan_type === planType);
+  
+  if (!plan && !customLimit) {
+    throw new Error(`Invalid plan type: ${planType}`);
+  }
+  
+  const planLimits = customLimit || plan?.plan_limits || 50;
+  
+  await db.execute({
+    sql: 'UPDATE users SET plan_type = ?, plan_limits = ?, updated_at = CURRENT_DATE WHERE user_id = ?',
+    args: [planType, planLimits, userId]
+  });
+}
 
-// Get user's current plan
-export async function getUserPlan(userId: number) {
-  try {
+/**
+ * Get plan information
+ */
+export function getPlanInfo(planType: string): PlanConfig | null {
+  return DEFAULT_PLANS.find(p => p.plan_type === planType) || null;
+}
+
+/**
+ * Get all available plans
+ */
+export function getAllPlans(): PlanConfig[] {
+  return DEFAULT_PLANS;
+}
+
+/**
+ * Check if a plan type is valid
+ */
+export function isValidPlanType(planType: string): boolean {
+  return DEFAULT_PLANS.some(p => p.plan_type === planType);
+}
+
+/**
+ * Get user's current plan info
+ */
+export async function getUserPlanInfo(userId: number): Promise<{ plan_type: string; plan_limits: number | null; plan_info?: PlanConfig }> {
     const result = await db.execute({
-      sql: `SELECT plan_type, plan_limits FROM users WHERE user_id = ? AND is_active = 1`,
+    sql: 'SELECT plan_type, plan_limits FROM users WHERE user_id = ?',
       args: [userId]
     });
 
     if (result.rows.length === 0) {
-      return null;
+    throw new Error('User not found');
     }
 
-    const userPlan = result.rows[0] as any;
-    const planType = userPlan.plan_type || 'free';
-    const planConfig = PLAN_CONFIGS[planType as PlanType];
-    
-    // Handle null plan_limits by using default config
-    const planLimits = userPlan.plan_limits ?? planConfig.document_analyses_per_month;
+  const planType = result.rows[0].plan_type as string;
+  const planLimits = result.rows[0].plan_limits as number | null;
+  const planInfo = getPlanInfo(planType);
 
     return {
-      planType,
-      planConfig,
-      planLimits: {
-        document_analyses_per_month: planLimits,
-        features: planConfig.features
-      }
-    };
-  } catch (error) {
-    console.error('Error getting user plan:', error);
-    return null;
-  }
+    plan_type: planType,
+    plan_limits: planLimits,
+    plan_info: planInfo || undefined
+  };
 }
 
 // Get user's current usage for the current month
@@ -88,14 +99,13 @@ export async function getUserUsage(userId: number, currentMonth?: string) {
     
     const result = await db.execute({
       sql: `SELECT COUNT(*) as usage_count 
-            FROM api_usage au 
-            JOIN api_endpoints ae ON au.endpoint_id = ae.id 
-            WHERE ae.user_id = ? 
-            AND strftime('%Y-%m', au.timestamp) = ?`,
+            FROM user_usage 
+            WHERE user_id = ? 
+            AND strftime('%Y-%m', timestamp) = ?`,
       args: [userId, month]
     });
 
-    return result.rows[0]?.usage_count || 0;
+    return Number(result.rows[0]?.usage_count) || 0;
   } catch (error) {
     console.error('Error getting user usage:', error);
     return 0;
@@ -105,14 +115,14 @@ export async function getUserUsage(userId: number, currentMonth?: string) {
 // Check if user has exceeded their plan limits
 export async function checkUserLimits(userId: number) {
   try {
-    const userPlan = await getUserPlan(userId);
+    const userPlan = await getUserPlanInfo(userId);
     if (!userPlan) {
       return { allowed: false, reason: 'User not found' };
     }
 
-    const { planLimits } = userPlan;
+    const { plan_limits } = userPlan;
     const currentUsage = await getUserUsage(userId);
-    const limit = planLimits.document_analyses_per_month;
+    const limit = plan_limits;
 
     // Unlimited plan
     if (limit === -1) {
@@ -120,7 +130,7 @@ export async function checkUserLimits(userId: number) {
     }
 
     // Check if user has exceeded their limit
-    if (currentUsage >= limit) {
+    if (limit && currentUsage >= limit) {
       return { 
         allowed: false, 
         currentUsage, 
@@ -141,8 +151,9 @@ export async function incrementUserUsage(userId: number, endpointId: string) {
   try {
     // Record the API usage
     await db.execute({
-      sql: `INSERT INTO api_usage (
-        endpoint_id,
+      sql: `INSERT INTO user_usage (
+        user_id,
+        endpoint_name,
         timestamp,
         status_code,
         response_time_ms,
@@ -150,9 +161,10 @@ export async function incrementUserUsage(userId: number, endpointId: string) {
         response_size_bytes,
         ip_address,
         user_agent
-      ) VALUES (?, datetime('now'), ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)`,
       args: [
-        endpointId,
+        userId,
+        'api_endpoint',
         200,
         0, // response_time_ms will be updated by the calling function
         0, // request_size_bytes
@@ -169,17 +181,20 @@ export async function incrementUserUsage(userId: number, endpointId: string) {
   }
 }
 
-// Validate plan type
-export function isValidPlanType(planType: string): planType is PlanType {
-  return planType in PLAN_CONFIGS;
-}
-
 // Get plan features
-export function getPlanFeatures(planType: PlanType) {
-  return PLAN_CONFIGS[planType].features;
+export function getPlanFeatures(planType: string) {
+  const plan = DEFAULT_PLANS.find(p => p.plan_type === planType);
+  if (!plan) {
+    return [];
+  }
+  return plan.description.split('per month')[0].split('with ')[1].split('API calls')[0].split(' ').filter(Boolean);
 }
 
 // Get plan limits
-export function getPlanLimits(planType: PlanType) {
-  return PLAN_CONFIGS[planType].document_analyses_per_month;
+export function getPlanLimits(planType: string) {
+  const plan = DEFAULT_PLANS.find(p => p.plan_type === planType);
+  if (!plan) {
+    return 0;
+  }
+  return plan.plan_limits;
 } 

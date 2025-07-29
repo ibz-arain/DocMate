@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit, FileSpreadsheet } from "lucide-react";
+import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit, FileSpreadsheet, Activity } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,12 @@ export function CustomSidebar({
       name: 'Template',
       icon: <Layout className="h-5 w-5" />,
       href: '/playground/templates'
+    },
+    {
+      id: 'usage',
+      name: 'Usage',
+      icon: <Activity className="h-5 w-5" />,
+      href: '/playground/usage'
     },
     // {
     //   id: 'api',

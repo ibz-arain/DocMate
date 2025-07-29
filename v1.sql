@@ -76,6 +76,32 @@ CREATE TABLE api_usage (
     FOREIGN KEY (endpoint_id) REFERENCES api_endpoints(id) ON DELETE CASCADE
 );
 
+-- New tables for API usage tracking
+CREATE TABLE user_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    endpoint_name TEXT NOT NULL, -- 'chat', 'analyze', etc.
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    request_size_bytes INTEGER,
+    response_size_bytes INTEGER,
+    status_code INTEGER NOT NULL,
+    response_time_ms INTEGER,
+    ip_address TEXT,
+    user_agent TEXT,
+    input_description TEXT, -- Stores user input description (chat message or analysis type)
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE plan_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    period_start DATE NOT NULL, -- Start of the billing period (e.g., 2024-01-01)
+    period_type TEXT NOT NULL CHECK (period_type IN ('daily', 'monthly')),
+    api_calls_count INTEGER NOT NULL DEFAULT 0,
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    UNIQUE(user_id, period_start, period_type)
+);
 
 -- Documents indexes (most important queries)
 CREATE INDEX idx_documents_user ON documents(user_id);
@@ -87,3 +113,8 @@ CREATE UNIQUE INDEX idx_templates_user_name ON templates(user_id, name);
 -- API Endpoints indexes
 CREATE INDEX idx_api_endpoints_user ON api_endpoints(user_id);
 CREATE INDEX idx_api_usage_endpoint_timestamp ON api_usage(endpoint_id, timestamp);
+
+-- New indexes for usage tracking
+CREATE INDEX idx_user_usage_user_timestamp ON user_usage(user_id, timestamp);
+CREATE INDEX idx_user_usage_endpoint ON user_usage(endpoint_name);
+CREATE INDEX idx_plan_usage_user_period ON plan_usage(user_id, period_start, period_type);

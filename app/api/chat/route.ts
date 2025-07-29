@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { z } from 'zod';
+import { withRateLimit } from '@/lib/rate-limit-middleware';
+import { getChatInputDescription } from '@/lib/input-description-utils';
 
 if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
   throw new Error('GOOGLE_GENERATIVE_AI_API_KEY environment variable is not set');
@@ -37,7 +39,7 @@ const ChatRequestSchema = z.object({
   })
 });
 
-export async function POST(req: NextRequest) {
+async function chatHandler(req: NextRequest) {
   try {
     const body = await req.json();
     const { message, messages = [], context } = ChatRequestSchema.parse(body);
@@ -286,3 +288,5 @@ Guidelines:
     );
   }
 } 
+
+export const POST = withRateLimit({ endpointName: 'chat', requireAuth: true })(chatHandler); 
