@@ -120,11 +120,7 @@ const TIME_RANGES: TimeRange[] = [
   { label: '12 Months', value: '12m', days: 365 },
 ];
 
-const GRAPH_TYPES = [
-  { label: 'Hourly', value: 'hourly' },
-  { label: 'Daily', value: 'daily' },
-  { label: 'Weekly', value: 'weekly' },
-];
+
 
 const CHART_TYPES = [
   { label: 'Bar Chart', value: 'bar', icon: BarChart3 },
@@ -137,7 +133,7 @@ export default function UsagePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<string>('7d'); // Default to 7 days
-  const [graphType, setGraphType] = useState<string>('hourly');
+
   const [chartType, setChartType] = useState<string>('bar');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -160,7 +156,6 @@ export default function UsagePage() {
       
       const params = new URLSearchParams({
         timeRange,
-        graphType,
         search: searchTerm,
         status: statusFilter,
         endpoint: endpointFilter,
@@ -194,7 +189,7 @@ export default function UsagePage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [user, timeRange, graphType, searchTerm, statusFilter, endpointFilter, currentPage]);
+  }, [user, timeRange, searchTerm, statusFilter, endpointFilter, currentPage]);
 
   useEffect(() => {
     if (user) {
@@ -263,7 +258,7 @@ export default function UsagePage() {
   };
 
   // Generate complete time series data with zero values for missing periods
-  const generateCompleteTimeSeries = (data: UsageData['graph_data'], timeRange: string, graphType: string) => {
+  const generateCompleteTimeSeries = (data: UsageData['graph_data'], timeRange: string) => {
     // Always generate time series even if no data exists
     
     const now = new Date();
@@ -272,8 +267,7 @@ export default function UsagePage() {
       nowLocal: now.toString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       timezoneOffset: now.getTimezoneOffset(),
-      timeRange,
-      graphType
+      timeRange
     });
     
     let startDate: Date;
@@ -284,18 +278,18 @@ export default function UsagePage() {
     switch (timeRange) {
       case '12h':
         periods = 12;
-        startDate = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 14 * 60 * 60 * 1000);
         interval = 60 * 60 * 1000; // 1 hour
         break;
       case '24h':
         periods = 24;
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 26 * 60 * 60 * 1000);
         interval = 60 * 60 * 1000; // 1 hour
         break;
       case '7d':
         periods = 7;
         // Start from 7 days ago from current date
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 5);
         interval = 24 * 60 * 60 * 1000; // 1 day
         break;
       case '30d':
@@ -393,7 +387,7 @@ export default function UsagePage() {
 
   // Enhanced chart component with both line and bar options
   const UsageChart = ({ data }: { data: UsageData['graph_data'] }) => {
-    const completeData = generateCompleteTimeSeries(data, timeRange, graphType);
+    const completeData = generateCompleteTimeSeries(data, timeRange);
     
     if (!completeData || completeData.length === 0) {
       return (
@@ -403,25 +397,100 @@ export default function UsagePage() {
         </div>
       );
     }
-    const maxCalls = Math.max(...completeData.map(d => d.call_count), 1);
-    const maxTime = Math.max(...completeData.map(d => d.avg_response_time), 1);
+    
+    // Calculate max calls for scaling and create reasonable Y-axis scale
+    const actualMaxCalls = Math.max(...completeData.map(d => d.call_count), 0);
+    
+    // Create scalable Y-axis scale based on max value (quarters)
+    let yAxisMax: number;
+    let yAxisTicks: number[];
+    
+    if (actualMaxCalls === 0) {
+      yAxisMax = 1;
+      yAxisTicks = [0, 1];
+    } else if (actualMaxCalls <= 4) {
+      yAxisMax = 4;
+      yAxisTicks = [0, 1, 2, 3, 4];
+    } else if (actualMaxCalls <= 8) {
+      yAxisMax = 8;
+      yAxisTicks = [0, 2, 4, 6, 8];
+    } else if (actualMaxCalls <= 20) {
+      yAxisMax = 20;
+      yAxisTicks = [0, 5, 10, 15, 20];
+    } else if (actualMaxCalls <= 40) {
+      yAxisMax = 40;
+      yAxisTicks = [0, 10, 20, 30, 40];
+    } else if (actualMaxCalls <= 80) {
+      yAxisMax = 80;
+      yAxisTicks = [0, 20, 40, 60, 80];
+    } else if (actualMaxCalls <= 200) {
+      yAxisMax = 200;
+      yAxisTicks = [0, 50, 100, 150, 200];
+    } else if (actualMaxCalls <= 400) {
+      yAxisMax = 400;
+      yAxisTicks = [0, 100, 200, 300, 400];
+    } else if (actualMaxCalls <= 800) {
+      yAxisMax = 800;
+      yAxisTicks = [0, 200, 400, 600, 800];
+    } else if (actualMaxCalls <= 2000) {
+      yAxisMax = 2000;
+      yAxisTicks = [0, 500, 1000, 1500, 2000];
+    } else if (actualMaxCalls <= 5000) {
+      yAxisMax = 5000;
+      yAxisTicks = [0, 1250, 2500, 3750, 5000];
+    } else if (actualMaxCalls <= 10000) {
+      yAxisMax = 10000;
+      yAxisTicks = [0, 2500, 5000, 7500, 10000];
+    } else if (actualMaxCalls <= 25000) {
+      yAxisMax = 25000;
+      yAxisTicks = [0, 6250, 12500, 18750, 25000];
+    } else if (actualMaxCalls <= 50000) {
+      yAxisMax = 50000;
+      yAxisTicks = [0, 12500, 25000, 37500, 50000];
+    } else if (actualMaxCalls <= 100000) {
+      yAxisMax = 100000;
+      yAxisTicks = [0, 25000, 50000, 75000, 100000];
+    } else if (actualMaxCalls <= 250000) {
+      yAxisMax = 250000;
+      yAxisTicks = [0, 62500, 125000, 187500, 250000];
+    } else if (actualMaxCalls <= 500000) {
+      yAxisMax = 500000;
+      yAxisTicks = [0, 125000, 250000, 375000, 500000];
+    } else if (actualMaxCalls <= 1000000) {
+      yAxisMax = 1000000;
+      yAxisTicks = [0, 250000, 500000, 750000, 1000000];
+    } else {
+      // For very high values, round up to nearest million
+      yAxisMax = Math.ceil(actualMaxCalls / 1000000) * 1000000;
+      const step = yAxisMax / 4;
+      yAxisTicks = Array.from({ length: 5 }, (_, i) => Math.round(i * step));
+    }
+    
+    console.log('🔍 DEBUG - Chart data:', {
+      completeDataLength: completeData.length,
+      actualMaxCalls,
+      yAxisMax,
+      yAxisTicks,
+      sampleData: completeData.slice(0, 3).map(d => ({ time_bucket: d.time_bucket, call_count: d.call_count })),
+      allCallCounts: completeData.map(d => d.call_count)
+    });
 
       const formatTimeLabel = (timeBucket: string) => {
     const date = new Date(timeBucket);
     
-    if (graphType === 'hourly') {
+    if (timeRange === '12h' || timeRange === '24h') {
       // Show time like "8 AM", "2 PM"
       return date.toLocaleTimeString([], { 
         hour: 'numeric',
         hour12: true 
       });
-    } else if (graphType === 'daily') {
+    } else if (timeRange === '7d') {
       // Show day names like "Mon", "Tue", "Wed"
       return date.toLocaleDateString([], { 
         weekday: 'short'
       });
     } else {
-      // Weekly - show week number or date range
+      // For other ranges, show date
       return date.toLocaleDateString([], { 
         month: 'short', 
         day: 'numeric' 
@@ -439,36 +508,58 @@ export default function UsagePage() {
       
       // Show month name only for first day of month or every 10th day
       if (dayNumber === 1 || dayNumber % 10 === 0) {
-        return `${dayNumber} ${monthName}`;
+        return (
+          <div className="text-xs text-gray-500">
+            <div>{dayNumber}</div>
+            <div className="text-gray-400">{monthName}</div>
+          </div>
+        );
       } else {
-        return dayNumber.toString();
+        return <div className="text-xs text-gray-500">{dayNumber}</div>;
       }
-    } else if (timeRange === '24h' || timeRange === '12h') {
-      // For hourly views, show time like "8 AM", "2 PM"
-      return date.toLocaleTimeString([], { 
+    } else if (timeRange === '24h') {
+      // For 24 hours, show hour numbers and AM/PM labels
+      const hour = date.getHours();
+      const isAM = hour < 12;
+      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      
+      // Show AM/PM only for every 6th hour (0, 6, 12, 18)
+      if (hour % 6 === 0) {
+        return (
+          <div className="text-xs text-gray-500">
+            <div>{displayHour}</div>
+            <div className="text-gray-400">{isAM ? 'AM' : 'PM'}</div>
+          </div>
+        );
+      } else {
+        return <div className="text-xs text-gray-500">{displayHour}</div>;
+      }
+    } else if (timeRange === '12h') {
+      // For 12 hours, show time like "8 AM", "2 PM"
+      return <div className="text-xs text-gray-500">{date.toLocaleTimeString([], { 
         hour: 'numeric',
         hour12: true 
-      });
+      })}</div>;
     } else if (timeRange === '7d') {
       // For 7 days, show day names like "Mon", "Tue", "Wed"
-      return date.toLocaleDateString([], { 
+      return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
         weekday: 'short'
-      });
+      })}</div>;
     } else if (timeRange === '6m' || timeRange === '12m') {
       // For 6 months and 12 months, show month names
-      return date.toLocaleDateString([], { month: 'short' });
+      return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { month: 'short' })}</div>;
     } else {
       // Default - show date
-      return date.toLocaleDateString([], { 
+      return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
         month: 'short', 
         day: 'numeric' 
-      });
+      })}</div>;
     }
   };
 
     return (
       <div className="space-y-4">
-        {/* Chart Type Toggle */}
+        {/* Chart Type Toggle
         <div className="flex items-center justify-center gap-2 mb-4">
           {CHART_TYPES.map((type) => {
             const Icon = type.icon;
@@ -485,21 +576,19 @@ export default function UsagePage() {
               </Button>
             );
           })}
-        </div>
+        </div> */}
 
         {/* Chart Container */}
         <div className="relative">
           {/* Y-axis labels */}
           <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 w-12">
-            <span>{maxCalls}</span>
-            <span>{Math.round(maxCalls * 0.75)}</span>
-            <span>{Math.round(maxCalls * 0.5)}</span>
-            <span>{Math.round(maxCalls * 0.25)}</span>
-            <span>0</span>
+            {yAxisTicks.slice().reverse().map((tick, index) => (
+              <span key={index}>{tick}</span>
+            ))}
           </div>
 
                      {/* Chart Area */}
-           <div className="ml-12 h-48 flex items-end justify-between gap-1 relative">
+           <div className="ml-12 mt-4 h-56 flex items-end justify-between gap-1 relative">
              {chartType === 'line' && (
                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ left: '0', right: '0' }}>
                  <polyline
@@ -508,7 +597,7 @@ export default function UsagePage() {
                    strokeWidth="2"
                    points={completeData.map((point, index) => {
                      const x = (index / (completeData.length - 1)) * 100;
-                     const y = 100 - (point.call_count / maxCalls) * 100;
+                     const y = 100 - (point.call_count / yAxisMax) * 100;
                      return `${x}%,${y}%`;
                    }).join(' ')}
                  />
@@ -522,8 +611,8 @@ export default function UsagePage() {
                      <div 
                        className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t transition-all duration-200 hover:from-emerald-600 hover:to-emerald-500 group-hover:shadow-lg"
                        style={{ 
-                         height: `${(point.call_count / maxCalls) * 100}%`,
-                         minHeight: '4px'
+                         height: `${Math.max((point.call_count / yAxisMax) * 100, 2)}%`,
+                         minHeight: point.call_count > 0 ? '8px' : '2px'
                        }}
                      >
                        {/* Hover tooltip */}
@@ -538,7 +627,7 @@ export default function UsagePage() {
                      <div 
                        className="w-2 h-2 bg-emerald-500 rounded-full transition-all duration-200 group-hover:bg-emerald-600 group-hover:shadow-lg"
                        style={{ 
-                         transform: `translateY(${100 - (point.call_count / maxCalls) * 100}%)`,
+                         transform: `translateY(${100 - (point.call_count / yAxisMax) * 100}%)`,
                        }}
                      >
                        {/* Hover tooltip */}
@@ -548,14 +637,11 @@ export default function UsagePage() {
                      </div>
                    </div>
                  )}
-                 
-                 {/* X-axis labels */}
-                 <div className="text-xs text-gray-500 mt-2 text-center">
-                   {formatTimeLabelWithMonth(point.time_bucket, index)}
-                 </div>
                </div>
              ))}
            </div>
+           
+
 
           {/* Grid lines */}
           <div className="absolute left-12 right-0 top-0 bottom-0 pointer-events-none">
@@ -563,36 +649,23 @@ export default function UsagePage() {
               <div
                 key={percent}
                 className="absolute w-full border-t border-gray-200"
-                style={{ top: `${percent}%` }}
+                style={{ top: `100%` }}
               />
             ))}
           </div>
         </div>
 
-                 {/* Chart Stats */}
-         <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-           <div className="text-center">
-             <div className="text-2xl font-bold text-emerald-600">
-               {completeData.reduce((sum, d) => sum + d.call_count, 0).toLocaleString()}
-             </div>
-             <div className="text-xs text-gray-500">Total Calls</div>
+          {/* X-axis labels - moved below chart */}
+            <div className="ml-12 mt-1 flex justify-between gap-1">
+             {completeData.map((point, index) => (
+               <div key={index} className="flex-1 text-center">
+                 {formatTimeLabelWithMonth(point.time_bucket, index)}
+               </div>
+             ))}
            </div>
-           <div className="text-center">
-             <div className="text-2xl font-bold text-green-600">
-               {completeData.reduce((sum, d) => sum + d.success_count, 0).toLocaleString()}
-             </div>
-             <div className="text-xs text-gray-500">Successful</div>
-           </div>
-           <div className="text-center">
-             <div className="text-2xl font-bold text-amber-600">
-               {completeData.length > 0 
-                 ? Math.round(completeData.reduce((sum, d) => sum + d.avg_response_time, 0) / completeData.length)
-                 : 0
-               }ms
-             </div>
-             <div className="text-xs text-gray-500">Avg Response</div>
-           </div>
-         </div>
+
+        {/* Chart Stats */}
+         
       </div>
     );
   };
@@ -836,18 +909,7 @@ export default function UsagePage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select value={graphType} onValueChange={setGraphType}>
-                      <SelectTrigger className="w-[90px] h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GRAPH_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+
                   </div>
                 </div>
               </CardHeader>
