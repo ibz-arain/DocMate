@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -120,47 +120,29 @@ const TIME_RANGES: TimeRange[] = [
   { label: '12 Months', value: '12m', days: 365 },
 ];
 
-
-
 const CHART_TYPES = [
   { label: 'Bar Chart', value: 'bar', icon: BarChart3 },
   { label: 'Line Chart', value: 'line', icon: TrendingUp },
 ];
 
-export default function UsagePage() {
+// Separate Graph Component
+const UsageGraphCard = () => {
   const { user } = useAuth();
-  const [usageData, setUsageData] = useState<UsageData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [graphData, setGraphData] = useState<UsageData['graph_data']>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<string>('7d'); // Default to 7 days
+  const [timeRange, setTimeRange] = useState<string>('7d');
 
-  const [chartType, setChartType] = useState<string>('bar');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [endpointFilter, setEndpointFilter] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const fetchUsageData = useCallback(async (isRefresh = false) => {
+  const fetchGraphData = useCallback(async () => {
     if (!user) return;
     
     try {
-      if (isRefresh) {
-        setIsRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
       setError(null);
       
       const params = new URLSearchParams({
         timeRange,
-        search: searchTerm,
-        status: statusFilter,
-        endpoint: endpointFilter,
-        page: currentPage.toString(),
-        limit: '20'
+        limit: '1000' // Get more data for graph
       });
       
       const response = await fetch(`/api/users/usage?${params}`, {
@@ -169,145 +151,63 @@ export default function UsagePage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to fetch usage data`);
+        throw new Error(errorData.message || `HTTP ${response.status}: Failed to fetch graph data`);
       }
 
       const data = await response.json();
-      console.log('🔍 DEBUG - Received usage data:', {
-        current_usage: data.current_usage,
-        graph_data_length: data.graph_data?.length || 0,
-        usage_data_length: data.usage_data?.length || 0,
-        first_graph_point: data.graph_data?.[0],
-        last_graph_point: data.graph_data?.[data.graph_data.length - 1],
-        filters: data.filters
-      });
-      setUsageData(data);
+      setGraphData(data.graph_data || []);
     } catch (err) {
-      console.error('Usage data fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load usage data');
+      console.error('Graph data fetch error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load graph data');
     } finally {
       setLoading(false);
-      setIsRefreshing(false);
     }
-  }, [user, timeRange, searchTerm, statusFilter, endpointFilter, currentPage]);
+  }, [user, timeRange]);
 
   useEffect(() => {
     if (user) {
-      fetchUsageData();
+      fetchGraphData();
     }
-  }, [user, fetchUsageData]);
-
-  // Auto-refresh effect
-  useEffect(() => {
-    if (!autoRefresh) return;
-    
-    const interval = setInterval(() => {
-      fetchUsageData(true);
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, fetchUsageData]);
-
-  const getUsagePercentage = () => {
-    if (!usageData?.current_usage.limit) return 0;
-    return Math.min((usageData.current_usage.current_usage / usageData.current_usage.limit) * 100, 100);
-  };
-
-  const getStatusColor = (statusCode: number) => {
-    return statusCode >= 200 && statusCode < 300 ? 'success' : 'error';
-  };
-
-  const getStatusText = (statusCode: number) => {
-    return statusCode >= 200 && statusCode < 300 ? 'Success' : 'Error';
-  };
-
-  const formatResponseTime = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const getRemainingCalls = () => {
-    if (!usageData?.current_usage.limit) return 'Unlimited';
-    const remaining = usageData.current_usage.limit - usageData.current_usage.current_usage;
-    return Math.max(0, remaining);
-  };
-
-  const getNextRenewalDate = () => {
-    if (!usageData?.plan_info.next_renewal) return 'N/A';
-    return new Date(usageData.plan_info.next_renewal).toLocaleDateString();
-  };
-
-  const getDaysUntilRenewal = () => {
-    if (!usageData?.plan_info.next_renewal) return 0;
-    const renewal = new Date(usageData.plan_info.next_renewal);
-    const now = new Date();
-    const diffTime = renewal.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  };
+  }, [user, fetchGraphData]);
 
   // Generate complete time series data with zero values for missing periods
   const generateCompleteTimeSeries = (data: UsageData['graph_data'], timeRange: string) => {
-    // Always generate time series even if no data exists
-    
     const now = new Date();
-    console.log('🔍 DEBUG - Frontend time generation:', {
-      now: now.toISOString(),
-      nowLocal: now.toString(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      timezoneOffset: now.getTimezoneOffset(),
-      timeRange
-    });
     
     let startDate: Date;
     let interval: number;
     let periods: number;
     
-    // Calculate start date and interval based on time range
     switch (timeRange) {
       case '12h':
         periods = 12;
         startDate = new Date(now.getTime() - 14 * 60 * 60 * 1000);
-        interval = 60 * 60 * 1000; // 1 hour
+        interval = 60 * 60 * 1000;
         break;
       case '24h':
         periods = 24;
         startDate = new Date(now.getTime() - 26 * 60 * 60 * 1000);
-        interval = 60 * 60 * 1000; // 1 hour
+        interval = 60 * 60 * 1000;
         break;
       case '7d':
         periods = 7;
-        // Start from 7 days ago from current date
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 5);
-        interval = 24 * 60 * 60 * 1000; // 1 day
+        interval = 24 * 60 * 60 * 1000;
         break;
       case '30d':
         periods = 30;
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        interval = 24 * 60 * 60 * 1000; // 1 day
+        interval = 24 * 60 * 60 * 1000;
         break;
       case '6m':
         periods = 6;
-        // Calculate 6 months ago from current date
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
-        interval = 30 * 24 * 60 * 60 * 1000; // ~1 month
+        interval = 30 * 24 * 60 * 60 * 1000;
         break;
       case '12m':
         periods = 12;
-        // Calculate 12 months ago from current date
         startDate = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
-        interval = 30 * 24 * 60 * 60 * 1000; // ~1 month
+        interval = 30 * 24 * 60 * 60 * 1000;
         break;
       default:
         periods = 7;
@@ -315,42 +215,22 @@ export default function UsagePage() {
         interval = 24 * 60 * 60 * 1000;
     }
     
-    console.log('🔍 DEBUG - Frontend date calculations:', {
-      startDate: startDate.toISOString(),
-      startDateLocal: startDate.toString(),
-      periods,
-      interval,
-      timeDiff: now.getTime() - startDate.getTime(),
-      timeDiffHours: (now.getTime() - startDate.getTime()) / (1000 * 60 * 60)
-    });
-    
-    // Create a map of existing data
     const dataMap = new Map();
     data.forEach(item => {
       dataMap.set(item.time_bucket, item);
     });
     
-    // Generate complete time series with exact number of periods
     const completeSeries = [];
     let currentDate = new Date(startDate);
-    
-    console.log('🔍 DEBUG - Starting time series generation with data:', {
-      dataLength: data.length,
-      firstDataPoint: data[0],
-      lastDataPoint: data[data.length - 1]
-    });
     
     for (let i = 0; i < periods; i++) {
       let timeBucket: string;
       
       if (timeRange === '12h' || timeRange === '24h') {
-        // For hourly views, use hourly time buckets
         timeBucket = currentDate.toISOString().slice(0, 13) + ':00:00';
       } else if (timeRange === '6m' || timeRange === '12m') {
-        // For monthly views, use monthly time buckets
-        timeBucket = currentDate.toISOString().slice(0, 7); // YYYY-MM format
+        timeBucket = currentDate.toISOString().slice(0, 7);
       } else {
-        // For daily views, use daily time buckets
         timeBucket = currentDate.toISOString().split('T')[0];
       }
       
@@ -364,44 +244,50 @@ export default function UsagePage() {
       });
       
       if (timeRange === '6m' || timeRange === '12m') {
-        // For months, advance by 1 month
         currentDate.setMonth(currentDate.getMonth() + 1);
       } else if (timeRange === '7d') {
-        // For 7 days, advance by 1 day
         currentDate.setDate(currentDate.getDate() + 1);
       } else {
-        // For hours/days, advance by interval
         currentDate = new Date(currentDate.getTime() + interval);
       }
     }
     
-    console.log('🔍 DEBUG - Generated time series:', {
-      seriesLength: completeSeries.length,
-      firstBucket: completeSeries[0]?.time_bucket,
-      lastBucket: completeSeries[completeSeries.length - 1]?.time_bucket,
-      sampleBuckets: completeSeries.slice(0, 3).map(s => s.time_bucket)
-    });
-    
     return completeSeries;
   };
 
-  // Enhanced chart component with both line and bar options
-  const UsageChart = ({ data }: { data: UsageData['graph_data'] }) => {
-    const completeData = generateCompleteTimeSeries(data, timeRange);
+      const UsageChart = ({ data }: { data: UsageData['graph_data'] }) => {
+      const completeData = useMemo(() => generateCompleteTimeSeries(data, timeRange), [data, timeRange]);
+      const [animatedData, setAnimatedData] = useState<typeof completeData>([]);
+      const [isAnimating, setIsAnimating] = useState(false);
+      
+      // Animate bars when data changes
+      useEffect(() => {
+        if (completeData.length > 0) {
+          setIsAnimating(true);
+          // Start with zero heights
+          setAnimatedData(completeData.map((item: any) => ({ ...item, call_count: 0 })));
+          
+          // Animate to actual values after a short delay
+          const timer = setTimeout(() => {
+            setAnimatedData(completeData);
+            setIsAnimating(false);
+          }, 100);
+          
+          return () => clearTimeout(timer);
+        }
+      }, [data, timeRange]); // Use stable dependencies instead of completeData
+      
+      if (!completeData || completeData.length === 0) {
+        return (
+          <div className="flex items-center justify-center h-64 text-gray-500">
+            <BarChart3 className="h-8 w-8 mr-2" />
+            No data available for selected time range
+          </div>
+        );
+      }
     
-    if (!completeData || completeData.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-64 text-gray-500">
-          <BarChart3 className="h-8 w-8 mr-2" />
-          No data available for selected time range
-        </div>
-      );
-    }
+          const actualMaxCalls = Math.max(...animatedData.map((d: any) => d.call_count), 0);
     
-    // Calculate max calls for scaling and create reasonable Y-axis scale
-    const actualMaxCalls = Math.max(...completeData.map(d => d.call_count), 0);
-    
-    // Create scalable Y-axis scale based on max value (quarters)
     let yAxisMax: number;
     let yAxisTicks: number[];
     
@@ -460,190 +346,95 @@ export default function UsagePage() {
       yAxisMax = 1000000;
       yAxisTicks = [0, 250000, 500000, 750000, 1000000];
     } else {
-      // For very high values, round up to nearest million
       yAxisMax = Math.ceil(actualMaxCalls / 1000000) * 1000000;
       const step = yAxisMax / 4;
       yAxisTicks = Array.from({ length: 5 }, (_, i) => Math.round(i * step));
     }
-    
-    console.log('🔍 DEBUG - Chart data:', {
-      completeDataLength: completeData.length,
-      actualMaxCalls,
-      yAxisMax,
-      yAxisTicks,
-      sampleData: completeData.slice(0, 3).map(d => ({ time_bucket: d.time_bucket, call_count: d.call_count })),
-      allCallCounts: completeData.map(d => d.call_count)
-    });
 
-      const formatTimeLabel = (timeBucket: string) => {
-    const date = new Date(timeBucket);
-    
-    if (timeRange === '12h' || timeRange === '24h') {
-      // Show time like "8 AM", "2 PM"
-      return date.toLocaleTimeString([], { 
-        hour: 'numeric',
-        hour12: true 
-      });
-    } else if (timeRange === '7d') {
-      // Show day names like "Mon", "Tue", "Wed"
-      return date.toLocaleDateString([], { 
-        weekday: 'short'
-      });
-    } else {
-      // For other ranges, show date
-      return date.toLocaleDateString([], { 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    }
-  };
-
-  const formatTimeLabelWithMonth = (timeBucket: string, index: number) => {
-    const date = new Date(timeBucket);
-    
-    if (timeRange === '30d') {
-      // For 30 days, show date numbers and month names
-      const dayNumber = date.getDate();
-      const monthName = date.toLocaleDateString([], { month: 'short' });
+    const formatTimeLabelWithMonth = (timeBucket: string, index: number) => {
+      const date = new Date(timeBucket);
       
-      // Show month name only for first day of month or every 10th day
-      if (dayNumber === 1 || dayNumber % 10 === 0) {
-        return (
-          <div className="text-xs text-gray-500">
-            <div>{dayNumber}</div>
-            <div className="text-gray-400">{monthName}</div>
-          </div>
-        );
+      if (timeRange === '30d') {
+        const dayNumber = date.getDate();
+        const monthName = date.toLocaleDateString([], { month: 'short' });
+        
+        if (dayNumber === 1 || dayNumber % 10 === 0) {
+          return (
+            <div className="text-xs text-gray-500">
+              <div>{dayNumber}</div>
+              <div className="text-gray-400">{monthName}</div>
+            </div>
+          );
+        } else {
+          return <div className="text-xs text-gray-500">{dayNumber}</div>;
+        }
+      } else if (timeRange === '24h') {
+        const hour = date.getHours();
+        const isAM = hour < 12;
+        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        
+        if (hour % 6 === 0) {
+          return (
+            <div className="text-xs text-gray-500">
+              <div>{displayHour}</div>
+              <div className="text-gray-400">{isAM ? 'AM' : 'PM'}</div>
+            </div>
+          );
+        } else {
+          return <div className="text-xs text-gray-500">{displayHour}</div>;
+        }
+      } else if (timeRange === '12h') {
+        return <div className="text-xs text-gray-500">{date.toLocaleTimeString([], { 
+          hour: 'numeric',
+          hour12: true 
+        })}</div>;
+      } else if (timeRange === '7d') {
+        return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
+          weekday: 'short'
+        })}</div>;
+      } else if (timeRange === '6m' || timeRange === '12m') {
+        return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { month: 'short' })}</div>;
       } else {
-        return <div className="text-xs text-gray-500">{dayNumber}</div>;
+        return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
+          month: 'short', 
+          day: 'numeric' 
+        })}</div>;
       }
-    } else if (timeRange === '24h') {
-      // For 24 hours, show hour numbers and AM/PM labels
-      const hour = date.getHours();
-      const isAM = hour < 12;
-      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-      
-      // Show AM/PM only for every 6th hour (0, 6, 12, 18)
-      if (hour % 6 === 0) {
-        return (
-          <div className="text-xs text-gray-500">
-            <div>{displayHour}</div>
-            <div className="text-gray-400">{isAM ? 'AM' : 'PM'}</div>
-          </div>
-        );
-      } else {
-        return <div className="text-xs text-gray-500">{displayHour}</div>;
-      }
-    } else if (timeRange === '12h') {
-      // For 12 hours, show time like "8 AM", "2 PM"
-      return <div className="text-xs text-gray-500">{date.toLocaleTimeString([], { 
-        hour: 'numeric',
-        hour12: true 
-      })}</div>;
-    } else if (timeRange === '7d') {
-      // For 7 days, show day names like "Mon", "Tue", "Wed"
-      return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
-        weekday: 'short'
-      })}</div>;
-    } else if (timeRange === '6m' || timeRange === '12m') {
-      // For 6 months and 12 months, show month names
-      return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { month: 'short' })}</div>;
-    } else {
-      // Default - show date
-      return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
-        month: 'short', 
-        day: 'numeric' 
-      })}</div>;
-    }
-  };
+    };
 
     return (
       <div className="space-y-4">
-        {/* Chart Type Toggle
-        <div className="flex items-center justify-center gap-2 mb-4">
-          {CHART_TYPES.map((type) => {
-            const Icon = type.icon;
-            return (
-              <Button
-                key={type.value}
-                variant={chartType === type.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setChartType(type.value)}
-                className="flex items-center gap-2"
-              >
-                <Icon className="h-4 w-4" />
-                {type.label}
-              </Button>
-            );
-          })}
-        </div> */}
-
-        {/* Chart Container */}
         <div className="relative">
-          {/* Y-axis labels */}
           <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 w-12">
             {yAxisTicks.slice().reverse().map((tick, index) => (
               <span key={index}>{tick}</span>
             ))}
           </div>
 
-                     {/* Chart Area */}
-           <div className="ml-12 mt-4 h-56 flex items-end justify-between gap-1 relative">
-             {chartType === 'line' && (
-               <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ left: '0', right: '0' }}>
-                 <polyline
-                   fill="none"
-                   stroke="#10b981"
-                   strokeWidth="2"
-                   points={completeData.map((point, index) => {
-                     const x = (index / (completeData.length - 1)) * 100;
-                     const y = 100 - (point.call_count / yAxisMax) * 100;
-                     return `${x}%,${y}%`;
-                   }).join(' ')}
-                 />
-               </svg>
-             )}
-             {completeData.map((point, index) => (
-               <div key={index} className="flex-1 flex flex-col items-center group">
-                 {chartType === 'bar' ? (
-                   // Bar Chart
-                   <div className="w-full relative">
-                     <div 
-                       className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t transition-all duration-200 hover:from-emerald-600 hover:to-emerald-500 group-hover:shadow-lg"
-                       style={{ 
-                         height: `${Math.max((point.call_count / yAxisMax) * 100, 2)}%`,
-                         minHeight: point.call_count > 0 ? '8px' : '2px'
-                       }}
-                     >
-                       {/* Hover tooltip */}
-                       <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                         {point.call_count} calls
-                       </div>
-                     </div>
-                   </div>
-                 ) : (
-                   // Line Chart
-                   <div className="w-full relative">
-                     <div 
-                       className="w-2 h-2 bg-emerald-500 rounded-full transition-all duration-200 group-hover:bg-emerald-600 group-hover:shadow-lg"
-                       style={{ 
-                         transform: `translateY(${100 - (point.call_count / yAxisMax) * 100}%)`,
-                       }}
-                     >
-                       {/* Hover tooltip */}
-                       <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                         {point.call_count} calls
-                       </div>
-                     </div>
-                   </div>
-                 )}
-               </div>
-             ))}
-           </div>
-           
+          <div className="ml-12 mt-4 h-56 flex items-end justify-between gap-1 relative">
+            {animatedData.map((point: any, index: number) => {
+              const heightPercentage = point.call_count > 0 ? (point.call_count / yAxisMax) * 100 : 0;
+              return (
+                <div key={index} className="flex-1 flex flex-col items-center group h-full">
+                  <div className="w-full h-full flex items-end relative">
+                    <div 
+                      className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t transition-all duration-1000 ease-out hover:from-emerald-600 hover:to-emerald-500 group-hover:shadow-lg relative"
+                      style={{ 
+                        height: `${heightPercentage}%`,
+                        minHeight: heightPercentage > 0 ? '4px' : '0px'
+                      }}
+                      title={`${point.call_count} calls (${heightPercentage}% height)`}
+                    >
+                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                        {point.call_count} calls
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-
-          {/* Grid lines */}
           <div className="absolute left-12 right-0 top-0 bottom-0 pointer-events-none">
             {[0, 25, 50, 75, 100].map((percent) => (
               <div
@@ -655,19 +446,227 @@ export default function UsagePage() {
           </div>
         </div>
 
-          {/* X-axis labels - moved below chart */}
-            <div className="ml-12 mt-1 flex justify-between gap-1">
-             {completeData.map((point, index) => (
-               <div key={index} className="flex-1 text-center">
-                 {formatTimeLabelWithMonth(point.time_bucket, index)}
-               </div>
-             ))}
-           </div>
-
-        {/* Chart Stats */}
-         
+        <div className="ml-12 mt-1 flex justify-between gap-1">
+          {animatedData.map((point: any, index: number) => (
+            <div key={index} className="flex-1 text-center">
+              {formatTimeLabelWithMonth(point.time_bucket, index)}
+            </div>
+          ))}
+        </div>
       </div>
     );
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-semibold">Usage Analytics</CardTitle>
+              <CardDescription>API calls and performance metrics</CardDescription>
+            </div>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[120px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_RANGES.map((range) => (
+                  <SelectItem key={range.value} value={range.value}>
+                    {range.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <UsageChart data={[]} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-semibold">Usage Analytics</CardTitle>
+              <CardDescription>API calls and performance metrics</CardDescription>
+            </div>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[120px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_RANGES.map((range) => (
+                  <SelectItem key={range.value} value={range.value}>
+                    {range.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64 text-red-500">
+            <AlertTriangle className="h-8 w-8 mr-2" />
+            {error}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg font-semibold">Usage Analytics</CardTitle>
+            <CardDescription>API calls and performance metrics</CardDescription>
+          </div>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[120px] h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_RANGES.map((range) => (
+                <SelectItem key={range.value} value={range.value}>
+                  {range.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <UsageChart data={graphData} />
+      </CardContent>
+    </Card>
+  );
+};
+
+export default function UsagePage() {
+  const { user } = useAuth();
+  const [usageData, setUsageData] = useState<UsageData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [endpointFilter, setEndpointFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchUsageData = useCallback(async (isRefresh = false) => {
+    if (!user) return;
+    
+    try {
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      
+      const params = new URLSearchParams({
+        timeRange: '7d', // Fixed time range for main data
+        search: searchTerm,
+        status: statusFilter,
+        endpoint: endpointFilter,
+        page: currentPage.toString(),
+        limit: '20'
+      });
+      
+      const response = await fetch(`/api/users/usage?${params}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: Failed to fetch usage data`);
+      }
+
+      const data = await response.json();
+      setUsageData(data);
+    } catch (err) {
+      console.error('Usage data fetch error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load usage data');
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [user, searchTerm, statusFilter, endpointFilter, currentPage]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUsageData();
+    }
+  }, [user, fetchUsageData]);
+
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      fetchUsageData(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchUsageData]);
+
+  const getUsagePercentage = () => {
+    if (!usageData?.current_usage.limit) return 0;
+    return Math.min((usageData.current_usage.current_usage / usageData.current_usage.limit) * 100, 100);
+  };
+
+  const getStatusColor = (statusCode: number) => {
+    return statusCode >= 200 && statusCode < 300 ? 'success' : 'error';
+  };
+
+  const getStatusText = (statusCode: number) => {
+    return statusCode >= 200 && statusCode < 300 ? 'Success' : 'Error';
+  };
+
+  const formatResponseTime = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  const getRemainingCalls = () => {
+    if (!usageData?.current_usage.limit) return 'Unlimited';
+    const remaining = usageData.current_usage.limit - usageData.current_usage.current_usage;
+    return Math.max(0, remaining);
+  };
+
+  const getNextRenewalDate = () => {
+    if (!usageData?.plan_info.next_renewal) return 'N/A';
+    return new Date(usageData.plan_info.next_renewal).toLocaleDateString();
+  };
+
+  const getDaysUntilRenewal = () => {
+    if (!usageData?.plan_info.next_renewal) return 0;
+    const renewal = new Date(usageData.plan_info.next_renewal);
+    const now = new Date();
+    const diffTime = renewal.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
   };
 
   const clearFilters = () => {
@@ -685,13 +684,10 @@ export default function UsagePage() {
         <CustomSidebar selectedType="usage" />
         <main className="flex-1 flex flex-col overflow-hidden p-6">
           <div className="space-y-6">
-            {/* Top Cards Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Skeleton className="h-64 w-full" />
               <Skeleton className="h-64 w-full" />
             </div>
-
-            {/* Bottom Table Skeleton */}
             <Skeleton className="h-96 w-full" />
           </div>
         </main>
@@ -744,9 +740,7 @@ export default function UsagePage() {
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar selectedType="usage" />
         <main className="flex-1 flex flex-col overflow-hidden p-6">
-          {/* Top Row - Two Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Quick Stats Card */}
             <Card className="relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full -translate-y-16 translate-x-16"></div>
               <CardHeader className="pb-2 relative z-10">
@@ -774,7 +768,6 @@ export default function UsagePage() {
                 </div>
               </CardHeader>
               <CardContent className="relative z-10 space-y-6">
-                {/* Main Usage Display */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -802,7 +795,6 @@ export default function UsagePage() {
                     </div>
                   </div>
 
-                  {/* Compact Progress Bar */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Usage</span>
@@ -824,7 +816,6 @@ export default function UsagePage() {
                   </div>
                 </div>
 
-                {/* Compact Plan Info */}
                 <div className="bg-gradient-to-br from-muted/50 to-primary/5 rounded-lg p-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -846,7 +837,6 @@ export default function UsagePage() {
                     </Badge>
                   </div>
 
-                  {/* Compact Renewal Info */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-background/50 rounded-lg p-2 border">
                       <div className="flex items-center gap-1 mb-1">
@@ -870,7 +860,6 @@ export default function UsagePage() {
                     </div>
                   </div>
 
-                  {/* Compact Action Button */}
                   <div>
                     {usageData.plan_info.plan_type === 'free' ? (
                       <Button size="sm" className="w-full bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90">
@@ -888,38 +877,9 @@ export default function UsagePage() {
               </CardContent>
             </Card>
 
-            {/* Graph Card */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg font-semibold">Usage Analytics</CardTitle>
-                    <CardDescription>API calls and performance metrics</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select value={timeRange} onValueChange={setTimeRange}>
-                      <SelectTrigger className="w-[120px] h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIME_RANGES.map((range) => (
-                          <SelectItem key={range.value} value={range.value}>
-                            {range.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <UsageChart data={usageData.graph_data} />
-              </CardContent>
-            </Card>
+            <UsageGraphCard />
           </div>
 
-          {/* Bottom Full-Width Table Card */}
           <Card className="flex-1">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -949,7 +909,6 @@ export default function UsagePage() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* Filters */}
               {showFilters && (
                 <div className="mb-6 p-4 border rounded-lg bg-gray-50/50">
                   <div className="flex items-center justify-between mb-4">
@@ -1018,7 +977,6 @@ export default function UsagePage() {
                 </div>
               )}
 
-              {/* Table */}
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -1085,7 +1043,6 @@ export default function UsagePage() {
                 </Table>
               </div>
 
-              {/* Pagination */}
               {usageData.pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
