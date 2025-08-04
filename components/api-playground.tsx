@@ -158,7 +158,11 @@ export function APIPlayground() {
           break;
       }
 
-      const response = await fetch(`/api/endpoints_usage?endpointId=${endpointId}&startDate=${startDate.toISOString()}`);
+      const response = await fetch(`/api/endpoints_usage?endpointId=${endpointId}&startDate=${startDate.toISOString()}`, {
+        headers: {
+          'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      });
       if (!response.ok) throw new Error('Failed to fetch usage stats');
       const data = await response.json();
       setUsageStats(data.summary);
@@ -190,18 +194,20 @@ export function APIPlayground() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
+    // Convert UTC timestamp to user's local timezone
+    const date = new Date(dateString + 'Z'); // Ensure UTC interpretation
+    return date.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-      });
+    });
   };
 
   const fullFormatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
+    // Convert UTC timestamp to user's local timezone
+    const date = new Date(dateString + 'Z'); // Ensure UTC interpretation
+    return date.toLocaleString(undefined, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

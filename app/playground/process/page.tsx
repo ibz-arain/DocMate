@@ -84,6 +84,7 @@ export default function ProcessPage() {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         body: JSON.stringify(documentData),
       });

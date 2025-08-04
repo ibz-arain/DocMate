@@ -70,11 +70,14 @@ interface UsageData {
     period_start: string;
     period_type: string;
   };
-  graph_data: Array<{
-    time_bucket: string;
-    call_count: number;
-    avg_response_time: number;
-    success_count: number;
+  all_usage_data: Array<{
+    endpoint_name: string;
+    input_description: string;
+    timestamp: string;
+    status_code: number;
+    response_time_ms: number;
+    request_size_bytes: number;
+    response_size_bytes: number;
   }>;
   usage_data: Array<{
     endpoint_name: string;
@@ -98,11 +101,11 @@ interface UsageData {
   };
   filters: {
     timeRange: string;
-    graphType: string;
     search: string;
     statusFilter: string;
     endpointFilter: string;
   };
+  timezone: string;
 }
 
 interface TimeRange {
@@ -128,7 +131,7 @@ const CHART_TYPES = [
 // Separate Graph Component
 const UsageGraphCard = () => {
   const { user } = useAuth();
-  const [graphData, setGraphData] = useState<UsageData['graph_data']>([]);
+  const [allUsageData, setAllUsageData] = useState<UsageData['all_usage_data']>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<string>('7d');
@@ -142,11 +145,15 @@ const UsageGraphCard = () => {
       
       const params = new URLSearchParams({
         timeRange,
-        limit: '1000' // Get more data for graph
       });
       
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      console.log('🌍 Frontend sending timezone (graph):', userTimezone);
       const response = await fetch(`/api/users/usage?${params}`, {
         credentials: 'include',
+        headers: {
+          'x-timezone': userTimezone
+        }
       });
 
       if (!response.ok) {
@@ -155,7 +162,8 @@ const UsageGraphCard = () => {
       }
 
       const data = await response.json();
-      setGraphData(data.graph_data || []);
+      console.log('📊 Received all usage data:', data.all_usage_data?.length || 0, 'rows');
+      setAllUsageData(data.all_usage_data || []);
     } catch (err) {
       console.error('Graph data fetch error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load graph data');
@@ -171,7 +179,7 @@ const UsageGraphCard = () => {
   }, [user, fetchGraphData]);
 
   // Generate complete time series data with zero values for missing periods
-  const generateCompleteTimeSeries = (data: UsageData['graph_data'], timeRange: string) => {
+  const generateCompleteTimeSeries = (data: UsageData['all_usage_data'], timeRange: string) => {
     const now = new Date();
     
     let startDate: Date;
@@ -181,43 +189,88 @@ const UsageGraphCard = () => {
     switch (timeRange) {
       case '12h':
         periods = 12;
-        startDate = new Date(now.getTime() - 14 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 11 * 60 * 60 * 1000);
         interval = 60 * 60 * 1000;
         break;
       case '24h':
         periods = 24;
-        startDate = new Date(now.getTime() - 26 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 23 * 60 * 60 * 1000);
         interval = 60 * 60 * 1000;
         break;
       case '7d':
         periods = 7;
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 5);
+        startDate = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
         interval = 24 * 60 * 60 * 1000;
         break;
       case '30d':
         periods = 30;
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
         interval = 24 * 60 * 60 * 1000;
         break;
       case '6m':
         periods = 6;
-        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+        startDate = new Date(now.getTime() - 5 * 30 * 24 * 60 * 60 * 1000);
         interval = 30 * 24 * 60 * 60 * 1000;
         break;
       case '12m':
         periods = 12;
-        startDate = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
+        startDate = new Date(now.getTime() - 11 * 30 * 24 * 60 * 60 * 1000);
         interval = 30 * 24 * 60 * 60 * 1000;
         break;
       default:
         periods = 7;
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
         interval = 24 * 60 * 60 * 1000;
     }
     
+    // Group the raw data by time buckets
     const dataMap = new Map();
-    data.forEach(item => {
-      dataMap.set(item.time_bucket, item);
+    data.forEach((item: any) => {
+      // The timestamp is already in user's timezone from the server
+      // Parse it as local time, not UTC
+      const timestamp = new Date(item.timestamp.replace(' ', 'T'));
+      let timeBucket: string;
+      
+      if (timeRange === '12h' || timeRange === '24h') {
+        // Group by hour
+        const year = timestamp.getFullYear();
+        const month = String(timestamp.getMonth() + 1).padStart(2, '0');
+        const day = String(timestamp.getDate()).padStart(2, '0');
+        const hour = String(timestamp.getHours()).padStart(2, '0');
+        timeBucket = `${year}-${month}-${day} ${hour}:00:00`;
+      } else if (timeRange === '6m' || timeRange === '12m') {
+        // Group by month
+        timeBucket = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}`;
+      } else {
+        // Group by day - use local date, not UTC
+        const year = timestamp.getFullYear();
+        const month = String(timestamp.getMonth() + 1).padStart(2, '0');
+        const day = String(timestamp.getDate()).padStart(2, '0');
+        timeBucket = `${year}-${month}-${day}`;
+      }
+      
+      if (!dataMap.has(timeBucket)) {
+        dataMap.set(timeBucket, {
+          call_count: 0,
+          avg_response_time: 0,
+          success_count: 0,
+          total_response_time: 0,
+          count: 0
+        });
+      }
+      
+      const bucket = dataMap.get(timeBucket);
+      bucket.call_count++;
+      bucket.total_response_time += item.response_time_ms;
+      bucket.count++;
+      if (item.status_code >= 200 && item.status_code < 300) {
+        bucket.success_count++;
+      }
+    });
+    
+    // Calculate averages
+    dataMap.forEach((bucket: any) => {
+      bucket.avg_response_time = bucket.count > 0 ? bucket.total_response_time / bucket.count : 0;
     });
     
     const completeSeries = [];
@@ -227,11 +280,20 @@ const UsageGraphCard = () => {
       let timeBucket: string;
       
       if (timeRange === '12h' || timeRange === '24h') {
-        timeBucket = currentDate.toISOString().slice(0, 13) + ':00:00';
+        // Format as YYYY-MM-DD HH:00:00 for matching backend format
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const day = String(currentDate.getDate()).padStart(2, '0');
+        const hour = String(currentDate.getHours()).padStart(2, '0');
+        timeBucket = `${year}-${month}-${day} ${hour}:00:00`;
       } else if (timeRange === '6m' || timeRange === '12m') {
         timeBucket = currentDate.toISOString().slice(0, 7);
       } else {
-        timeBucket = currentDate.toISOString().split('T')[0];
+        // Use local date, not UTC
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const day = String(currentDate.getDate()).padStart(2, '0');
+        timeBucket = `${year}-${month}-${day}`;
       }
       
       const existingData = dataMap.get(timeBucket);
@@ -255,7 +317,7 @@ const UsageGraphCard = () => {
     return completeSeries;
   };
 
-      const UsageChart = ({ data }: { data: UsageData['graph_data'] }) => {
+      const UsageChart = ({ data }: { data: any[] }) => {
       const completeData = useMemo(() => generateCompleteTimeSeries(data, timeRange), [data, timeRange]);
       const [animatedData, setAnimatedData] = useState<typeof completeData>([]);
       const [isAnimating, setIsAnimating] = useState(false);
@@ -352,11 +414,32 @@ const UsageGraphCard = () => {
     }
 
     const formatTimeLabelWithMonth = (timeBucket: string, index: number) => {
-      const date = new Date(timeBucket);
+      // Parse the time bucket and format for display without timezone conversion
+      let date: Date;
+      
+      if (timeRange === '12h' || timeRange === '24h') {
+        // For hourly data, timeBucket is "2024-01-15 14:00:00" format
+        date = new Date(timeBucket.replace(' ', 'T'));
+      } else if (timeRange === '6m' || timeRange === '12m') {
+        // For monthly data, timeBucket is "2024-01" format
+        const [year, month] = timeBucket.split('-');
+        if (year && month) {
+          date = new Date(parseInt(year), parseInt(month) - 1, 1);
+        } else {
+          date = new Date();
+        }
+      } else {
+        // For daily data, timeBucket is "2024-01-15" format
+        date = new Date(timeBucket + 'T00:00:00');
+      }
+      
+      if (isNaN(date.getTime())) {
+        return <div className="text-xs text-gray-500">{timeBucket}</div>;
+      }
       
       if (timeRange === '30d') {
         const dayNumber = date.getDate();
-        const monthName = date.toLocaleDateString([], { month: 'short' });
+        const monthName = date.toLocaleDateString(undefined, { month: 'short' });
         
         if (dayNumber === 1 || dayNumber % 10 === 0) {
           return (
@@ -384,18 +467,18 @@ const UsageGraphCard = () => {
           return <div className="text-xs text-gray-500">{displayHour}</div>;
         }
       } else if (timeRange === '12h') {
-        return <div className="text-xs text-gray-500">{date.toLocaleTimeString([], { 
+        return <div className="text-xs text-gray-500">{date.toLocaleTimeString(undefined, { 
           hour: 'numeric',
           hour12: true 
         })}</div>;
       } else if (timeRange === '7d') {
-        return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
+        return <div className="text-xs text-gray-500">{date.toLocaleDateString(undefined, { 
           weekday: 'short'
         })}</div>;
       } else if (timeRange === '6m' || timeRange === '12m') {
-        return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { month: 'short' })}</div>;
+        return <div className="text-xs text-gray-500">{date.toLocaleDateString(undefined, { month: 'short' })}</div>;
       } else {
-        return <div className="text-xs text-gray-500">{date.toLocaleDateString([], { 
+        return <div className="text-xs text-gray-500">{date.toLocaleDateString(undefined, { 
           month: 'short', 
           day: 'numeric' 
         })}</div>;
@@ -543,7 +626,7 @@ const UsageGraphCard = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <UsageChart data={graphData} />
+        <UsageChart data={allUsageData} />
       </CardContent>
     </Card>
   );
@@ -583,8 +666,13 @@ export default function UsagePage() {
         limit: '20'
       });
       
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      console.log('🌍 Frontend sending timezone (usage):', userTimezone);
       const response = await fetch(`/api/users/usage?${params}`, {
         credentials: 'include',
+        headers: {
+          'x-timezone': userTimezone
+        }
       });
 
       if (!response.ok) {
@@ -593,6 +681,8 @@ export default function UsagePage() {
       }
 
       const data = await response.json();
+      console.log('📋 Received usage data:', data.usage_data?.length || 0, 'rows');
+      console.log('📊 Received all usage data:', data.all_usage_data?.length || 0, 'rows');
       setUsageData(data);
     } catch (err) {
       console.error('Usage data fetch error:', err);
@@ -647,7 +737,33 @@ export default function UsagePage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return dateString;
+  };
+
+  const formatDateForTable = (dateString: string) => {
+    // The timestamp is already converted to local time by the server
+    // Just format it nicely for display
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  const formatDateForGraph = (dateString: string) => {
+    return dateString;
+  };
+
+  const formatTimeForGraph = (dateString: string) => {
+    return dateString;
   };
 
   const getRemainingCalls = () => {
@@ -658,12 +774,12 @@ export default function UsagePage() {
 
   const getNextRenewalDate = () => {
     if (!usageData?.plan_info.next_renewal) return 'N/A';
-    return new Date(usageData.plan_info.next_renewal).toLocaleDateString();
+    return usageData!.plan_info.next_renewal;
   };
 
   const getDaysUntilRenewal = () => {
     if (!usageData?.plan_info.next_renewal) return 0;
-    const renewal = new Date(usageData.plan_info.next_renewal);
+    const renewal = new Date(usageData!.plan_info.next_renewal);
     const now = new Date();
     const diffTime = renewal.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
@@ -1034,7 +1150,7 @@ export default function UsagePage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-gray-500">
-                            {formatDate(item.timestamp)}
+                            {formatDateForTable(item.timestamp)}
                           </span>
                         </TableCell>
                       </TableRow>

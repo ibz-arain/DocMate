@@ -939,7 +939,11 @@ export function ChatSidebar({
                                 {conversation.title}
                               </span>
                               <span className="text-muted-foreground text-[10px]">
-                                {conversation.timestamp.toLocaleDateString()} • {conversation.messages.length} msgs
+                                {new Date(conversation.timestamp.getTime()).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })} • {conversation.messages.length} msgs
                               </span>
                             </div>
                             <Button

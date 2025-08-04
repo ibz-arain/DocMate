@@ -60,6 +60,7 @@ export function HistorySection({ user }: HistorySectionProps) {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
           },
         });
         if (!response.ok) throw new Error('Failed to fetch documents');
@@ -97,6 +98,7 @@ export function HistorySection({ user }: HistorySectionProps) {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
         },
       });
 
@@ -253,13 +255,21 @@ export function HistorySection({ user }: HistorySectionProps) {
                               <div className="flex items-center gap-2 md:hidden">
                                 <span className="text-xs text-muted-foreground capitalize">({doc.type})</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(doc.date).toLocaleDateString()}
+                                  {new Date(doc.date + 'Z').toLocaleDateString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
                                 </span>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="hidden md:table-cell capitalize">{doc.type}</TableCell>
-                          <TableCell className="hidden md:table-cell">{new Date(doc.date).toLocaleDateString()}</TableCell>
+                          <TableCell className="hidden md:table-cell">{new Date(doc.date + 'Z').toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button
@@ -352,7 +362,11 @@ export function HistorySection({ user }: HistorySectionProps) {
                           </div>
                           <div className="flex items-center justify-between text-sm text-muted-foreground">
                             <span className="capitalize">{doc.type}</span>
-                            <span>{new Date(doc.date).toLocaleDateString()}</span>
+                            <span>{new Date(doc.date + 'Z').toLocaleDateString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}</span>
                           </div>
                         </div>
                       ))

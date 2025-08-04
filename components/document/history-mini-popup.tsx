@@ -67,7 +67,11 @@ export function HistoryMiniPopup({ isOpen, onClose, position, onOpenEntry }: His
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     
-    return date.toLocaleDateString();
+    return new Date(date.getTime()).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   if (!isOpen) return null;
