@@ -52,7 +52,6 @@ import {
   TrendingDown,
   Eye,
   EyeOff,
-  Filter as FilterIcon,
   X,
   RotateCcw
 } from 'lucide-react';
@@ -543,11 +542,10 @@ const UsageGraphCard = () => {
   if (loading) {
     return (
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg font-semibold">Usage Analytics</CardTitle>
-              <CardDescription>API calls and performance metrics</CardDescription>
             </div>
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[120px] h-8">
@@ -573,11 +571,10 @@ const UsageGraphCard = () => {
   if (error) {
     return (
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg font-semibold">Usage Analytics</CardTitle>
-              <CardDescription>API calls and performance metrics</CardDescription>
             </div>
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[120px] h-8">
@@ -605,11 +602,10 @@ const UsageGraphCard = () => {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-0">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg font-semibold">Usage Analytics</CardTitle>
-            <CardDescription>API calls and performance metrics</CardDescription>
           </div>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-[120px] h-8">
@@ -643,7 +639,6 @@ export default function UsagePage() {
   const [endpointFilter, setEndpointFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchUsageData = useCallback(async (isRefresh = false) => {
@@ -996,130 +991,39 @@ export default function UsagePage() {
             <UsageGraphCard />
           </div>
 
-          <Card className="flex-1">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold">Request History</CardTitle>
-                  <CardDescription>Detailed API call logs with advanced filtering</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">
-                    {usageData.pagination.total} total requests
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center gap-2"
-                  >
-                    <FilterIcon className="h-4 w-4" />
-                    Filters
-                    {hasActiveFilters && (
-                      <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs">
-                        !
-                      </Badge>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {showFilters && (
-                <div className="mb-6 p-4 border rounded-lg bg-gray-50/50">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium">Advanced Filters</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearFilters}
-                      className="h-6 px-2 text-xs"
-                    >
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      Clear
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Search</label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder="Search descriptions or endpoints..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 h-9"
-                        />
-                        {searchTerm && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSearchTerm('')}
-                            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Status</label>
-                      <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="All Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Status</SelectItem>
-                          <SelectItem value="success">Success</SelectItem>
-                          <SelectItem value="error">Error</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Endpoint</label>
-                      <Select value={endpointFilter} onValueChange={setEndpointFilter}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="All Endpoints" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Endpoints</SelectItem>
-                          <SelectItem value="chat">Chat</SelectItem>
-                          <SelectItem value="analyze">Analyze</SelectItem>
-                          <SelectItem value="summarize">Summarize</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Endpoint</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Response Time</TableHead>
-                      <TableHead>Request Size</TableHead>
-                      <TableHead>Response Size</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                    </TableRow>
-                  </TableHeader>
+          <div className="flex-1 rounded-md border flex flex-col min-h-0">
+            <div className="overflow-x-auto">
+              <Table className="table-fixed w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-32">Endpoint</TableHead>
+                    <TableHead className="w-64">Description</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                    <TableHead className="w-32">Response Time</TableHead>
+                    <TableHead className="w-28">Request Size</TableHead>
+                    <TableHead className="w-28">Response Size</TableHead>
+                    <TableHead className="w-40">Timestamp</TableHead>
+                  </TableRow>
+                </TableHeader>
+              </Table>
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="overflow-x-auto">
+                <Table className="table-fixed w-full">
                   <TableBody>
                     {usageData.usage_data.map((item, index) => (
-                      <TableRow key={index} className="hover:bg-gray-50">
-                        <TableCell>
+                      <TableRow key={index}>
+                        <TableCell className="w-32">
                           <Badge variant="outline" className="capitalize">
                             {item.endpoint_name}
                           </Badge>
                         </TableCell>
-                        <TableCell className="max-w-xs">
+                        <TableCell className="w-64 max-w-xs">
                           <div className="truncate" title={item.input_description || 'N/A'}>
                             {item.input_description || 'N/A'}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-24">
                           <Badge 
                             variant={getStatusColor(item.status_code) === 'success' ? 'default' : 'destructive'}
                             className="flex items-center gap-1"
@@ -1132,23 +1036,23 @@ export default function UsagePage() {
                             {getStatusText(item.status_code)}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-32">
                           <span className="flex items-center gap-1">
                             <Timer className="h-3 w-3" />
                             {formatResponseTime(item.response_time_ms)}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-28">
                           <span className="text-sm text-gray-500">
                             {formatFileSize(item.request_size_bytes || 0)}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-28">
                           <span className="text-sm text-gray-500">
                             {formatFileSize(item.response_size_bytes || 0)}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-40">
                           <span className="text-sm text-gray-500">
                             {formatDateForTable(item.timestamp)}
                           </span>
@@ -1158,54 +1062,54 @@ export default function UsagePage() {
                   </TableBody>
                 </Table>
               </div>
+            </div>
+          </div>
 
-              {usageData.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {((usageData.pagination.page - 1) * usageData.pagination.limit) + 1} to {Math.min(usageData.pagination.page * usageData.pagination.limit, usageData.pagination.total)} of {usageData.pagination.total} results
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <span className="flex items-center px-3 text-sm">
-                      Page {currentPage} of {usageData.pagination.totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === usageData.pagination.totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
+          {usageData.pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {((usageData.pagination.page - 1) * usageData.pagination.limit) + 1} to {Math.min(usageData.pagination.page * usageData.pagination.limit, usageData.pagination.total)} of {usageData.pagination.total} results
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-3 text-sm">
+                  Page {currentPage} of {usageData.pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === usageData.pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
 
-              {usageData.usage_data.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Database className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">No usage data found matching your filters.</p>
-                  {hasActiveFilters && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearFilters}
-                      className="mt-2"
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                </div>
+          {usageData.usage_data.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Database className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">No usage data found matching your filters.</p>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="mt-2"
+                >
+                  Clear Filters
+                </Button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </main>
       </div>
     </>
