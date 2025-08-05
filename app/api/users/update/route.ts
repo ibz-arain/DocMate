@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { verifyJWT, getTokenFromRequest, sanitizeUser } from '@/lib/auth-utils';
 import { User, UpdatePlanRequest } from '@/types/auth';
-import { PLAN_CONFIGS, isValidPlanType } from '@/lib/plan-utils';
+import { DEFAULT_PLANS, isValidPlanType, getPlanInfo } from '@/lib/plan-utils';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -35,10 +35,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Get plan configuration
-    const planConfig = PLAN_CONFIGS[plan_type];
+    const planConfig = getPlanInfo(plan_type);
+    
+    if (!planConfig) {
+      return NextResponse.json(
+        { message: 'Invalid plan type' },
+        { status: 400 }
+      );
+    }
     
     // Prepare plan limits
-    const limits = plan_limits ?? planConfig.document_analyses_per_month;
+    const limits = plan_limits ?? planConfig.plan_limits;
 
     // Update user plan
     const result = await db.execute({
@@ -63,7 +70,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({
       user: publicUser,
-      message: `Plan updated to ${planConfig.name} successfully`
+      message: `Plan updated to ${planConfig.plan_type} successfully`
     });
 
   } catch (error) {
@@ -110,20 +117,20 @@ export async function GET(request: NextRequest) {
     }
 
     const userPlan = result.rows[0] as any;
-    const planType = (userPlan.plan_type || 'free') as keyof typeof PLAN_CONFIGS;
-    const planConfig = PLAN_CONFIGS[planType];
+    const planType = userPlan.plan_type || 'free';
+    const planConfig = getPlanInfo(planType);
     
     // Handle null plan_limits by using default config
-    const planLimits = userPlan.plan_limits ?? planConfig.document_analyses_per_month;
+    const planLimits = userPlan.plan_limits ?? (planConfig?.plan_limits || 50);
 
     return NextResponse.json({
       current_plan: planType,
       plan_config: planConfig,
       plan_limits: {
         document_analyses_per_month: planLimits,
-        features: planConfig.features
+        features: planConfig?.description || 'No features available'
       },
-      available_plans: PLAN_CONFIGS
+      available_plans: DEFAULT_PLANS
     });
 
   } catch (error) {
