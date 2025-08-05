@@ -135,8 +135,8 @@ const withSummarizeRateLimit = (handler: (req: NextRequest) => Promise<NextRespo
       const usageRecord = {
         user_id: user.userId,
         endpoint_name: 'analyze',
-        request_size_bytes: getRequestSize(req),
-        response_size_bytes: getResponseSize(response),
+        request_size_bytes: await getRequestSize(req),
+        response_size_bytes: await getResponseSize(response),
         status_code: response.status,
         response_time_ms: responseTime,
         ip_address: getClientIP(req),
@@ -171,7 +171,7 @@ const withSummarizeRateLimit = (handler: (req: NextRequest) => Promise<NextRespo
         const usageRecord = {
           user_id: user.userId,
           endpoint_name: 'analyze',
-          request_size_bytes: getRequestSize(req),
+          request_size_bytes: await getRequestSize(req),
           status_code: 500,
           response_time_ms: responseTime,
           ip_address: getClientIP(req),

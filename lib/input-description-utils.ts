@@ -15,6 +15,7 @@ export function getChatInputDescription(req: NextRequest, body: any): string {
     
     return message || 'Empty message';
   } catch (error) {
+    console.warn('Error parsing chat input description:', error);
     return 'Unable to parse chat message';
   }
 }

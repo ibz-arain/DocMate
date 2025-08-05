@@ -153,23 +153,45 @@ export async function checkRateLimit(userId: number): Promise<{ allowed: boolean
 /**
  * Get request size in bytes
  */
-export function getRequestSize(req: NextRequest): number {
+export async function getRequestSize(req: NextRequest): Promise<number> {
   const contentLength = req.headers.get('content-length');
   if (contentLength) {
     return parseInt(contentLength, 10);
   }
-  return 0;
+  
+  // If no content-length header, try to estimate from body
+  try {
+    const clonedReq = req.clone();
+    const bodyText = await clonedReq.text();
+    const encoder = new TextEncoder();
+    return encoder.encode(bodyText).length;
+  } catch (error) {
+    console.warn('Could not calculate request size:', error);
+    return 0;
+  }
 }
 
 /**
  * Get response size in bytes
  */
-export function getResponseSize(response: Response): number {
+export async function getResponseSize(response: Response): Promise<number> {
   const contentLength = response.headers.get('content-length');
   if (contentLength) {
     return parseInt(contentLength, 10);
   }
-  return 0;
+  
+  // If no content-length header, calculate from response body
+  try {
+    // Clone the response to avoid consuming the original stream
+    const responseClone = response.clone();
+    const responseText = await responseClone.text();
+    // Convert to UTF-8 bytes
+    const encoder = new TextEncoder();
+    return encoder.encode(responseText).length;
+  } catch (error) {
+    console.warn('Could not calculate response size:', error);
+    return 0;
+  }
 }
 
 /**

@@ -55,6 +55,7 @@ import {
   X,
   RotateCcw
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/loading-skeleton';
 import { CustomSidebar } from '@/components/custom-sidebar';
@@ -1019,9 +1020,26 @@ export default function UsagePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="w-64 max-w-xs">
-                          <div className="truncate" title={item.input_description || 'N/A'}>
-                            {item.input_description || 'N/A'}
-                          </div>
+                          {item.input_description && item.input_description.length > 50 ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="truncate">
+                                    {item.input_description}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-xs whitespace-normal">
+                                    {item.input_description}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <div className="truncate">
+                              {item.input_description || 'N/A'}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="w-24">
                           <Badge 

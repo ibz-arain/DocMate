@@ -48,6 +48,15 @@ export function withRateLimit(config: RateLimitConfig) {
           );
         }
         
+        // Parse request body once before handler execution
+        try {
+          const clonedReq = req.clone();
+          requestBody = await clonedReq.json();
+        } catch (error) {
+          console.warn('Could not parse request body for usage tracking:', error);
+          requestBody = null;
+        }
+        
         // Execute the handler
         response = await handler(req);
         
@@ -58,10 +67,6 @@ export function withRateLimit(config: RateLimitConfig) {
         // Generate input description based on endpoint
         let inputDescription = '';
         try {
-          // Clone the request to read the body
-          const clonedReq = req.clone();
-          requestBody = await clonedReq.json();
-          
           switch (config.endpointName) {
             case 'chat':
               inputDescription = getChatInputDescription(req, requestBody);
@@ -77,11 +82,17 @@ export function withRateLimit(config: RateLimitConfig) {
           inputDescription = 'Unable to parse request body';
         }
         
+        // Get response size asynchronously
+        const responseSize = await getResponseSize(response);
+        
+        // Get request size asynchronously
+        const requestSize = await getRequestSize(req);
+        
         const usageRecord: UsageRecord = {
           user_id: user.userId,
           endpoint_name: config.endpointName,
-          request_size_bytes: getRequestSize(req),
-          response_size_bytes: getResponseSize(response),
+          request_size_bytes: requestSize,
+          response_size_bytes: responseSize,
           status_code: response.status,
           response_time_ms: responseTime,
           ip_address: getClientIP(req),
@@ -124,7 +135,7 @@ export function withRateLimit(config: RateLimitConfig) {
           const usageRecord: UsageRecord = {
             user_id: user.userId,
             endpoint_name: config.endpointName,
-            request_size_bytes: getRequestSize(req),
+            request_size_bytes: await getRequestSize(req),
             status_code: 500,
             response_time_ms: responseTime,
             ip_address: getClientIP(req),
