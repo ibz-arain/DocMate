@@ -55,6 +55,7 @@ export default function Header() {
                 {/* Navigation */}
                 <div className="hidden md:flex items-center space-x-6">
                   {[
+                    { label: 'Pricing', href: '/pricing' },
                     { label: 'Use Cases', href: '/use-cases' },
                     // { label: 'Read Docs', href: '/docs' },
                     { label: 'Changelog', href: '/changelog' },

@@ -54,8 +54,11 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "@/components/ui/use-toast";
 import { EditToolbar } from "@/components/document/edit-toolbar";
 import type { Drawing } from "@/components/pdf/pdf-viewer";
+import PricingModal from "@/components/pricing-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function DocumentPage() {
+  const { user, isAuthenticated, refreshAuth } = useAuth();
   const { history, clearHistory } = useHistory(); // Add clearHistory to clear history when PDF is cleared
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -135,6 +138,9 @@ export default function DocumentPage() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
+
+  // Signup pricing modal state
+  const [showSignupPricingModal, setShowSignupPricingModal] = useState(false);
 
   // Add handlers for undo/redo state
   const handleUndoStateChange = (canUndo: boolean, canRedo: boolean) => {
@@ -250,6 +256,117 @@ export default function DocumentPage() {
     "Your PDF's new home",
     "Ready when you are"
   ];
+
+  // Check if user needs to select a plan (plan_limits is NULL/empty)
+  useEffect(() => {
+    const checkForPlanSelection = async () => {
+      if (isAuthenticated && user) {
+        // Show modal if user has no plan_limits set (NULL or undefined)
+        // This means they haven't properly selected a plan yet
+        const needsPlanSelection = !user.plan_limits || user.plan_limits === null || user.plan_limits === undefined;
+        
+        if (needsPlanSelection) {
+          setShowSignupPricingModal(true);
+        }
+      }
+    };
+
+    checkForPlanSelection();
+  }, [isAuthenticated, user]);
+
+  // Handle pricing modal plan selection
+  const handleSignupPlanSelect = async (plan: any) => {
+    console.log("Selected plan during signup:", plan);
+    
+    try {
+      // Map our modal plan IDs to backend plan types
+      const planTypeMap: Record<string, string> = {
+        "free": "free",
+        "hobby": "basic",      // Map hobby to basic in backend
+        "pro": "pro", 
+        "business": "enterprise", // Map business to enterprise
+        "enterprise": "enterprise",
+        "custom": "enterprise"    // Map custom to enterprise for now
+      };
+
+      // Define plan limits based on plan selection (matching backend plan-utils.ts)
+      const planLimitsMap: Record<string, number> = {
+        "free": 50,        // 50 API calls per month
+        "hobby": 500,      // 500 API calls per month (basic plan)
+        "pro": 5000,       // 5,000 API calls per month 
+        "business": 50000, // 50,000 API calls per month (enterprise)
+        "enterprise": 50000, // 50,000 API calls per month
+        "custom": 50000    // Enterprise limits for custom
+      };
+
+      const backendPlanType = planTypeMap[plan.id] || "free";
+      const planLimits = planLimitsMap[plan.id] || 50;
+
+      // Update user's plan in database
+      const response = await fetch('/api/users/update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          plan_type: backendPlanType,
+          plan_limits: planLimits
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update plan');
+      }
+
+      // Update local user state by refreshing auth
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for DB update
+      refreshAuth(); // Refresh auth to get updated user data
+
+      // Handle different plan types
+      if (plan.id === "free") {
+        toast({
+          title: "Welcome to DocMate!",
+          description: "You're all set with our free plan. Start uploading documents to get started!",
+        });
+      } else if (plan.id === "hobby" || plan.id === "pro") {
+        toast({
+          title: `Plan Selected: ${plan.name}`,
+          description: "Your plan has been activated. Start processing documents!",
+        });
+        // For now, just activate the plan. Later you can add payment integration
+      } else {
+        // Contact sales plans - still set limits but show contact message
+        toast({
+          title: `${plan.name} Plan Selected`,
+          description: "Your plan is active. Our sales team will contact you soon for custom setup.",
+        });
+      }
+
+      setShowSignupPricingModal(false);
+
+    } catch (error: any) {
+      console.error('Error updating plan:', error);
+      toast({
+        title: "Error updating plan",
+        description: error.message || "Please try again or contact support.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle closing signup pricing modal
+  const handleSignupPricingClose = () => {
+    // Don't allow closing without selecting a plan
+    // Modal will stay open until user has plan_limits set
+    // User must select a plan to proceed
+    toast({
+      title: "Plan selection required",
+      description: "Please select a plan to continue using DocMate.",
+      variant: "destructive"
+    });
+  };
 
   // Load PDF from localStorage on component mount
   useEffect(() => {
@@ -2121,8 +2238,7 @@ Focus on making the information easily accessible and well-organized.`;
 
                       {!pdfWorkerReady ? (
                         <div className="flex items-center justify-center h-full">
-                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mr-2"></div>
-                          <p>Initializing PDF viewer...</p>
+
                         </div>
                       ) :  (
 
@@ -2322,6 +2438,15 @@ Focus on making the information easily accessible and well-organized.`;
         onClose={() => setShowHistoryPopup(false)}
         position={historyPopupPosition}
         onOpenEntry={handleOpenHistoryEntry}
+      />
+
+      {/* Signup Pricing Modal */}
+      <PricingModal
+        isOpen={showSignupPricingModal}
+        onClose={handleSignupPricingClose}
+        onSelectPlan={handleSignupPlanSelect}
+        currentPlan="free"
+        variant="signup"
       />
 
       {/* CSS for animated gradient background */}

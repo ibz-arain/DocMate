@@ -120,7 +120,7 @@ const plans: Plan[] = [
     description: "Try it for free. No credit card required.",
     icon: Star,
     features: [
-      "50 document analyses per month",
+      "50 API calls per month",
       "Unlimited document and spreadsheet access",
       "Document history",
       "Email support"
@@ -139,7 +139,7 @@ const plans: Plan[] = [
     description: "Basic document processing with usage tracking.",
     icon: Rocket,
     features: [
-      "500 document analyses per month",
+      "500 API calls per month",
       "Everything in Free Forever",
       "Email support"
     ],
@@ -157,7 +157,7 @@ const plans: Plan[] = [
     description: "Professional processing with advanced analytics.",
     icon: Crown,
     features: [
-      "1,000 document analyses per month",
+      "1,000 API calls per month",
       "Everything in Hobby",
       "Usage tracking and analytics",
       "Email support"
@@ -176,7 +176,7 @@ const plans: Plan[] = [
     description: "High-volume processing for businesses.",
     icon: Shield,
     features: [
-      "5,000 document analyses per month",
+      "5,000 API calls per month",
       "Everything in Pro",
       "24/7 phone support",
       "Email support"
@@ -195,7 +195,7 @@ const plans: Plan[] = [
     description: "Maximum processing with API access.",
     icon: Users,
     features: [
-      "10,000 document analyses per month",
+      "10,000 API calls per month",
       "Everything in Business",
       "Access to our API (for developers)",
       "24/7 phone support",
@@ -215,7 +215,7 @@ const plans: Plan[] = [
     description: "Custom integrations and unlimited processing.",
     icon: Zap,
     features: [
-      "Unlimited document analyses",
+      "Unlimited API calls",
       "Pay as you go pricing",
       "Everything in Enterprise",
       "We can integrate into your apps",
@@ -373,7 +373,7 @@ export default function PricingPage() {
                   className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium backdrop-blur-sm border border-primary/20 mb-6"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Simple & Transparent</span>
+                  <span>Easy & Transparent</span>
                 </motion.div>
 
                 <motion.h1
@@ -382,7 +382,7 @@ export default function PricingPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
                 >
-                  <span className="text-white">Document Processing</span>
+                  <span className="text-white">Pricing</span>
                   <br />
                   <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-blue-500">
                     Made Simple
@@ -395,7 +395,7 @@ export default function PricingPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                 >
-                  Simple pricing based on document processing volume. Upgrade or downgrade anytime. More features coming soon.
+                  Upgrade or downgrade anytime. More features coming soon.
                 </motion.p>
               </motion.div>
 

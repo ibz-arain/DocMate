@@ -2,7 +2,7 @@ import * as SibApiV3Sdk from '@getbrevo/brevo';
 
 // Initialize Brevo API client
 const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY!);
+(apiInstance as any).authentications.apiKey.apiKey = process.env.BREVO_API_KEY!
 
 // Generate a random 6-digit verification code
 export function generateVerificationCode(): string {
@@ -54,9 +54,22 @@ export async function sendVerificationEmail(email: string, code: string, firstNa
 
   try {
     await apiInstance.sendTransacEmail(sendSmtpEmail);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending verification email:', error);
-    throw new Error('Failed to send verification email');
+    
+    // Check for IP restriction error
+    if (error.body?.code === 'unauthorized' && error.body?.message?.includes('unrecognised IP address')) {
+      throw new Error('IP address not authorized. Please add your IP address to the authorized list in your Brevo account security settings.');
+    }
+    
+    // Provide more specific error messages
+    if (error.response?.status === 401) {
+      throw new Error('Authentication failed - Please check your BREVO_API_KEY or IP restrictions');
+    } else if (error.response?.status === 400) {
+      throw new Error('Bad request - Please check your email configuration');
+    } else {
+      throw new Error(`Failed to send verification email: ${error.message || 'Unknown error'}`);
+    }
   }
 }
 

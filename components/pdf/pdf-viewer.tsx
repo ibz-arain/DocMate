@@ -1654,15 +1654,6 @@ export function PdfViewer({
     };
   }, [selectionMode, isDrawing, currentDrawing, drawings]);
 
-  if (!isWorkerInitialized) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mr-2"></div>
-        <p>Initializing PDF viewer...</p>
-      </div>
-    );
-  }
-
   if (!file) {
     return null;
   }
