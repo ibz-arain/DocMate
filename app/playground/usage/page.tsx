@@ -1010,6 +1010,12 @@ export default function UsagePage() {
             </div>
             <div className="flex-1 overflow-y-auto min-h-0">
               <div className="overflow-x-auto">
+                {usageData.usage_data.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Database className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No usage data found.</p>
+                  </div>
+                )}
                 <Table className="table-fixed w-full">
                   <TableBody>
                     {usageData.usage_data.map((item, index) => (
@@ -1082,52 +1088,6 @@ export default function UsagePage() {
               </div>
             </div>
           </div>
-
-          {usageData.pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {((usageData.pagination.page - 1) * usageData.pagination.limit) + 1} to {Math.min(usageData.pagination.page * usageData.pagination.limit, usageData.pagination.total)} of {usageData.pagination.total} results
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <span className="flex items-center px-3 text-sm">
-                  Page {currentPage} of {usageData.pagination.totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === usageData.pagination.totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {usageData.usage_data.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Database className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-              <p className="text-sm">No usage data found matching your filters.</p>
-              {hasActiveFilters && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="mt-2"
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          )}
         </main>
       </div>
     </>
