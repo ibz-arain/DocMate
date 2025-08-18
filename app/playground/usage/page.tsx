@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import PricingModal from '@/components/pricing-modal';
 import { 
   Calendar, 
   BarChart3, 
@@ -96,6 +97,7 @@ interface UsageData {
   };
   plan_info: {
     plan_type: string;
+    plan_limits: number | null;
     next_renewal: string;
     created_at: string;
   };
@@ -641,6 +643,25 @@ export default function UsagePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pricingModalOpen, setPricingModalOpen] = useState(false);
+
+  // Handle pricing modal
+  const handleOpenPricingModal = () => {
+    setPricingModalOpen(true);
+  };
+
+  const handleClosePricingModal = () => {
+    setPricingModalOpen(false);
+  };
+
+  const handlePlanSelect = async (plan: any) => {
+    console.log("Selected plan:", plan);
+    // Close the modal first
+    setPricingModalOpen(false);
+    
+    // Only free plan selection is handled by the modal
+    // All other plans will show the coming soon popup
+  };
 
   const fetchUsageData = useCallback(async (isRefresh = false) => {
     if (!user) return;
@@ -974,12 +995,21 @@ export default function UsagePage() {
 
                   <div>
                     {usageData.plan_info.plan_type === 'free' ? (
-                      <Button size="sm" className="w-full bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90">
+                      <Button 
+                        size="sm" 
+                        className="w-full bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90"
+                        onClick={handleOpenPricingModal}
+                      >
                         <Zap className="h-3 w-3 mr-1" />
                         Upgrade to Pro
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" className="w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={handleOpenPricingModal}
+                      >
                         <Settings className="h-3 w-3 mr-1" />
                         Manage Plan
                       </Button>
@@ -1090,6 +1120,16 @@ export default function UsagePage() {
           </div>
         </main>
       </div>
+
+      {/* Pricing Modal */}
+      <PricingModal
+        isOpen={pricingModalOpen}
+        onClose={handleClosePricingModal}
+        onSelectPlan={handlePlanSelect}
+        currentPlan={usageData?.plan_info?.plan_type}
+        currentPlanLimits={usageData?.plan_info?.plan_limits}
+        variant="upgrade"
+      />
     </>
   );
 } 

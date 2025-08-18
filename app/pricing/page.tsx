@@ -10,6 +10,7 @@ import { CheckCircle2, Zap, Star, ArrowRight, Sparkles, Crown, Rocket, Users, Sh
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LucideIcon } from "lucide-react";
+import { ComingSoonPopup } from "@/components/ui/coming-soon-popup";
 
 // Floating element component
 const FloatingElement = ({ 
@@ -232,12 +233,23 @@ const plans: Plan[] = [
 ];
 
 export default function PricingPage() {
+  const [showComingSoonPopup, setShowComingSoonPopup] = useState(false);
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
     damping: 30,
     restDelta: 0.001
   });
+
+  const handlePlanClick = (plan: Plan) => {
+    if (plan.name === "Free Forever") {
+      // Redirect to app for free plan
+      window.location.href = "/playground/document";
+    } else {
+      // Show coming soon popup for all paid plans
+      setShowComingSoonPopup(true);
+    }
+  };
 
   return (
     <div className="relative min-h-screen bg-black">
@@ -491,6 +503,7 @@ export default function PricingPage() {
                           <Button
                             variant="outline"
                             size="lg"
+                            onClick={() => handlePlanClick(plan)}
                             className={cn(
                               "w-full justify-center group relative overflow-hidden",
                               plan.highlight && "border-primary/50 bg-primary/10 hover:bg-primary/20 text-primary shadow-lg shadow-primary/25",
@@ -529,6 +542,12 @@ export default function PricingPage() {
         </div>
         <Footer />
       </ScrollArea>
+      
+      {/* Coming Soon Popup */}
+      <ComingSoonPopup
+        isOpen={showComingSoonPopup}
+        onClose={() => setShowComingSoonPopup(false)}
+      />
     </div>
   );
 } 

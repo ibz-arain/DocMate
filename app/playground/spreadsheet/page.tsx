@@ -47,6 +47,7 @@ import { useHistory } from "@/hooks/use-history";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import PricingModal from "@/components/pricing-modal";
+import { useAuthContext } from "@/components/auth-provider";
 
 interface SelectionRange {
   startRow: number;
@@ -56,6 +57,7 @@ interface SelectionRange {
 }
 
 export default function SpreadsheetPage() {
+  const { user } = useAuthContext();
   const { history, clearHistory, addHistoryEntry } = useHistory();
   const [spreadsheetFile, setSpreadsheetFile] = useState<File | null>(null);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
@@ -1627,9 +1629,11 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
         onClose={() => setShowPricingModal(false)}
         onSelectPlan={(plan) => {
           setShowPricingModal(false);
-          // Handle plan selection if needed
+          // Only free plan selection is handled by the modal
+          // All other plans will show the coming soon popup
         }}
-        currentPlan="free"
+        currentPlan={user?.plan_type || "free"}
+        currentPlanLimits={user?.plan_limits || null}
         variant="upgrade"
       />
 

@@ -278,31 +278,14 @@ export default function DocumentPage() {
   const handleSignupPlanSelect = async (plan: any) => {
     console.log("Selected plan during signup:", plan);
     
+    // Only allow free plan during signup - all paid plans show coming soon popup
+    if (plan.id !== "free") {
+      // The pricing modal will handle showing the coming soon popup
+      return;
+    }
+    
     try {
-      // Map our modal plan IDs to backend plan types
-      const planTypeMap: Record<string, string> = {
-        "free": "free",
-        "hobby": "hobby",      // Keep as hobby
-        "pro": "pro", 
-        "business": "business", // Keep as business
-        "enterprise": "enterprise",
-        "custom": "custom"    // Keep as custom
-      };
-
-      // Define plan limits based on plan selection (matching your pricing page)
-      const planLimitsMap: Record<string, number | null> = {
-        "free": 50,        // 50 API calls per month (from pricing page)
-        "hobby": 500,      // 500 API calls per month (from pricing page)
-        "pro": 1000,       // 1,000 API calls per month (from pricing page)
-        "business": 5000,  // 5,000 API calls per month (from pricing page)
-        "enterprise": null, // Will be manually set by you
-        "custom": null     // Will be manually set by you
-      };
-
-      const backendPlanType = planTypeMap[plan.id] || "free";
-      const planLimits = planLimitsMap[plan.id] || 50;
-
-      // Update user's plan in database
+      // Only handle free plan signup
       const response = await fetch('/api/users/update', {
         method: 'PATCH',
         headers: {
@@ -310,8 +293,8 @@ export default function DocumentPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          plan_type: backendPlanType,
-          plan_limits: planLimits
+          plan_type: "free",
+          plan_limits: 50
         }),
       });
 
@@ -324,23 +307,11 @@ export default function DocumentPage() {
       await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for DB update
       refreshAuth(); // Refresh auth to get updated user data
 
-      // Handle different plan types
+      // Handle free plan selection
       if (plan.id === "free") {
         toast({
           title: "Welcome to DocMate!",
           description: "You're all set with our free plan. Start uploading documents to get started!",
-        });
-      } else if (plan.id === "hobby" || plan.id === "pro") {
-        toast({
-          title: `Plan Selected: ${plan.name}`,
-          description: "Your plan has been activated. Start processing documents!",
-        });
-        // For now, just activate the plan. Later you can add payment integration
-      } else {
-        // Contact sales plans - still set limits but show contact message
-        toast({
-          title: `${plan.name} Plan Selected`,
-          description: "Your plan is active. Our sales team will contact you soon for custom setup.",
         });
       }
 
@@ -2446,7 +2417,8 @@ Focus on making the information easily accessible and well-organized.`;
         isOpen={showSignupPricingModal}
         onClose={handleSignupPricingClose}
         onSelectPlan={handleSignupPlanSelect}
-        currentPlan="free"
+        currentPlan={user?.plan_type || undefined}
+        currentPlanLimits={user?.plan_limits}
         variant="signup"
       />
 

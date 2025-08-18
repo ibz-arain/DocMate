@@ -5,10 +5,11 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Zap, Star, ArrowRight, Sparkles, Crown, Rocket, Users, Shield, X } from "lucide-react";
+import { CheckCircle2, Zap, Star, ArrowRight, Sparkles, Crown, Rocket, Users, Shield, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LucideIcon } from "lucide-react";
+import { ComingSoonPopup } from "@/components/ui/coming-soon-popup";
 
 interface Plan {
   id: string;
@@ -33,6 +34,7 @@ interface PricingModalProps {
   onClose: () => void;
   onSelectPlan: (plan: Plan) => void;
   currentPlan?: string;
+  currentPlanLimits?: number | null;
   title?: string;
   description?: string;
   variant?: PricingModalVariant;
@@ -211,13 +213,28 @@ export default function PricingModal({
   onClose, 
   onSelectPlan, 
   currentPlan,
+  currentPlanLimits,
   title = "Choose Your Plan",
   description = "Upgrade or downgrade anytime. More features coming soon.",
   variant = "default"
 }: PricingModalProps) {
+  const [showComingSoonPopup, setShowComingSoonPopup] = useState(false);
   
-  // Configure based on variant
+  // Check if user has no plan at all
+  const hasNoPlan = !currentPlan && currentPlanLimits === null;
+  
+  // Configure based on variant and plan status
   const getVariantConfig = () => {
+    if (hasNoPlan) {
+      return {
+        title: "Welcome! Choose Your Plan",
+        description: "Get started with DocMate and unlock powerful document processing.",
+        showDecisionHelp: true,
+        freePlanCTA: "Continue with Free",
+        canClose: false
+      };
+    }
+    
     switch (variant) {
       case "signup":
         return {
@@ -247,6 +264,30 @@ export default function PricingModal({
   };
 
   const config = getVariantConfig();
+
+  // Check if a plan is the current plan
+  const isCurrentPlan = (planId: string) => {
+    // If user has no plan, nothing is current
+    if (hasNoPlan) {
+      return false;
+    }
+    return planId === currentPlan;
+  };
+
+  // Handle plan selection
+  const handlePlanSelect = (plan: Plan) => {
+    // Don't allow selection of current plan
+    if (isCurrentPlan(plan.id)) {
+      return;
+    }
+    
+    // Only allow free plan to be selected, show popup for others
+    if (plan.id === "free") {
+      onSelectPlan(plan);
+    } else {
+      setShowComingSoonPopup(true);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={config.canClose ? onClose : undefined}>
@@ -318,28 +359,47 @@ export default function PricingModal({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {plans.map((plan, idx) => {
               const Icon = plan.icon;
+              const isCurrent = isCurrentPlan(plan.id);
               return (
                 <motion.div
                   key={plan.name}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: idx * 0.05 }}
-                  whileHover={{ scale: 1.02 }}
-                  className="relative group"
+                  whileHover={!isCurrent ? { scale: 1.02 } : undefined}
+                  className={cn(
+                    "relative group",
+                    isCurrent && "cursor-default"
+                  )}
                 >
                   {/* Card background gradient */}
                   <div className={cn(
                     "absolute inset-0 bg-gradient-to-br rounded-xl blur-sm opacity-20 group-hover:opacity-30 transition-opacity",
-                    plan.gradient
+                    plan.gradient,
+                    isCurrent && "opacity-10"
                   )} />
                   
                   <Card className={cn(
-                    "relative h-full flex flex-col border bg-card/60 backdrop-blur-sm shadow-sm transition-all duration-300 overflow-hidden cursor-pointer hover:shadow-md",
+                    "relative h-full flex flex-col border bg-card/60 backdrop-blur-sm shadow-sm transition-all duration-300 overflow-hidden",
                     plan.borderColor,
-                    plan.highlight && "border-primary/50 shadow-lg ring-1 ring-primary/20 scale-[1.02]"
+                    plan.highlight && "border-primary/50 shadow-lg ring-1 ring-primary/20 scale-[1.02]",
+                    isCurrent 
+                      ? "cursor-default opacity-60 border-muted-foreground/20" 
+                      : "cursor-pointer hover:shadow-md",
+                    isCurrent && plan.highlight && "scale-100 opacity-60"
                   )}
-                  onClick={() => onSelectPlan(plan)}
+                  onClick={() => handlePlanSelect(plan)}
                   >
+                    {/* Current plan indicator */}
+                    {isCurrent && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/20 border border-primary/30">
+                          <Check className="h-3 w-3 text-primary" />
+                          <span className="text-xs text-primary font-medium">CURRENT</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Subtle animated background elements */}
                     <div className="absolute inset-0 opacity-5">
                       {Array.from({ length: 3 }).map((_, i) => (
@@ -370,7 +430,7 @@ export default function PricingModal({
                         <div className={cn("w-10 h-10 rounded-lg border flex items-center justify-center", plan.bgColor, plan.borderColor)}>
                           <Icon className={cn("h-5 w-5", plan.iconColor)} />
                         </div>
-                        {plan.highlight && (
+                        {plan.highlight && !isCurrent && (
                           <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/20 border border-primary/30">
                             <Crown className="h-3 w-3 text-primary" />
                             <span className="text-xs text-primary font-medium">POPULAR</span>
@@ -407,30 +467,39 @@ export default function PricingModal({
                     <CardFooter className="pt-3">
                       <Button
                         size="sm"
+                        disabled={isCurrent}
                         className={cn(
                           "w-full justify-center group relative overflow-hidden text-xs h-8",
-                          plan.highlight && "bg-primary/20 hover:bg-primary/30 text-primary border-primary/50",
-                          !plan.highlight && plan.iconColor === "text-green-500" && "bg-green-500/20 hover:bg-green-500/30 text-green-400 border-green-500/50",
-                          !plan.highlight && plan.iconColor === "text-blue-500" && "bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border-blue-500/50",
-                          !plan.highlight && plan.iconColor === "text-purple-500" && "bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/50",
-                          !plan.highlight && plan.iconColor === "text-orange-500" && "bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border-orange-500/50",
-                          !plan.highlight && plan.iconColor === "text-indigo-500" && "bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 border-indigo-500/50"
+                          isCurrent ? "opacity-50 cursor-not-allowed" : null,
+                          plan.highlight && !isCurrent ? "bg-primary/20 hover:bg-primary/30 text-primary border-primary/50" : null,
+                          !plan.highlight && !isCurrent && plan.iconColor === "text-green-500" ? "bg-green-500/20 hover:bg-green-500/30 text-green-400 border-green-500/50" : null,
+                          !plan.highlight && !isCurrent && plan.iconColor === "text-blue-500" ? "bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border-blue-500/50" : null,
+                          !plan.highlight && !isCurrent && plan.iconColor === "text-purple-500" ? "bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/50" : null,
+                          !plan.highlight && !isCurrent && plan.iconColor === "text-orange-500" ? "bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border-orange-500/50" : null,
+                          !plan.highlight && !isCurrent && plan.iconColor === "text-indigo-500" ? "bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 border-indigo-500/50" : null
                         )}
                         variant="outline"
                       >
                         <span className="relative z-10 flex items-center">
-                          {plan.id === "free" && variant === "signup" ? config.freePlanCTA : plan.cta}
-                          {plan.highlight && <ArrowRight className="ml-1 w-3 h-3 transition-transform group-hover:translate-x-0.5" />}
+                          {isCurrent 
+                            ? "Current Plan" 
+                            : plan.id === "free" && (variant === "signup" || hasNoPlan)
+                              ? config.freePlanCTA 
+                              : plan.cta
+                          }
+                          {plan.highlight && !isCurrent && <ArrowRight className="ml-1 w-3 h-3 transition-transform group-hover:translate-x-0.5" />}
                         </span>
-                        <div className={cn(
-                          "absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500",
-                          plan.highlight && "bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0",
-                          !plan.highlight && plan.iconColor === "text-green-500" && "bg-gradient-to-r from-green-500/0 via-green-500/10 to-green-500/0",
-                          !plan.highlight && plan.iconColor === "text-blue-500" && "bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0",
-                          !plan.highlight && plan.iconColor === "text-purple-500" && "bg-gradient-to-r from-purple-500/0 via-purple-500/10 to-purple-500/0",
-                          !plan.highlight && plan.iconColor === "text-orange-500" && "bg-gradient-to-r from-orange-500/0 via-orange-500/10 to-orange-500/0",
-                          !plan.highlight && plan.iconColor === "text-indigo-500" && "bg-gradient-to-r from-indigo-500/0 via-indigo-500/10 to-indigo-500/0"
-                        )} />
+                        {!isCurrent && (
+                          <div className={cn(
+                            "absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500",
+                            plan.highlight && "bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0",
+                            !plan.highlight && plan.iconColor === "text-green-500" && "bg-gradient-to-r from-green-500/0 via-green-500/10 to-green-500/0",
+                            !plan.highlight && plan.iconColor === "text-blue-500" && "bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0",
+                            !plan.highlight && plan.iconColor === "text-purple-500" && "bg-gradient-to-r from-purple-500/0 via-purple-500/10 to-purple-500/0",
+                            !plan.highlight && plan.iconColor === "text-orange-500" && "bg-gradient-to-r from-orange-500/0 via-orange-500/10 to-orange-500/0",
+                            !plan.highlight && plan.iconColor === "text-indigo-500" && "bg-gradient-to-r from-indigo-500/0 via-indigo-500/10 to-indigo-500/0"
+                          )} />
+                        )}
                       </Button>
                     </CardFooter>
 
@@ -444,6 +513,12 @@ export default function PricingModal({
           </div>
         </div>
       </DialogContent>
+      
+      {/* Coming Soon Popup */}
+      <ComingSoonPopup
+        isOpen={showComingSoonPopup}
+        onClose={() => setShowComingSoonPopup(false)}
+      />
     </Dialog>
   );
 } 
