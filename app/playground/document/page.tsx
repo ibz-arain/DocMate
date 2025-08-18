@@ -257,13 +257,13 @@ export default function DocumentPage() {
     "Ready when you are"
   ];
 
-  // Check if user needs to select a plan (plan_limits is NULL/empty)
+  // Check if user needs to select a plan (plan_type is NULL/empty)
   useEffect(() => {
     const checkForPlanSelection = async () => {
       if (isAuthenticated && user) {
-        // Show modal if user has no plan_limits set (NULL or undefined)
+        // Show modal if user has no plan_type set (NULL or undefined)
         // This means they haven't properly selected a plan yet
-        const needsPlanSelection = !user.plan_limits || user.plan_limits === null || user.plan_limits === undefined;
+        const needsPlanSelection = !user.plan_type || user.plan_type === null || user.plan_type === undefined;
         
         if (needsPlanSelection) {
           setShowSignupPricingModal(true);
@@ -282,21 +282,21 @@ export default function DocumentPage() {
       // Map our modal plan IDs to backend plan types
       const planTypeMap: Record<string, string> = {
         "free": "free",
-        "hobby": "basic",      // Map hobby to basic in backend
+        "hobby": "hobby",      // Keep as hobby
         "pro": "pro", 
-        "business": "enterprise", // Map business to enterprise
+        "business": "business", // Keep as business
         "enterprise": "enterprise",
-        "custom": "enterprise"    // Map custom to enterprise for now
+        "custom": "custom"    // Keep as custom
       };
 
-      // Define plan limits based on plan selection (matching backend plan-utils.ts)
-      const planLimitsMap: Record<string, number> = {
-        "free": 50,        // 50 API calls per month
-        "hobby": 500,      // 500 API calls per month (basic plan)
-        "pro": 5000,       // 5,000 API calls per month 
-        "business": 50000, // 50,000 API calls per month (enterprise)
-        "enterprise": 50000, // 50,000 API calls per month
-        "custom": 50000    // Enterprise limits for custom
+      // Define plan limits based on plan selection (matching your pricing page)
+      const planLimitsMap: Record<string, number | null> = {
+        "free": 50,        // 50 API calls per month (from pricing page)
+        "hobby": 500,      // 500 API calls per month (from pricing page)
+        "pro": 1000,       // 1,000 API calls per month (from pricing page)
+        "business": 5000,  // 5,000 API calls per month (from pricing page)
+        "enterprise": null, // Will be manually set by you
+        "custom": null     // Will be manually set by you
       };
 
       const backendPlanType = planTypeMap[plan.id] || "free";
@@ -359,7 +359,7 @@ export default function DocumentPage() {
   // Handle closing signup pricing modal
   const handleSignupPricingClose = () => {
     // Don't allow closing without selecting a plan
-    // Modal will stay open until user has plan_limits set
+            // Modal will stay open until user has plan_type set
     // User must select a plan to proceed
     toast({
       title: "Plan selection required",
@@ -2313,6 +2313,7 @@ Focus on making the information easily accessible and well-organized.`;
                   pdfFile={pdfFile}
                   onWidthChange={setChatSidebarWidth}
                   prefillInput={chatPrefillText}
+                  onOpenPricing={() => setShowSignupPricingModal(true)}
                 />
               </div>
             )}

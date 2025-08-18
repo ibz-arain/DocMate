@@ -15,13 +15,13 @@ export interface UsageRecord {
 }
 
 export interface PlanLimits {
-  plan_type: string;
+  plan_type: string | null;
   plan_limits: number | null;
 }
 
 export interface UsageStatus {
   current_usage: number;
-  limit: number | null;
+  limit: number;
   is_over_limit: boolean;
   period_start: string;
   period_type: 'daily' | 'monthly';
@@ -53,7 +53,7 @@ export async function getUserPlanLimits(userId: number): Promise<PlanLimits> {
   }
   
   return {
-    plan_type: result.rows[0].plan_type as string,
+    plan_type: result.rows[0].plan_type as string | null,
     plan_limits: result.rows[0].plan_limits as number | null
   };
 }
@@ -74,27 +74,57 @@ export async function getCurrentUsage(userId: number, periodType: 'daily' | 'mon
   // Get or create usage record for current period
   const usageResult = await db.execute({
     sql: `
-      INSERT INTO plan_usage (user_id, period_start, period_type, api_calls_count)
-      VALUES (?, ?, ?, 0)
-      ON CONFLICT(user_id, period_start, period_type) DO UPDATE SET
-        last_updated = CURRENT_TIMESTAMP
+      INSERT INTO plan_usage (user_id, year_month, api_calls_count)
+      VALUES (?, ?, 0)
+      ON CONFLICT(user_id, year_month) DO UPDATE SET
+        updated_at = CURRENT_TIMESTAMP
       RETURNING api_calls_count
     `,
-    args: [userId, periodStart, periodType]
+    args: [userId, now.toISOString().slice(0, 7)] // YYYY-MM format
   });
   
   const currentUsage = usageResult.rows[0]?.api_calls_count as number || 0;
   
-  // Get user's plan limits
-  const planLimits = await getUserPlanLimits(userId);
+      // Get user's plan limits
+    const planLimits = await getUserPlanLimits(userId);
+    
+    // Use stored plan_limits if available, otherwise fall back to plan type defaults
+    let limit: number;
+    if (planLimits.plan_limits !== null && planLimits.plan_limits !== undefined) {
+      limit = planLimits.plan_limits;
+    } else {
+      limit = getPlanLimitFromType(planLimits.plan_type);
+    }
   
   return {
     current_usage: currentUsage,
-    limit: planLimits.plan_limits,
-    is_over_limit: planLimits.plan_limits ? currentUsage >= planLimits.plan_limits : false,
+    limit: limit,
+    is_over_limit: currentUsage >= limit,
     period_start: periodStart,
     period_type: periodType
   };
+}
+
+/**
+ * Get plan limit based on plan type
+ */
+function getPlanLimitFromType(planType: string | null): number {
+  switch (planType) {
+    case 'free':
+      return 50;
+    case 'hobby':
+      return 500;
+    case 'pro':
+      return 1000;
+    case 'business':
+      return 5000;
+    case 'enterprise':
+      return 100000; // Default, but you'll manually override this
+    case 'custom':
+      return 999999; // Default, but you'll manually override this
+    default:
+      return 50; // Default to free plan limits
+  }
 }
 
 /**
@@ -123,17 +153,17 @@ export async function recordApiUsage(usage: UsageRecord): Promise<void> {
   
   // Update plan usage counter
   const now = new Date();
-  const periodStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`; // Monthly period
+  const yearMonth = now.toISOString().slice(0, 7); // YYYY-MM format
   
   await db.execute({
     sql: `
-      INSERT INTO plan_usage (user_id, period_start, period_type, api_calls_count)
-      VALUES (?, ?, 'monthly', 1)
-      ON CONFLICT(user_id, period_start, period_type) DO UPDATE SET
+      INSERT INTO plan_usage (user_id, year_month, api_calls_count)
+      VALUES (?, ?, 1)
+      ON CONFLICT(user_id, year_month) DO UPDATE SET
         api_calls_count = api_calls_count + 1,
-        last_updated = CURRENT_TIMESTAMP
+        updated_at = CURRENT_TIMESTAMP
     `,
-    args: [usage.user_id, periodStart]
+    args: [usage.user_id, yearMonth]
   });
 }
 

@@ -25,6 +25,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { RateLimitPopup } from './rate-limit-popup';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -155,6 +156,10 @@ interface ChatSidebarProps {
    * enter.
    */
   prefillInput?: string;
+  /**
+   * Callback to open the pricing modal when user wants to upgrade
+   */
+  onOpenPricing?: () => void;
 }
 
 export function ChatSidebar({ 
@@ -167,7 +172,8 @@ export function ChatSidebar({
   pdfFile,
   documentText,
   onWidthChange,
-  prefillInput
+  prefillInput,
+  onOpenPricing
 }: ChatSidebarProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -205,6 +211,9 @@ export function ChatSidebar({
   }
 
   const [snippets, setSnippets] = useState<Snippet[]>([]);
+  
+  // Rate limit popup state
+  const [showRateLimitPopup, setShowRateLimitPopup] = useState(false);
 
   // Chat history management functions
   const saveChatHistory = (conversations: ChatConversation[]) => {
@@ -777,6 +786,13 @@ export function ChatSidebar({
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      
+      // Check if it's a rate limit error
+      if (error.error && error.error.toLowerCase().includes('rate limit')) {
+        setShowRateLimitPopup(true);
+        throw new Error('Rate limit exceeded');
+      }
+      
       throw new Error(error.error || 'Failed to get chat response');
     }
 
@@ -1251,6 +1267,18 @@ export function ChatSidebar({
           </CardContent>
         </Card>
       </TooltipProvider>
+      
+      {/* Rate Limit Popup */}
+      <RateLimitPopup
+        isOpen={showRateLimitPopup}
+        onClose={() => setShowRateLimitPopup(false)}
+        onUpgrade={() => {
+          setShowRateLimitPopup(false);
+          if (onOpenPricing) {
+            onOpenPricing();
+          }
+        }}
+      />
     </div>
   );
 } 

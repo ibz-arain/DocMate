@@ -5,11 +5,9 @@ export interface User {
   email: string;
   password_hash?: string; // Optional for security - not always returned
   phone_number?: string;
-  email_verified: boolean;
-  phone_verified: boolean;
   is_active: boolean;
-  plan_type: string;
-  plan_limits?: number;
+  plan_type?: string | null;
+  plan_limits?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,11 +18,9 @@ export interface PublicUser {
   last_name: string;
   email: string;
   phone_number?: string;
-  email_verified: boolean;
-  phone_verified: boolean;
   is_active: boolean;
-  plan_type: string;
-  plan_limits?: number;
+  plan_type?: string | null;
+  plan_limits?: number | null;
   created_at: string;
   updated_at: string;
 }

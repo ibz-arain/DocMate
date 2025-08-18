@@ -46,6 +46,7 @@ import { ChartGeneratorPopup } from "@/components/spreadsheet/chart-generator-po
 import { useHistory } from "@/hooks/use-history";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import PricingModal from "@/components/pricing-modal";
 
 interface SelectionRange {
   startRow: number;
@@ -98,6 +99,9 @@ export default function SpreadsheetPage() {
   // Popup states
   const [showSummarizePopup, setShowSummarizePopup] = useState(false);
   const [popupSelectedText, setPopupSelectedText] = useState("");
+  
+  // Pricing modal state
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const [popupSelectionData, setPopupSelectionData] = useState<any>(null);
   
   const [showTemplateFormatPopup, setShowTemplateFormatPopup] = useState(false);
@@ -1474,6 +1478,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
                   currentPageNumber={1}
                   onWidthChange={setChatSidebarWidth}
                   prefillInput={chatPrefillText}
+                  onOpenPricing={() => setShowPricingModal(true)}
                 />
               </div>
             )}
@@ -1614,6 +1619,18 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
         spreadsheetData={spreadsheetData}
         cachedResult={cachedChartResult}
         onSaveToHistory={handleSaveChartToHistory}
+      />
+
+      {/* Pricing Modal */}
+      <PricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
+        onSelectPlan={(plan) => {
+          setShowPricingModal(false);
+          // Handle plan selection if needed
+        }}
+        currentPlan="free"
+        variant="upgrade"
       />
 
       {/* CSS for animated gradient background */}

@@ -2,48 +2,52 @@ import { db } from './db';
 
 export interface PlanConfig {
   plan_type: string;
-  plan_limits: number;
   description: string;
 }
 
 export const DEFAULT_PLANS: PlanConfig[] = [
   {
     plan_type: 'free',
-    plan_limits: 50,
     description: 'Free tier with 50 API calls per month'
   },
   {
-    plan_type: 'basic',
-    plan_limits: 500,
-    description: 'Basic plan with 500 API calls per month'
+    plan_type: 'hobby',
+    description: 'Hobby plan with 500 API calls per month'
   },
   {
     plan_type: 'pro',
-    plan_limits: 5000,
-    description: 'Pro plan with 5000 API calls per month'
+    description: 'Pro plan with 1,000 API calls per month'
+  },
+  {
+    plan_type: 'business',
+    description: 'Business plan with 5,000 API calls per month'
   },
   {
     plan_type: 'enterprise',
-    plan_limits: 50000,
-    description: 'Enterprise plan with 50000 API calls per month'
+    description: 'Enterprise plan with custom API call limits'
+  },
+  {
+    plan_type: 'custom',
+    description: 'Custom plan with unlimited API call limits'
   }
 ];
 
 /**
- * Set a user's plan and limits
+ * Set a user's plan and optional custom limits
  */
-export async function setUserPlan(userId: number, planType: string, customLimit?: number): Promise<void> {
+export async function setUserPlan(userId: number, planType: string, customLimits?: number): Promise<void> {
   const plan = DEFAULT_PLANS.find(p => p.plan_type === planType);
   
-  if (!plan && !customLimit) {
+  if (!plan && !customLimits) {
     throw new Error(`Invalid plan type: ${planType}`);
   }
   
-  const planLimits = customLimit || plan?.plan_limits || 50;
+  // If custom limits provided, use those. Otherwise use plan defaults
+  const limits = customLimits || getPlanLimits(planType);
   
   await db.execute({
     sql: 'UPDATE users SET plan_type = ?, plan_limits = ?, updated_at = CURRENT_DATE WHERE user_id = ?',
-    args: [planType, planLimits, userId]
+    args: [planType, limits, userId]
   });
 }
 
@@ -71,7 +75,7 @@ export function isValidPlanType(planType: string): boolean {
 /**
  * Get user's current plan info
  */
-export async function getUserPlanInfo(userId: number): Promise<{ plan_type: string; plan_limits: number | null; plan_info?: PlanConfig }> {
+export async function getUserPlanInfo(userId: number): Promise<{ plan_type: string | null; plan_limits: number | null; plan_info?: PlanConfig }> {
     const result = await db.execute({
     sql: 'SELECT plan_type, plan_limits FROM users WHERE user_id = ?',
       args: [userId]
@@ -81,9 +85,9 @@ export async function getUserPlanInfo(userId: number): Promise<{ plan_type: stri
     throw new Error('User not found');
     }
 
-  const planType = result.rows[0].plan_type as string;
+  const planType = result.rows[0].plan_type as string | null;
   const planLimits = result.rows[0].plan_limits as number | null;
-  const planInfo = getPlanInfo(planType);
+  const planInfo = planType ? getPlanInfo(planType) : null;
 
     return {
     plan_type: planType,
@@ -120,26 +124,34 @@ export async function checkUserLimits(userId: number) {
       return { allowed: false, reason: 'User not found' };
     }
 
-    const { plan_limits } = userPlan;
-    const currentUsage = await getUserUsage(userId);
-    const limit = plan_limits;
-
-    // Unlimited plan
-    if (limit === -1) {
-      return { allowed: true, currentUsage, limit: 'unlimited' };
+    let { plan_type, plan_limits } = userPlan;
+    
+    // If no plan is set, default to free plan limits
+    if (!plan_type) {
+      plan_type = 'free';
     }
+    
+    // Use stored plan_limits if available, otherwise fall back to plan type defaults
+    let limits: number;
+    if (plan_limits !== null && plan_limits !== undefined) {
+      limits = plan_limits;
+    } else {
+      limits = getPlanLimits(plan_type);
+    }
+    
+    const currentUsage = await getUserUsage(userId);
 
     // Check if user has exceeded their limit
-    if (limit && currentUsage >= limit) {
+    if (currentUsage >= limits) {
       return { 
         allowed: false, 
         currentUsage, 
-        limit,
-        reason: `Monthly limit of ${limit} document analyses exceeded` 
+        limit: limits,
+        reason: `Monthly limit of ${limits} API calls exceeded` 
       };
     }
 
-    return { allowed: true, currentUsage, limit };
+    return { allowed: true, currentUsage, limit: limits };
   } catch (error) {
     console.error('Error checking user limits:', error);
     return { allowed: false, reason: 'Error checking limits' };
@@ -147,7 +159,7 @@ export async function checkUserLimits(userId: number) {
 }
 
 // Increment user usage
-export async function incrementUserUsage(userId: number, endpointId: string) {
+export async function incrementUserUsage(userId: number, endpointName: string, inputDescription?: string) {
   try {
     // Record the API usage
     await db.execute({
@@ -160,17 +172,19 @@ export async function incrementUserUsage(userId: number, endpointId: string) {
         request_size_bytes,
         response_size_bytes,
         ip_address,
-        user_agent
-      ) VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)`,
+        user_agent,
+        input_description
+      ) VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         userId,
-        'api_endpoint',
+        endpointName,
         200,
         0, // response_time_ms will be updated by the calling function
         0, // request_size_bytes
         0, // response_size_bytes
         'unknown', // ip_address
-        'unknown'  // user_agent
+        'unknown',  // user_agent
+        inputDescription || null
       ]
     });
 
@@ -190,11 +204,22 @@ export function getPlanFeatures(planType: string) {
   return plan.description.split('per month')[0].split('with ')[1].split('API calls')[0].split(' ').filter(Boolean);
 }
 
-// Get plan limits
-export function getPlanLimits(planType: string) {
-  const plan = DEFAULT_PLANS.find(p => p.plan_type === planType);
-  if (!plan) {
-    return 0;
+// Get plan limits based on plan type
+export function getPlanLimits(planType: string): number {
+  switch (planType) {
+    case 'free':
+      return 50;
+    case 'hobby':
+      return 500;
+    case 'pro':
+      return 1000;
+    case 'business':
+      return 5000;
+    case 'enterprise':
+      return 100000; // Default, but you'll manually override this
+    case 'custom':
+      return 999999; // Default, but you'll manually override this
+    default:
+      return 50; // Default to free plan limits
   }
-  return plan.plan_limits;
 } 

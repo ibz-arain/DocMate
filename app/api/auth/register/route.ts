@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
 
     // Create user
     const result = await db.execute({
-      sql: `INSERT INTO users (first_name, last_name, email, password_hash, phone_number, plan_type, updated_at) 
-            VALUES (?, ?, ?, ?, ?, 'free', CURRENT_DATE) 
-            RETURNING user_id, first_name, last_name, email, phone_number, email_verified, phone_verified, is_active, plan_type, plan_limits, created_at, updated_at`,
+      sql: `INSERT INTO users (first_name, last_name, email, password_hash, phone_number, updated_at) 
+            VALUES (?, ?, ?, ?, ?, CURRENT_DATE) 
+            RETURNING user_id, first_name, last_name, email, phone_number, is_active, plan_type, plan_limits, created_at, updated_at`,
       args: [first_name.trim(), last_name.trim(), email.toLowerCase(), password_hash, phone_number || null]
     });
 

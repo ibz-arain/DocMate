@@ -275,7 +275,7 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(totalCount / limit)
       },
       plan_info: {
-        plan_type: userPlan.plan_type as string,
+        plan_type: userPlan.plan_type as string || 'free',
         next_renewal: convertToUserTimezone(nextRenewal.toISOString(), userTimezone),
         created_at: convertToUserTimezone(userPlan.created_at as string, userTimezone)
       },

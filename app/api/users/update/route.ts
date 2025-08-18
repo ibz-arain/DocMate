@@ -43,9 +43,6 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       );
     }
-    
-    // Prepare plan limits
-    const limits = plan_limits ?? planConfig.plan_limits;
 
     // Update user plan
     const result = await db.execute({
@@ -53,9 +50,9 @@ export async function PATCH(request: NextRequest) {
             SET plan_type = ?, plan_limits = ?, updated_at = CURRENT_DATE 
             WHERE user_id = ? 
             RETURNING user_id, first_name, last_name, email, phone_number, 
-                     email_verified, phone_verified, is_active, plan_type, plan_limits, 
+                     is_active, plan_type, plan_limits,
                      created_at, updated_at`,
-      args: [plan_type, limits, payload.userId]
+      args: [plan_type, plan_limits || null, payload.userId]
     });
 
     if (result.rows.length === 0) {
@@ -117,20 +114,23 @@ export async function GET(request: NextRequest) {
     }
 
     const userPlan = result.rows[0] as any;
+    
+    // Handle null plan_type by using default config
     const planType = userPlan.plan_type || 'free';
+    const planLimits = userPlan.plan_limits;
     const planConfig = getPlanInfo(planType);
     
-    // Handle null plan_limits by using default config
-    const planLimits = userPlan.plan_limits ?? (planConfig?.plan_limits || 50);
+    if (!planConfig) {
+      return NextResponse.json(
+        { message: 'Invalid plan configuration' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
-      current_plan: planType,
-      plan_config: planConfig,
-      plan_limits: {
-        document_analyses_per_month: planLimits,
-        features: planConfig?.description || 'No features available'
-      },
-      available_plans: DEFAULT_PLANS
+      plan_type: planType,
+      plan_limits: planLimits,
+      plan_info: planConfig
     });
 
   } catch (error) {
