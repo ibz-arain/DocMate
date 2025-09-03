@@ -87,7 +87,7 @@ export default function AboutPage() {
                       <div className="w-3 h-3 rounded-full bg-green-500" />
                     </div>
                     <div className="text-xs font-medium text-white/90 flex-1 flex items-center">
-                      <span className="text-primary font-bold">docmate</span>
+                      <span className="text-primary font-bold">documate</span>
                       <span className="mx-1 text-white/60">:</span>
                       <span className="text-blue-400">~/mission</span>
                       <span className="ml-1 text-white/60">$</span>
@@ -107,7 +107,7 @@ export default function AboutPage() {
                     <div className="bg-black/30 rounded-md border border-white/10 p-4 backdrop-blur-sm">
                       <h3 className="text-xl font-bold text-primary mb-3">Our Mission</h3>
                       <p className="text-white/80 mb-2">
-                        DocMate emerged from a simple observation: businesses spend countless hours manually processing documents. 
+                        DocuMate emerged from a simple observation: businesses spend countless hours manually processing documents. 
                         We believed there had to be a better way to do this.
                       </p>
                       <p className="text-white/80">
@@ -197,7 +197,7 @@ export default function AboutPage() {
                     {/* Description */}
                     <div className="bg-black/30 rounded-md border border-white/10 p-4 backdrop-blur-sm">
                       <p className="text-white/80 text-md leading-relaxed mb-4">
-                        At WinHacks 2025, our team — Ibrahim Arain, Ahmad Arain, Mohammad Affan Shahid, and Sahaj Kataria — outperformed 29 competing teams to secure first place with DocMate! 
+                        At WinHacks 2025, our team — Ibrahim Arain, Ahmad Arain, Mohammad Affan Shahid, and Sahaj Kataria — outperformed 29 competing teams to secure first place with DocuMate! 
                         Our innovative project revolutionizes document processing by using natural language processing to transform documents and finances into structured, actionable data for 
                         efficient, automated workflows.
                       </p>
@@ -233,7 +233,7 @@ export default function AboutPage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <Image
                           src="/about/group-photo.jpg"
-                          alt="DocMate team at WinHacks 2025"
+                          alt="DocuMate team at WinHacks 2025"
                           fill
                           className="object-cover transition-transform duration-700 group-hover:scale-105"
                         />
@@ -303,7 +303,7 @@ export default function AboutPage() {
                   Meet the <GradientText>Team</GradientText>
                 </h2>
                 <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                  The great minds behind DocMate.
+                  The great minds behind DocuMate.
                 </p>
               </motion.div>
 

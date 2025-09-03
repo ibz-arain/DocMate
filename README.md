@@ -1,8 +1,8 @@
 <div align="center">
 
-![DocMate Logo](public/logo-text.png)
+![DocuMate Logo](public/logo-text.png)
 
-# 🚀 DocMate
+# 🚀 DocuMate
 
 **AI-Powered Document Processing & Analysis Platform**
 
@@ -13,7 +13,7 @@
 
 *Winner of WinHacks 2025 🏆 - First Place out of 30 competing teams*
 
-[🌐 Experience DocMate](https://docmate-beta.vercel.app) • [📖 Documentation](https://docmate-beta.vercel.app/docs) • [🎮 Try the Playground](https://docmate-beta.vercel.app/playground) • [🛠️ API Reference](https://docmate-beta.vercel.app/docs/api)
+[🌐 Experience DocuMate](https://documate-beta.vercel.app) • [📖 Documentation](https://documate-beta.vercel.app/docs) • [🎮 Try the Playground](https://documate-beta.vercel.app/playground) • [🛠️ API Reference](https://documate-beta.vercel.app/docs/api)
 
 </div>
 
@@ -38,7 +38,7 @@
 
 ## 🎯 Overview
 
-**DocMate** is a revolutionary AI-powered document processing platform that transforms the way businesses handle paperwork. Born from a championship-winning hackathon project at WinHacks 2025, DocMate has evolved into a sophisticated solution that eliminates manual document processing through intelligent automation.
+**DocuMate** is a revolutionary AI-powered document processing platform that transforms the way businesses handle paperwork. Born from a championship-winning hackathon project at WinHacks 2025, DocuMate has evolved into a sophisticated solution that eliminates manual document processing through intelligent automation.
 
 ### 🎪 The Problem We Solve
 
@@ -50,9 +50,9 @@
 
 ### 🎭 Our Revolutionary Solution
 
-DocMate leverages cutting-edge Google Gemini AI technology to intelligently understand document structure and content. Our platform extracts precisely what you need through customizable templates and delivers results in multiple professional formats, seamlessly integrating with your existing workflows.
+DocuMate leverages cutting-edge Google Gemini AI technology to intelligently understand document structure and content. Our platform extracts precisely what you need through customizable templates and delivers results in multiple professional formats, seamlessly integrating with your existing workflows.
 
-**[🚀 Start Using DocMate Now](https://docmate-beta.vercel.app)**
+**[🚀 Start Using DocuMate Now](https://documate-beta.vercel.app)**
 
 ---
 
@@ -98,7 +98,7 @@ DocMate leverages cutting-edge Google Gemini AI technology to intelligently unde
 
 ## 🏗️ Technology Excellence
 
-DocMate represents the pinnacle of modern web application development, utilizing cutting-edge technologies and industry best practices.
+DocuMate represents the pinnacle of modern web application development, utilizing cutting-edge technologies and industry best practices.
 
 ### 🛠️ **Cutting-Edge Tech Stack**
 
@@ -151,12 +151,12 @@ graph TB
 
 ### 🌟 **Getting Started**
 
-Experience the power of DocMate by visiting [**docmate-beta.vercel.app**](https://docmate-beta.vercel.app). Our platform offers:
+Experience the power of DocuMate by visiting [**documate-beta.vercel.app**](https://documate-beta.vercel.app). Our platform offers:
 
 1. **🚀 Instant Access**: Create an account and start processing documents immediately
-2. **🎯 Interactive Demo**: Try our technology with sample documents at [demo page](https://docmate-beta.vercel.app/demo)
-3. **📚 Comprehensive Guides**: Step-by-step documentation at [docs](https://docmate-beta.vercel.app/docs)
-4. **🎮 Live Playground**: Real-time testing environment at [playground](https://docmate-beta.vercel.app/playground)
+2. **🎯 Interactive Demo**: Try our technology with sample documents at [demo page](https://documate-beta.vercel.app/demo)
+3. **📚 Comprehensive Guides**: Step-by-step documentation at [docs](https://documate-beta.vercel.app/docs)
+4. **🎮 Live Playground**: Real-time testing environment at [playground](https://documate-beta.vercel.app/playground)
 
 ### 🎨 **Template Creation Made Simple**
 
@@ -176,9 +176,9 @@ Our visual template builder empowers users to create sophisticated extraction ru
 
 ### 🔐 **Professional API Access**
 
-DocMate provides robust API access for seamless integration with your existing systems. 
+DocuMate provides robust API access for seamless integration with your existing systems. 
 
-**[📚 View Complete API Documentation](https://docmate-beta.vercel.app/docs/api)**
+**[📚 View Complete API Documentation](https://documate-beta.vercel.app/docs/api)**
 
 ### 📊 **Core API Capabilities**
 
@@ -195,13 +195,13 @@ DocMate provides robust API access for seamless integration with your existing s
 - **📈 Real-time Analytics**: Monitor usage and performance
 - **🔔 Webhook Support**: Instant notifications for processed documents
 
-**[🚀 Start Using Our API](https://docmate-beta.vercel.app/playground/api)**
+**[🚀 Start Using Our API](https://documate-beta.vercel.app/playground/api)**
 
 ---
 
 ## 🎨 User Interface
 
-DocMate features a world-class user interface designed for both power users and beginners:
+DocuMate features a world-class user interface designed for both power users and beginners:
 
 ### 🌟 **Design Excellence**
 
@@ -218,7 +218,7 @@ DocMate features a world-class user interface designed for both power users and 
 - **📖 Document Viewer**: Advanced PDF viewing with intelligent selection
 - **⚙️ Settings Management**: Comprehensive customization options
 
-**[🎯 Try the Interface](https://docmate-beta.vercel.app/playground)**
+**[🎯 Try the Interface](https://documate-beta.vercel.app/playground)**
 
 ---
 
@@ -226,7 +226,7 @@ DocMate features a world-class user interface designed for both power users and 
 
 ### 🛡️ **Enterprise-Grade Security**
 
-DocMate implements industry-leading security measures to protect your data:
+DocuMate implements industry-leading security measures to protect your data:
 
 - **🔒 Advanced Authentication**: Multi-layer security protocols
 - **🔐 Data Encryption**: End-to-end encryption for all document processing
@@ -245,7 +245,7 @@ DocMate implements industry-leading security measures to protect your data:
 
 ## 📱 Cross-Platform Excellence
 
-DocMate delivers a consistent, premium experience across all platforms and devices:
+DocuMate delivers a consistent, premium experience across all platforms and devices:
 
 ### 📊 **Universal Device Support**
 - **📱 Mobile Optimized**: Perfect experience on smartphones
@@ -265,7 +265,7 @@ DocMate delivers a consistent, premium experience across all platforms and devic
 
 ### 🥇 **WinHacks 2025 Championship Victory**
 
-DocMate achieved unprecedented success at WinHacks 2025:
+DocuMate achieved unprecedented success at WinHacks 2025:
 
 - **🏆 First Place Winner** - Defeated 30 competing teams
 - **💡 Innovation Excellence Award** - Groundbreaking AI implementation
@@ -274,7 +274,7 @@ DocMate achieved unprecedented success at WinHacks 2025:
 
 ### 🌟 **Industry Impact**
 
-DocMate has been recognized as a revolutionary solution in the document processing industry, representing the future of AI-powered business automation and setting new standards for intelligent document processing.
+DocuMate has been recognized as a revolutionary solution in the document processing industry, representing the future of AI-powered business automation and setting new standards for intelligent document processing.
 
 ---
 
@@ -282,7 +282,7 @@ DocMate has been recognized as a revolutionary solution in the document processi
 
 ### 🌟 **Award-Winning Engineering Team**
 
-Meet the exceptional developers behind DocMate's championship success:
+Meet the exceptional developers behind DocuMate's championship success:
 
 **[Ibrahim Arain](https://github.com/ibrahim-arain)** - *Lead Developer & Project Architect*
 - 🎯 Visionary project leadership and technical architecture
@@ -310,9 +310,9 @@ Meet the exceptional developers behind DocMate's championship success:
 
 ### ⚖️ **Proprietary Software License**
 
-**© 2024 DocMate. All Rights Reserved.**
+**© 2024 DocuMate. All Rights Reserved.**
 
-DocMate is proprietary software exclusively owned and developed by Ibrahim Arain and the DocMate development team. This software and all associated intellectual property are protected by copyright law and international treaties.
+DocuMate is proprietary software exclusively owned and developed by Ibrahim Arain and the DocuMate development team. This software and all associated intellectual property are protected by copyright law and international treaties.
 
 **⚠️ IMPORTANT LEGAL NOTICE:**
 
@@ -322,7 +322,7 @@ DocMate is proprietary software exclusively owned and developed by Ibrahim Arain
 - **📜 Rights Reserved**: All rights, title, and interest in the software remain with the owners
 
 **For business licensing, partnership opportunities, or authorized usage inquiries:**
-**[📧 Contact Us via DocMate Platform](https://docmate-beta.vercel.app)**
+**[📧 Contact Us via DocuMate Platform](https://documate-beta.vercel.app)**
 
 ---
 
@@ -330,7 +330,7 @@ DocMate is proprietary software exclusively owned and developed by Ibrahim Arain
 
 ### 🛠️ **Technology Partners & Frameworks**
 
-We acknowledge and appreciate the exceptional technologies that power DocMate:
+We acknowledge and appreciate the exceptional technologies that power DocuMate:
 
 - **[Next.js](https://nextjs.org/)** - Revolutionary React framework enabling our frontend
 - **[Google AI](https://ai.google.dev/)** - Advanced Gemini AI models powering our intelligence
@@ -343,7 +343,7 @@ We acknowledge and appreciate the exceptional technologies that power DocMate:
 ### 🎉 **Special Recognition**
 
 - **WinHacks 2025 Organizers** - For creating an incredible platform for innovation
-- **Competition Judges** - For recognizing the potential and impact of DocMate
+- **Competition Judges** - For recognizing the potential and impact of DocuMate
 - **Industry Mentors** - For invaluable guidance throughout development
 - **Open Source Community** - For the amazing tools that made this achievement possible
 
@@ -355,15 +355,15 @@ We acknowledge and appreciate the exceptional technologies that power DocMate:
 
 **Experience the award-winning AI-powered solution that's revolutionizing business automation**
 
-**[🌟 Start Using DocMate](https://docmate-beta.vercel.app)** • **[🎮 Try the Demo](https://docmate-beta.vercel.app/demo)** • **[📚 Explore Documentation](https://docmate-beta.vercel.app/docs)**
+**[🌟 Start Using DocuMate](https://documate-beta.vercel.app)** • **[🎮 Try the Demo](https://documate-beta.vercel.app/demo)** • **[📚 Explore Documentation](https://documate-beta.vercel.app/docs)**
 
 ---
 
-**Built with ❤️ and Championship Excellence by the DocMate Team**
+**Built with ❤️ and Championship Excellence by the DocuMate Team**
 
 *Where paperwork meets intelligence - transforming chaos into structured brilliance* ✨
 
-![DocMate Footer](public/logo-bird.png)
+![DocuMate Footer](public/logo-bird.png)
 
 ---
 
@@ -371,9 +371,9 @@ We acknowledge and appreciate the exceptional technologies that power DocMate:
 
 </div>
 
-## DocMate - AI-Powered Document Processing Platform
+## DocuMate - AI-Powered Document Processing Platform
 
-DocMate is a sophisticated platform that combines document processing capabilities with advanced spreadsheet functionality and AI-powered analysis.
+DocuMate is a sophisticated platform that combines document processing capabilities with advanced spreadsheet functionality and AI-powered analysis.
 
 ## Features
 

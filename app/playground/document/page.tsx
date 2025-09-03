@@ -154,7 +154,7 @@ export default function DocumentPage() {
     // Save drawings to localStorage whenever they change
     if (pdfFile) {
       try {
-        localStorage.setItem(`docmate-drawings-${pdfFile.name}`, JSON.stringify(newDrawings));
+        localStorage.setItem(`documate-drawings-${pdfFile.name}`, JSON.stringify(newDrawings));
       } catch (error) {
         console.error('Failed to save drawings to localStorage:', error);
       }
@@ -212,7 +212,7 @@ export default function DocumentPage() {
   // Function to load drawings from localStorage
   const loadDrawingsFromStorage = (fileName: string) => {
     try {
-      const storedDrawings = localStorage.getItem(`docmate-drawings-${fileName}`);
+      const storedDrawings = localStorage.getItem(`documate-drawings-${fileName}`);
       if (storedDrawings) {
         const parsedDrawings = JSON.parse(storedDrawings) as Drawing[];
         setDrawings(parsedDrawings);
@@ -227,7 +227,7 @@ export default function DocumentPage() {
   // Function to clear drawings from localStorage
   const clearDrawingsFromStorage = (fileName: string) => {
     try {
-      localStorage.removeItem(`docmate-drawings-${fileName}`);
+      localStorage.removeItem(`documate-drawings-${fileName}`);
     } catch (error) {
       console.error('Failed to clear drawings from localStorage:', error);
     }
@@ -310,7 +310,7 @@ export default function DocumentPage() {
       // Handle free plan selection
       if (plan.id === "free") {
         toast({
-          title: "Welcome to DocMate!",
+          title: "Welcome to DocuMate!",
           description: "You're all set with our free plan. Start uploading documents to get started!",
         });
       }
@@ -334,7 +334,7 @@ export default function DocumentPage() {
     // User must select a plan to proceed
     toast({
       title: "Plan selection required",
-      description: "Please select a plan to continue using DocMate.",
+      description: "Please select a plan to continue using DocuMate.",
       variant: "destructive"
     });
   };
@@ -343,8 +343,8 @@ export default function DocumentPage() {
   useEffect(() => {
     const loadStoredPdf = async () => {
       try {
-        const storedPdfData = localStorage.getItem('docmate-pdf-data');
-        const storedPdfName = localStorage.getItem('docmate-pdf-name');
+        const storedPdfData = localStorage.getItem('documate-pdf-data');
+        const storedPdfName = localStorage.getItem('documate-pdf-name');
         
         if (storedPdfData && storedPdfName) {
           // Convert base64 back to File
@@ -358,9 +358,9 @@ export default function DocumentPage() {
           setIsLoading(true);
           
           // Restore other state if available
-          const storedPageNumber = localStorage.getItem('docmate-pdf-page');
-          const storedScale = localStorage.getItem('docmate-pdf-scale');
-          const storedRotation = localStorage.getItem('docmate-pdf-rotation');
+          const storedPageNumber = localStorage.getItem('documate-pdf-page');
+          const storedScale = localStorage.getItem('documate-pdf-scale');
+          const storedRotation = localStorage.getItem('documate-pdf-rotation');
           
           if (storedPageNumber) setPageNumber(parseInt(storedPageNumber));
           if (storedScale) setScale(parseFloat(storedScale));
@@ -372,11 +372,11 @@ export default function DocumentPage() {
       } catch (error) {
         console.error('Failed to load stored PDF:', error);
         // Clear corrupted data
-        localStorage.removeItem('docmate-pdf-data');
-        localStorage.removeItem('docmate-pdf-name');
-        localStorage.removeItem('docmate-pdf-page');
-        localStorage.removeItem('docmate-pdf-scale');
-        localStorage.removeItem('docmate-pdf-rotation');
+        localStorage.removeItem('documate-pdf-data');
+        localStorage.removeItem('documate-pdf-name');
+        localStorage.removeItem('documate-pdf-page');
+        localStorage.removeItem('documate-pdf-scale');
+        localStorage.removeItem('documate-pdf-rotation');
       }
     };
 
@@ -391,8 +391,8 @@ export default function DocumentPage() {
           const reader = new FileReader();
           reader.onload = () => {
             const base64Data = reader.result as string;
-            localStorage.setItem('docmate-pdf-data', base64Data);
-            localStorage.setItem('docmate-pdf-name', pdfFile.name);
+            localStorage.setItem('documate-pdf-data', base64Data);
+            localStorage.setItem('documate-pdf-name', pdfFile.name);
           };
           reader.readAsDataURL(pdfFile);
         } catch (error) {
@@ -407,13 +407,13 @@ export default function DocumentPage() {
   // Save state changes to localStorage
   useEffect(() => {
     if (pdfFile) {
-      localStorage.setItem('docmate-pdf-page', pageNumber.toString());
+      localStorage.setItem('documate-pdf-page', pageNumber.toString());
     }
   }, [pageNumber, pdfFile]);
 
   useEffect(() => {
     if (pdfFile) {
-      localStorage.setItem('docmate-pdf-scale', scale.toString());
+      localStorage.setItem('documate-pdf-scale', scale.toString());
     }
     // Keep pendingScaleRef in sync when scale changes externally
     pendingScaleRef.current = scale;
@@ -421,7 +421,7 @@ export default function DocumentPage() {
 
   useEffect(() => {
     if (pdfFile) {
-      localStorage.setItem('docmate-pdf-rotation', rotation.toString());
+      localStorage.setItem('documate-pdf-rotation', rotation.toString());
     }
   }, [rotation, pdfFile]);
 
@@ -471,11 +471,11 @@ export default function DocumentPage() {
     setFullDocQuickFormatResult(null);
     
     // Clear localStorage
-    localStorage.removeItem('docmate-pdf-data');
-    localStorage.removeItem('docmate-pdf-name');
-    localStorage.removeItem('docmate-pdf-page');
-    localStorage.removeItem('docmate-pdf-scale');
-    localStorage.removeItem('docmate-pdf-rotation');
+    localStorage.removeItem('documate-pdf-data');
+    localStorage.removeItem('documate-pdf-name');
+    localStorage.removeItem('documate-pdf-page');
+    localStorage.removeItem('documate-pdf-scale');
+    localStorage.removeItem('documate-pdf-rotation');
     
     // Clear history when document is cleared
     clearHistory();
@@ -1968,7 +1968,7 @@ Focus on making the information easily accessible and well-organized.`;
   return (
     <>
       <Head>
-        <title>Document Editor | DocMate</title>
+        <title>Document Editor | DocuMate</title>
         <meta name="description" content="Edit and manage your PDF documents" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

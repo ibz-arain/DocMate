@@ -35,7 +35,7 @@ const BackgroundNoise = () => {
 // Mac window style component
 const MacWindow = ({ 
   children, 
-  title = "DocMate", 
+  title = "DocuMate", 
   variant = "default",
   className = ""
 }: { 
@@ -127,7 +127,7 @@ const TimelineItem = ({
             <div className="w-3 h-3 rounded-full bg-green-500" />
           </div>
           <div className="text-xs font-medium text-white/90 flex-1 flex items-center">
-            <span className="text-primary font-bold">docmate</span>
+            <span className="text-primary font-bold">documate</span>
             <span className="mx-1 text-white/60">:</span>
             <span className="text-blue-400">~/releases</span>
             <span className="ml-1 text-white/60">$</span>

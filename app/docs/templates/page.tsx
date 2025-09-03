@@ -25,12 +25,12 @@ export default function TemplatesGuidePage() {
       <h1 className="text-3xl font-bold mb-6">Designing Extraction Templates</h1>
 
       <p className="text-lg text-muted-foreground mb-8">
-        Templates are the heart of DocMate's targeted extraction. They act as a blueprint, telling our AI exactly what information you want to pull from your documents and how that information is structured. Master templates, and you master automated data extraction.
+        Templates are the heart of DocuMate's targeted extraction. They act as a blueprint, telling our AI exactly what information you want to pull from your documents and how that information is structured. Master templates, and you master automated data extraction.
       </p>
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">What is a Template?</h2>
       <p className="text-muted-foreground mb-6">
-        Think of a template as a structured shopping list for data. Instead of manually scanning a document for every piece of information, you define the items (fields) you need in a template. DocMate then uses this list to find and extract only those specific items from the document you upload.
+        Think of a template as a structured shopping list for data. Instead of manually scanning a document for every piece of information, you define the items (fields) you need in a template. DocuMate then uses this list to find and extract only those specific items from the document you upload.
       </p>
       <p className="text-muted-foreground mb-6">
         You can create, save, and manage your templates within the <Link href="/playground/templates" className="text-primary hover:underline">Playground's Template Editor</Link> (assuming a dedicated section or similar).
@@ -58,7 +58,7 @@ export default function TemplatesGuidePage() {
         <li>Account Number</li>
       </ul>
       <p className="text-muted-foreground mb-4">
-        In your template, you'd create a section (e.g., "Header Info") of type `data` and add fields for each specific item you want (e.g., Field Name: `InvoiceNumber`, Type: `string`). DocMate will look for these labels or values individually in the document.
+        In your template, you'd create a section (e.g., "Header Info") of type `data` and add fields for each specific item you want (e.g., Field Name: `InvoiceNumber`, Type: `string`). DocuMate will look for these labels or values individually in the document.
       </p>
 
       <h3 className="text-xl font-semibold mt-6 mb-3">2. Table Sections (Type: `table`)</h3>
@@ -71,7 +71,7 @@ export default function TemplatesGuidePage() {
         <li>Procedures on a dental claim (Code, Description, Fee)</li>
       </ul>
       <p className="text-muted-foreground mb-4">
-        You'd create a section (e.g., "Line Items") of type `table` and define the columns as fields (e.g., Field Name: `ItemName`, Type: `string`; Field Name: `Quantity`, Type: `number`). DocMate will identify the tabular structure in the document and extract the data row by row based on your defined columns.
+        You'd create a section (e.g., "Line Items") of type `table` and define the columns as fields (e.g., Field Name: `ItemName`, Type: `string`; Field Name: `Quantity`, Type: `number`). DocuMate will identify the tabular structure in the document and extract the data row by row based on your defined columns.
       </p>
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Defining Fields</h3>
@@ -85,7 +85,7 @@ export default function TemplatesGuidePage() {
             <li>`string`: Textual data</li>
             <li>`number`: Numerical data (integers or decimals)</li>
             <li>`currency`: Monetary values (often treated as numbers but helps AI context)</li>
-            <li>`date`: Dates (DocMate tries to standardize formats)</li>
+            <li>`date`: Dates (DocuMate tries to standardize formats)</li>
             <li>`boolean`: True/False values</li>
           </ul>
         </li>
@@ -106,7 +106,7 @@ export default function TemplatesGuidePage() {
 
       <h3 className="text-xl font-semibold mt-6 mb-3">1. In the Playground</h3>
       <p className="text-muted-foreground mb-4">
-        When processing a document in the <Link href="/playground" className="text-primary hover:underline">Playground</Link>, simply select your saved template from the dropdown menu before hitting 'Process'. DocMate will then use that specific structure for extraction.
+        When processing a document in the <Link href="/playground" className="text-primary hover:underline">Playground</Link>, simply select your saved template from the dropdown menu before hitting 'Process'. DocuMate will then use that specific structure for extraction.
       </p>
       <TemplatePlaceholder 
         placeholder="IMAGE_PLACEHOLDER_PLAYGROUND_TEMPLATE_SELECT"
@@ -136,7 +136,7 @@ export default function TemplatesGuidePage() {
       </ul>
 
       <p className="text-lg text-muted-foreground mt-10">
-        By creating well-designed templates, you unlock DocMate's ability to precisely and automatically extract the information you need, saving you time and effort.
+        By creating well-designed templates, you unlock DocuMate's ability to precisely and automatically extract the information you need, saving you time and effort.
       </p>
     </div>
   );

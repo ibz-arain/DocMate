@@ -18,18 +18,18 @@ export default function QuickStartPage() {
       <h1 className="text-3xl font-bold mb-6">Quick Start Guide</h1>
 
       <p className="text-lg text-muted-foreground mb-8">
-        Ready to see DocMate in action? This guide will get you up and running in minutes. We'll cover signing up and taking the Playground for a spin.
+        Ready to see DocuMate in action? This guide will get you up and running in minutes. We'll cover signing up and taking the Playground for a spin.
       </p>
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">1. Signing Up</h2>
       <p className="text-muted-foreground mb-4">
-        First things first, you'll need an account to access the full power of DocMate, including saving templates and managing your documents.
+        First things first, you'll need an account to access the full power of DocuMate, including saving templates and managing your documents.
       </p>
       <ul className="list-decimal pl-6 space-y-2 text-muted-foreground mb-6">
         <li>Head over to the <Link href="/signup" className="text-primary hover:underline">Sign Up page</Link>.</li>
         <li>Fill in your details (email, password).</li>
         <li>Verify your email if prompted.</li>
-        <li>Log in to your shiny new DocMate account!</li>
+        <li>Log in to your shiny new DocuMate account!</li>
       </ul>
       <p className="text-muted-foreground mb-8">
         Once logged in, you'll land on your dashboard, ready to start processing documents.
@@ -37,7 +37,7 @@ export default function QuickStartPage() {
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">2. Using the Playground</h2>
       <p className="text-muted-foreground mb-6">
-        The Playground is where the magic happens without needing any complex setup. It's perfect for testing templates and seeing how DocMate extracts data from your documents.
+        The Playground is where the magic happens without needing any complex setup. It's perfect for testing templates and seeing how DocuMate extracts data from your documents.
       </p>
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 1: Go to the Playground</h3>
@@ -57,7 +57,7 @@ export default function QuickStartPage() {
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 3: Select or Create a Template</h3>
       <p className="text-muted-foreground mb-4">
-        Templates tell DocMate what information to look for. You can:
+        Templates tell DocuMate what information to look for. You can:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-muted-foreground mb-4">
         <li><strong>Use a Pre-built Template:</strong> Choose one of our common templates (e.g., 'Receipts', 'Invoices') from the dropdown if available.</li>
@@ -73,7 +73,7 @@ export default function QuickStartPage() {
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 4: Process the Document</h3>
       <p className="text-muted-foreground mb-4">
-        Hit the 'Process' button. DocMate's AI will analyze the document based on your chosen template.
+        Hit the 'Process' button. DocuMate's AI will analyze the document based on your chosen template.
       </p>
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 5: View the Results</h3>
@@ -92,7 +92,7 @@ export default function QuickStartPage() {
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">Next Steps: API Integration (Optional)</h2>
       <p className="text-muted-foreground mb-4">
-        Want to automate this process in your own applications? You can use the DocMate API.
+        Want to automate this process in your own applications? You can use the DocuMate API.
       </p>
       <p className="text-muted-foreground mb-4">
         Here's a basic idea of how you might upload and process a document via API:
@@ -106,7 +106,7 @@ export default function QuickStartPage() {
       </p>
 
       <p className="text-lg text-muted-foreground mt-10">
-        That's it! You've successfully signed up and processed your first document using the DocMate Playground. Explore further, experiment with different documents and templates, and check out the rest of the documentation for more advanced features.
+        That's it! You've successfully signed up and processed your first document using the DocuMate Playground. Explore further, experiment with different documents and templates, and check out the rest of the documentation for more advanced features.
       </p>
     </div>
   );

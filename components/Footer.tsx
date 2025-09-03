@@ -14,7 +14,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-16 mb-16">
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center overflow-hidden" style={{ width: '190px', marginLeft: '-16px' }}>
-              <Image src="/logo-text.png" alt="DocMate" width={200} height={200} />
+              <Image src="/logo-text.png" alt="DocuMate" width={200} height={200} />
             </div>
             
             <p className="text-muted-foreground">
@@ -134,7 +134,7 @@ export default function Footer() {
         <div className="pt-8 border-t border-white/5">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <span>© {new Date().getFullYear()} DocMate</span>
+              <span>© {new Date().getFullYear()} DocuMate</span>
               <span className="inline-block w-1 h-1 rounded-full bg-muted-foreground"></span>
               <span>All rights reserved</span>
             </div>

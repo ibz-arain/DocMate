@@ -642,14 +642,14 @@ export function APIPlayground() {
           </div>
                               <div className="flex items-center gap-2 p-2 mt-1 bg-muted rounded-md">
                                 <code className="text-sm flex-1 text-muted-foreground font-mono">
-                                  https://docmate-beta.vercel.app{getSelectedEndpoint()?.path}
+                                  https://documate-beta.vercel.app{getSelectedEndpoint()?.path}
                                 </code>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   className="h-8 w-8"
                                   onClick={() => {
-                                    const url = `https://docmate-beta.vercel.app${getSelectedEndpoint()?.path}`;
+                                    const url = `https://documate-beta.vercel.app${getSelectedEndpoint()?.path}`;
                                     handleCopy(url, "API URL copied to clipboard");
                                   }}
                                 >

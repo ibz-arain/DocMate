@@ -15,7 +15,7 @@ export interface HistoryEntry {
   pageNumber?: number;
 }
 
-const HISTORY_STORAGE_KEY = 'docmate-history';
+const HISTORY_STORAGE_KEY = 'documate-history';
 const MAX_HISTORY_ENTRIES = 50;
 
 interface HistoryContextType {

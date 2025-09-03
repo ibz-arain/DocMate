@@ -35,7 +35,7 @@ export default function ExampleInvoicePage() {
       <h1 className="text-3xl font-bold mb-6">Workflow Example: Processing an Invoice</h1>
 
       <p className="text-lg text-muted-foreground mb-8">
-        Let's walk through a common scenario: extracting key information from an invoice using DocMate. This example shows how you can target specific data points and view them in different formats, all handled automatically.
+        Let's walk through a common scenario: extracting key information from an invoice using DocuMate. This example shows how you can target specific data points and view them in different formats, all handled automatically.
       </p>
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">The Scenario: Extracting Invoice Details</h2>
@@ -51,9 +51,9 @@ export default function ExampleInvoicePage() {
         type="IMAGE"
       />
 
-      <h2 className="text-2xl font-semibold mt-10 mb-4">Using DocMate to Extract Specific Data</h2>
+      <h2 className="text-2xl font-semibold mt-10 mb-4">Using DocuMate to Extract Specific Data</h2>
       <p className="text-muted-foreground mb-6">
-        Instead of reading the whole invoice, we can tell DocMate exactly what we need using a template in the <Link href="/playground" className="text-primary hover:underline">Playground</Link>.
+        Instead of reading the whole invoice, we can tell DocuMate exactly what we need using a template in the <Link href="/playground" className="text-primary hover:underline">Playground</Link>.
       </p>
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 1: Upload the Invoice</h3>
@@ -80,12 +80,12 @@ export default function ExampleInvoicePage() {
         type="IMAGE"
       />
       <p className="text-muted-foreground mb-4">
-        By defining only these fields, we instruct DocMate to focus its extraction efforts solely on finding this specific information, ignoring the rest.
+        By defining only these fields, we instruct DocuMate to focus its extraction efforts solely on finding this specific information, ignoring the rest.
       </p>
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 3: Process and View Results</h3>
       <p className="text-muted-foreground mb-4">
-        After hitting 'Process', DocMate uses the template to analyze the invoice. Within moments, it presents *only* the data we asked for in various formats.
+        After hitting 'Process', DocuMate uses the template to analyze the invoice. Within moments, it presents *only* the data we asked for in various formats.
       </p>
 
       <h4 className="text-lg font-semibold mt-6 mb-2">Formatted View:</h4>
@@ -119,7 +119,7 @@ export default function ExampleInvoicePage() {
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">Why This Matters</h2>
       <p className="text-muted-foreground mb-6">
-        This example highlights several key benefits of DocMate:
+        This example highlights several key benefits of DocuMate:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-muted-foreground mb-6">
         <li><strong>Targeted Extraction:</strong> You control exactly what data gets pulled, reducing noise and focusing on what's important.</li>
@@ -129,7 +129,7 @@ export default function ExampleInvoicePage() {
       </ul>
 
       <p className="text-lg text-muted-foreground mt-10">
-        This is just one example. You can apply the same principles – defining targeted templates – to extract specific information from contracts, reports, forms, and many other document types using DocMate.
+        This is just one example. You can apply the same principles – defining targeted templates – to extract specific information from contracts, reports, forms, and many other document types using DocuMate.
       </p>
     </div>
   );

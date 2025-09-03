@@ -18,7 +18,7 @@ export default function DemoGuidePage() {
       <h1 className="text-3xl font-bold mb-6">Using the Interactive Demo</h1>
 
       <p className="text-lg text-muted-foreground mb-8">
-        Want a quick taste of DocMate without signing up? The interactive demo on our <Link href="/demo" className="text-primary hover:underline">Demo page</Link> allows you to upload specific document types and see the extraction results instantly. It's a great way to understand the basic workflow.
+        Want a quick taste of DocuMate without signing up? The interactive demo on our <Link href="/demo" className="text-primary hover:underline">Demo page</Link> allows you to upload specific document types and see the extraction results instantly. It's a great way to understand the basic workflow.
       </p>
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">How to Use the Demo</h2>
@@ -33,7 +33,7 @@ export default function DemoGuidePage() {
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 2: Find the "Try It Out" Section</h3>
       <p className="text-muted-foreground mb-4">
-        Scroll down the Demo page until you find the section titled "Try DocMate Now" or similar. This is the interactive demo component.
+        Scroll down the Demo page until you find the section titled "Try DocuMate Now" or similar. This is the interactive demo component.
       </p>
       <CodePlaceholder 
         placeholder="IMAGE_PLACEHOLDER_DEMO_SECTION"
@@ -60,12 +60,12 @@ export default function DemoGuidePage() {
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 5: Process the Document</h3>
       <p className="text-muted-foreground mb-4">
-        Click the 'Process Document' (or similarly named) button. DocMate will analyze the file based on the selected document type's predefined template.
+        Click the 'Process Document' (or similarly named) button. DocuMate will analyze the file based on the selected document type's predefined template.
       </p>
 
       <h3 className="text-xl font-semibold mt-6 mb-3">Step 6: View the Extracted Results</h3>
       <p className="text-muted-foreground mb-4">
-        After a few moments, a results dialog will pop up. Here, you can see the information DocMate extracted from your document.
+        After a few moments, a results dialog will pop up. Here, you can see the information DocuMate extracted from your document.
       </p>
       <p className="text-muted-foreground mb-4">
         Explore the different tabs to see the data in various formats:
@@ -93,7 +93,7 @@ export default function DemoGuidePage() {
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">Want More?</h2>
       <p className="text-muted-foreground mb-4">
-        Liked what you saw? To unlock the full potential of DocMate, including creating your own custom templates, saving documents, and using the API, you'll need to <Link href="/signup" className="text-primary hover:underline">sign up for an account</Link>.
+        Liked what you saw? To unlock the full potential of DocuMate, including creating your own custom templates, saving documents, and using the API, you'll need to <Link href="/signup" className="text-primary hover:underline">sign up for an account</Link>.
       </p>
       <p className="text-muted-foreground">
         After signing up, head to the <Link href="/playground" className="text-primary hover:underline">Playground</Link> for a more feature-rich experience, as described in the <Link href="/docs/quick-start" className="text-primary hover:underline">Quick Start Guide</Link>.

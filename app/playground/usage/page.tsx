@@ -867,7 +867,7 @@ export default function UsagePage() {
   return (
     <>
       <Head>
-        <title>Usage Analytics | DocMate</title>
+        <title>Usage Analytics | DocuMate</title>
         <meta name="description" content="Monitor your API usage and track your plan limits" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

@@ -11,7 +11,7 @@ export default function HistoryPage() {
   return (
     <>
       <Head>
-        <title>Document History | DocMate</title>
+        <title>Document History | DocuMate</title>
         <meta name="description" content="View and manage your document history" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

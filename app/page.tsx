@@ -256,9 +256,9 @@ export default function HomePage() {
           <ParticleBackground />
 
           {/* Hero Section */}
-          <section className="relative min-h-screen flex items-center justify-center overflow-hidden py-20 px-6">
+          <section className="relative min-h-screen flex items-center justify-center overflow-hidden py-10 px-4 sm:px-6">
             <div className="container mx-auto max-w-7xl relative z-10">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -276,7 +276,7 @@ export default function HomePage() {
                   </motion.div>
 
                   <motion.h1
-                    className="text-5xl md:text-7xl font-bold tracking-tight leading-tight flex flex-col"
+                    className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-tight flex flex-col"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.3 }}
@@ -303,7 +303,7 @@ export default function HomePage() {
                   </motion.h1>
 
                   <motion.p
-                    className="text-xl text-muted-foreground max-w-xl"
+                    className="text-lg sm:text-xl text-muted-foreground max-w-xl"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
@@ -319,14 +319,12 @@ export default function HomePage() {
                   >
                     <Link href="/playground" target="_blank">
                       <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
-                        <span className="relative z-10 flex items-center">
-                          Try the Platform <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
-                        </span>
+                          Get Started <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                       </Button>
                     </Link>
                     <Link href="/demo">
                       <Button variant="outline" size="lg" className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5">
-                        Watch Demo <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+                        Learn More <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                       </Button>
                     </Link>
                   </motion.div>
@@ -339,7 +337,7 @@ export default function HomePage() {
                   className="relative"
                 >
                   {/* 3D Document Visualization - improved positioning and animation */}
-                  <div className="relative h-[500px] w-full perspective-[1200px]">
+                  <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] w-full perspective-[1200px]">
                     {/* Floating documents with improved positioning and animation */}
                     {Array.from({ length: 5 }).map((_, i) => {
                       // Calculate better positions for the documents
@@ -370,15 +368,15 @@ export default function HomePage() {
                             ease: "easeInOut",
                           }}
                         >
-                          <Card3D className="w-[200px] h-[280px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm border border-white/20 rounded-lg shadow-xl">
-                            <CardContent className="p-4 h-full flex flex-col">
-                              <div className="w-full h-4 bg-primary/20 rounded mb-3"></div>
-                              <div className="w-3/4 h-3 bg-primary/10 rounded mb-2"></div>
-                              <div className="w-5/6 h-3 bg-primary/10 rounded mb-2"></div>
-                              <div className="w-2/3 h-3 bg-primary/10 rounded mb-6"></div>
-                              <div className="flex-1 grid grid-cols-2 gap-2">
+                          <Card3D className="w-[120px] sm:w-[160px] lg:w-[200px] h-[160px] sm:h-[220px] lg:h-[280px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm border border-white/20 rounded-lg shadow-xl">
+                            <CardContent className="p-2 sm:p-4 h-full flex flex-col">
+                              <div className="w-full h-3 sm:h-4 bg-primary/20 rounded mb-2 sm:mb-3"></div>
+                              <div className="w-3/4 h-2 sm:h-3 bg-primary/10 rounded mb-1 sm:mb-2"></div>
+                              <div className="w-5/6 h-2 sm:h-3 bg-primary/10 rounded mb-1 sm:mb-2"></div>
+                              <div className="w-2/3 h-2 sm:h-3 bg-primary/10 rounded mb-3 sm:mb-6"></div>
+                              <div className="flex-1 grid grid-cols-2 gap-1 sm:gap-2">
                                 {Array.from({ length: 6 }).map((_, j) => (
-                                  <div key={`${i}-${j}`} className="h-8 bg-primary/5 rounded"></div>
+                                  <div key={`${i}-${j}`} className="h-4 sm:h-6 lg:h-8 bg-primary/5 rounded"></div>
                                 ))}
                               </div>
                             </CardContent>
@@ -389,7 +387,7 @@ export default function HomePage() {
 
                     {/* Enhanced glowing orb with pulsing effect */}
                     <motion.div
-                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full"
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 sm:w-32 lg:w-40 h-24 sm:h-32 lg:h-40 rounded-full"
                       style={{
                         background: "radial-gradient(circle, rgba(var(--primary-rgb), 0.4) 0%, rgba(var(--primary-rgb), 0.1) 70%, transparent 100%)",
                         filter: "blur(20px)",
@@ -440,7 +438,7 @@ export default function HomePage() {
           </section>
 
           {/* Features Section - completely redesigned */}
-          <section className="py-20 px-6 relative">
+          <section className="py-10 px-4 sm:px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -464,7 +462,7 @@ export default function HomePage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: 0.1 }}
-                  className="text-4xl md:text-5xl font-bold mb-6"
+                  className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6"
                 >
                   <GradientText>One</GradientText> Unified Platform
                 </motion.h2>
@@ -473,14 +471,14 @@ export default function HomePage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-xl text-muted-foreground max-w-3xl mx-auto"
+                  className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
                   No running back and forth between different softwares and tools.
                 </motion.p>
               </motion.div>
 
               {/* Document processing capabilities - animated interactive cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
                 {/* Feature 1: AI-Powered Document Processing */}
                   <motion.div
                   initial={{ opacity: 1, y: 30 }}
@@ -489,7 +487,7 @@ export default function HomePage() {
                   transition={{ duration: 0.7 }}
                   className="relative group"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-70 transition-opacity"></div>
                   <div className="relative h-full bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-6 overflow-hidden">
                     {/* Animated background lines */}
                     <div className="absolute inset-0 opacity-20">
@@ -508,8 +506,8 @@ export default function HomePage() {
                           </div>
                     
                     <div className="relative z-10">
-                      <div className="w-14 h-14 rounded-xl bg-primary/20 border border-primary/20 flex items-center justify-center mb-6">
-                        <Brain className="h-7 w-7 text-primary" />
+                      <div className="w-14 h-14 rounded-xl bg-blue-500/20 border border-blue-500/20 flex items-center justify-center mb-6">
+                        <Brain className="h-7 w-7 text-blue-400" />
                       </div>
                       <h3 className="text-2xl font-bold mb-4">AI-Powered Processing</h3>
                       <p className="text-muted-foreground mb-6">Leverage AI to carefully analyze and understand any document or spreadsheet with accuracy.</p>
@@ -517,22 +515,22 @@ export default function HomePage() {
                       {/* AI processing visualization */}
                       <div className="mt-6 bg-black/50 border border-white/5 rounded-lg p-3">
                         <div className="space-y-2 text-xs">
-                          <div className="font-mono text-primary">AI Analysis</div>
+                          <div className="font-mono text-blue-400">AI Analysis</div>
                           <div className="flex items-center space-x-2">
-                            <div className="w-3 h-3 bg-primary/30 rounded-full animate-pulse"></div>
-                            <span className="text-primary/80">Processing document...</span>
+                            <div className="w-3 h-3 bg-blue-500/30 rounded-full animate-pulse"></div>
+                            <span className="text-blue-400/80">Processing document...</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <div className="w-3 h-3 bg-green-500/30 rounded-full"></div>
-                            <span className="text-green-400">Text extracted</span>
+                            <div className="w-3 h-3 bg-blue-600/30 rounded-full"></div>
+                            <span className="text-blue-300">Text extracted</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <div className="w-3 h-3 bg-primary/30 rounded-full"></div>
-                            <span className="text-primary/80">Data structured</span>
+                            <div className="w-3 h-3 bg-blue-500/30 rounded-full"></div>
+                            <span className="text-blue-400/80">Data structured</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <div className="w-3 h-3 bg-purple-500/30 rounded-full"></div>
-                            <span className="text-purple-400">Displayed to user</span>
+                            <div className="w-3 h-3 bg-blue-700/30 rounded-full"></div>
+                            <span className="text-blue-200">Displayed to user</span>
                           </div>
                         </div>
                       </div>
@@ -691,7 +689,7 @@ export default function HomePage() {
           </section>
 
           {/* How It Works Section */}
-          <section className="py-10 px-6 relative">
+          <section className="py-10 px-4 sm:px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -715,7 +713,7 @@ export default function HomePage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: 0.1 }}
-                  className="text-4xl md:text-5xl font-bold mb-6"
+                  className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6"
                 >
                   Behind the <GradientText>Scenes</GradientText>
                 </motion.h2>
@@ -724,7 +722,7 @@ export default function HomePage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-xl text-muted-foreground max-w-3xl mx-auto"
+                  className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
                   Raw documents → Structured JSON → User-friendly output (tables, charts, etc.)
                 </motion.p>
@@ -735,7 +733,7 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="theme-component-isolation"
+                className="theme-component-isolation hidden md:block"
               >
                 <AppMockup />
               </motion.div>
@@ -744,7 +742,7 @@ export default function HomePage() {
           </section>
 
           {/* Platform Showcase Section */}
-          <section className="py-20 px-6 relative">
+          <section className="py-10 pb-20 px-4 sm:px-6 relative">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -768,7 +766,7 @@ export default function HomePage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: 0.1 }}
-                  className="text-4xl md:text-5xl font-bold mb-6"
+                  className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6"
                 >
                   Dive <GradientText>Deeper</GradientText>
                 </motion.h2>
@@ -777,7 +775,7 @@ export default function HomePage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-xl text-muted-foreground max-w-3xl mx-auto"
+                  className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto"
                 >
                   Explore what we can do for you.
                 </motion.p>
@@ -799,10 +797,10 @@ export default function HomePage() {
                     <div className="absolute top-10 right-20 w-24 h-24 bg-blue-500/10 rounded-full blur-xl animate-pulse-slow"></div>
                     <div className="absolute bottom-10 left-20 w-32 h-32 bg-purple-500/10 rounded-full blur-xl animate-pulse-slower"></div>
                     
-                    <div className="grid lg:grid-cols-2 gap-12 items-center">
+                    <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                       {/* Interactive Chat Demo */}
                       <div className="relative order-2 lg:order-1">
-                        <div className="relative bg-black/60 border border-white/20 rounded-2xl p-6 h-80 overflow-hidden">
+                        <div className="relative bg-black/60 border border-white/20 rounded-2xl p-4 sm:p-6 h-64 sm:h-80 overflow-hidden">
                           {/* Animated chat interface */}
                           <div className="space-y-4 h-full flex flex-col">
                             {/* AI Message */}
@@ -886,31 +884,31 @@ export default function HomePage() {
                       
                       <div className="order-1 lg:order-2">
                         <div className="flex items-center mb-6">
-                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/30 to-purple-500/30 border border-primary/30 flex items-center justify-center mr-6">
-                            <MessageCircle className="h-8 w-8 text-primary" />
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center mr-4 sm:mr-6">
+                            <MessageCircle className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
                           </div>
                           <div>
-                            <h3 className="text-3xl font-bold mb-2">Chat with Your Documents</h3>
-                            <p className="text-primary/80 text-lg">Conversational Intelligence with Contextual Inputs</p>
+                            <h3 className="text-2xl sm:text-3xl font-bold mb-2">Chat with Your Documents</h3>
+                            <p className="text-blue-400/80 text-base sm:text-lg">Conversational Intelligence with Contextual Inputs</p>
                           </div>
                         </div>
                         
-                        <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+                        <p className="text-muted-foreground text-base sm:text-lg mb-6 sm:mb-8 leading-relaxed">
                           Have full conversations with your documents. Speed up your workflow by asking questions and getting answers instantly 
                           instead of manually reading through long documents and spreadsheets.
                         </p>
                         
-                        <div className="space-y-4 mb-8">
-                          <div className="flex items-center text-base">
-                            <div className="w-3 h-3 bg-primary rounded-full mr-4"></div>
+                        <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
+                          <div className="flex items-center text-sm sm:text-base">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full mr-3 sm:mr-4"></div>
                             <span>Select shorter context for AI focus</span>
                           </div>
-                          <div className="flex items-center text-base">
-                            <div className="w-3 h-3 bg-purple-500 rounded-full mr-4"></div>
+                          <div className="flex items-center text-sm sm:text-base">
+                            <div className="w-3 h-3 bg-blue-600 rounded-full mr-3 sm:mr-4"></div>
                             <span>Conversational history for deeper understanding</span>
                           </div>
-                          <div className="flex items-center text-base">
-                            <div className="w-3 h-3 bg-pink-500 rounded-full mr-4"></div>
+                          <div className="flex items-center text-sm sm:text-base">
+                            <div className="w-3 h-3 bg-blue-700 rounded-full mr-3 sm:mr-4"></div>
                             <span>Stored history for future reference</span>
                           </div>
                         </div>
@@ -920,7 +918,7 @@ export default function HomePage() {
                 </motion.div>
 
                 {/* Spreadsheet & Advanced Features - Asymmetric Layout */}
-                <div className="grid lg:grid-cols-3 gap-8">
+                <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
                   {/* Spreadsheet Processing */}
                   <motion.div
                     initial={{ opacity: 0, y: 40 }}
@@ -930,14 +928,14 @@ export default function HomePage() {
                     className="relative group lg:col-span-2"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity"></div>
-                    <div className="relative bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-8 h-full">
-                      <div className="flex items-center mb-6">
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-purple-500/30 flex items-center justify-center mr-4">
-                          <FileSpreadsheet className="h-7 w-7 text-purple-500" />
+                    <div className="relative bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-6 sm:p-8 h-full">
+                      <div className="flex items-center mb-4 sm:mb-6">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center mr-3 sm:mr-4">
+                          <FileSpreadsheet className="h-6 w-6 sm:h-7 sm:w-7 text-purple-400" />
                         </div>
                         <div>
-                          <h3 className="text-2xl font-bold">Spreadsheet Processing</h3>
-                          <p className="text-purple-500/80">Build for Tables and Charts. Supports CSVs and Excel</p>
+                          <h3 className="text-xl sm:text-2xl font-bold">Spreadsheet Processing</h3>
+                          <p className="text-purple-400/80 text-sm sm:text-base">Build for Tables and Charts. Supports CSVs and Excel</p>
                         </div>
                       </div>
                       
@@ -964,11 +962,11 @@ export default function HomePage() {
                       
                       <div className="space-y-3">
                         <div className="flex items-center text-sm">
-                          <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+                          <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
                           <span>Formulas and functions support</span>
                         </div>
                         <div className="flex items-center text-sm">
-                          <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+                          <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
                           <span>Chart and graph generation and analysis</span>
                         </div>
                       </div>
@@ -986,12 +984,12 @@ export default function HomePage() {
                     <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-orange-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity"></div>
                     <div className="relative bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-8 h-full">
                       <div className="flex items-center mb-6">
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500/30 to-orange-500/30 border border-pink-500/30 flex items-center justify-center mr-4">
-                          <Code className="h-7 w-7 text-pink-500" />
+                        <div className="w-14 h-14 rounded-xl bg-pink-500/20 border border-pink-500/30 flex items-center justify-center mr-4">
+                          <Code className="h-7 w-7 text-pink-400" />
                         </div>
                         <div>
                           <h3 className="text-2xl font-bold">Template System</h3>
-                          <p className="text-pink-500/80">Set Custom Extraction Rules</p>
+                          <p className="text-pink-400/80">Set Custom Extraction Rules</p>
                         </div>
                       </div>
                       
@@ -999,7 +997,7 @@ export default function HomePage() {
                       <div className="bg-black/60 border border-white/10 rounded-xl p-4 mb-6 h-32 flex items-center justify-center">
                         <div className="text-center">
                           <div className="w-12 h-12 bg-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <Code className="h-6 w-6 text-pink-500" />
+                            <Code className="h-6 w-6 text-pink-400" />
                           </div>
                           <p className="text-muted-foreground text-sm">Template Builder</p>
                         </div>
@@ -1007,15 +1005,15 @@ export default function HomePage() {
                       
                       <div className="space-y-3">
                         <div className="flex items-center text-sm">
-                          <div className="w-2 h-2 bg-pink-500 rounded-full mr-3"></div>
+                          <div className="w-2 h-2 bg-pink-400 rounded-full mr-3"></div>
                           <span>Design your own templates</span>
                         </div>
                         <div className="flex items-center text-sm">
-                          <div className="w-2 h-2 bg-pink-500 rounded-full mr-3"></div>
+                          <div className="w-2 h-2 bg-pink-400 rounded-full mr-3"></div>
                           <span>Custom field and row/column type definitions</span>
                         </div>
                         <div className="flex items-center text-sm">
-                          <div className="w-2 h-2 bg-pink-500 rounded-full mr-3"></div>
+                          <div className="w-2 h-2 bg-pink-400 rounded-full mr-3"></div>
                           <span>Only your template is used to extract specific data</span>
                         </div>
                       </div>
@@ -1023,40 +1021,10 @@ export default function HomePage() {
                   </motion.div>
                 </div>
 
-                {/* Action Links Section */}
-                <motion.div 
-                  className="text-center mt-20"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.8 }}
-                >
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link href="/playground">
-                      <Button size="lg" className="gap-3 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 group">
-                        <span>Get Started</span>
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
-                      </Button>
-                    </Link>
-                    <Link href="/use-cases">
-                      <Button variant="outline" size="lg" className="gap-3 backdrop-blur-sm border-white/20 hover:bg-white/5">
-                        <span>Learn Use Cases</span>
-                        <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
-                      </Button>
-                    </Link>
-                    <Link href="/about">
-                      <Button variant="outline" size="lg" className="gap-3 backdrop-blur-sm border-white/20 hover:bg-white/5">
-                        <span>About Us</span>
-                        <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
-                      </Button>
-                    </Link>
-                  </div>
-                </motion.div>
+
               </div>
             </div>
           </section>
-
-
           <Footer />
         </div>
       </ScrollArea>
