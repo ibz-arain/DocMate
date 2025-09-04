@@ -6,7 +6,7 @@ import { Sparkles } from "lucide-react";
 
 export const SectionDivider = ({ icon = <Sparkles className="h-6 w-6 text-primary" /> }: { icon?: React.ReactNode }) => {
     return (
-      <div className="relative py-10 bg-black">
+      <div className="relative bg-black">
         <div className="absolute inset-0 bg-black"></div>
         
         {/* Simplified background elements */}
