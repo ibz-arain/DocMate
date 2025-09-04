@@ -120,7 +120,7 @@ export default function ProcessPage() {
     return (
       <>
         <Head>
-          <title>Process Document | DocuMate</title>
+          <title>Process Document | DociMate</title>
           <meta name="description" content="Upload and process your documents" />
         </Head>
         <div className="flex h-full overflow-hidden bg-background">
@@ -151,7 +151,7 @@ export default function ProcessPage() {
   return (
     <>
       <Head>
-        <title>Document Results | DocuMate</title>
+        <title>Document Results | DociMate</title>
         <meta name="description" content="View your processed document results" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

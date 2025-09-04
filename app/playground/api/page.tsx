@@ -8,7 +8,7 @@ export default function APIPage() {
   return (
     <>
       <Head>
-        <title>API Integration | DocuMate</title>
+        <title>API Integration | DociMate</title>
         <meta name="description" content="Create and manage custom API endpoints for document processing" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

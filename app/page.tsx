@@ -689,7 +689,7 @@ export default function HomePage() {
           </section>
 
           {/* How It Works Section */}
-          <section className="py-10 px-4 sm:px-6 relative">
+          <section className="py-10 px-4 sm:px-6 relative hidden md:block">
             <div className="container mx-auto max-w-7xl relative z-10">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -733,7 +733,7 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="theme-component-isolation hidden md:block"
+                className="theme-component-isolation"
               >
                 <AppMockup />
               </motion.div>

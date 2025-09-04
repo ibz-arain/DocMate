@@ -153,7 +153,7 @@ export default function SpreadsheetPage() {
   // Clear cached edits for current spreadsheet
   const clearCachedEdits = () => {
     if (spreadsheetFile) {
-      localStorage.removeItem(`documate-spreadsheet-edits-${spreadsheetFile.name}`);
+      localStorage.removeItem(`docimate-spreadsheet-edits-${spreadsheetFile.name}`);
       // Reload the original file data
       processSpreadsheetFile(spreadsheetFile);
       toast({
@@ -231,8 +231,8 @@ export default function SpreadsheetPage() {
   useEffect(() => {
     const loadStoredSpreadsheet = async () => {
       try {
-        const storedSpreadsheetData = localStorage.getItem('documate-spreadsheet-data');
-        const storedSpreadsheetName = localStorage.getItem('documate-spreadsheet-name');
+        const storedSpreadsheetData = localStorage.getItem('docimate-spreadsheet-data');
+        const storedSpreadsheetName = localStorage.getItem('docimate-spreadsheet-name');
         
         if (storedSpreadsheetData && storedSpreadsheetName) {
           // Convert base64 back to File
@@ -255,7 +255,7 @@ export default function SpreadsheetPage() {
           
           try {
             // Load cached spreadsheet data if available
-            const cachedSpreadsheetData = localStorage.getItem(`documate-spreadsheet-edits-${storedSpreadsheetName}`);
+            const cachedSpreadsheetData = localStorage.getItem(`docimate-spreadsheet-edits-${storedSpreadsheetName}`);
             if (cachedSpreadsheetData) {
               try {
                 const parsedData = JSON.parse(cachedSpreadsheetData);
@@ -293,7 +293,7 @@ export default function SpreadsheetPage() {
             }
             
             // Restore selected tool if available
-            const storedSelectedTool = localStorage.getItem('documate-spreadsheet-tool');
+            const storedSelectedTool = localStorage.getItem('docimate-spreadsheet-tool');
             if (storedSelectedTool) {
               setSelectedTool(storedSelectedTool);
             }
@@ -304,9 +304,9 @@ export default function SpreadsheetPage() {
       } catch (error) {
         console.error('Failed to load stored spreadsheet:', error);
         // Clear corrupted data
-        localStorage.removeItem('documate-spreadsheet-data');
-        localStorage.removeItem('documate-spreadsheet-name');
-        localStorage.removeItem('documate-spreadsheet-tool');
+        localStorage.removeItem('docimate-spreadsheet-data');
+        localStorage.removeItem('docimate-spreadsheet-name');
+        localStorage.removeItem('docimate-spreadsheet-tool');
         setIsLoading(false); // Ensure loading is stopped even on error
       }
     };
@@ -322,8 +322,8 @@ export default function SpreadsheetPage() {
           const reader = new FileReader();
           reader.onload = () => {
             const base64Data = reader.result as string;
-            localStorage.setItem('documate-spreadsheet-data', base64Data);
-            localStorage.setItem('documate-spreadsheet-name', spreadsheetFile.name);
+            localStorage.setItem('docimate-spreadsheet-data', base64Data);
+            localStorage.setItem('docimate-spreadsheet-name', spreadsheetFile.name);
           };
           reader.readAsDataURL(spreadsheetFile);
         } catch (error) {
@@ -356,7 +356,7 @@ export default function SpreadsheetPage() {
             return { value: String(cell || ''), formula: undefined, calculatedValue: undefined };
           })
         );
-        localStorage.setItem(`documate-spreadsheet-edits-${spreadsheetFile.name}`, JSON.stringify(sanitizedData));
+        localStorage.setItem(`docimate-spreadsheet-edits-${spreadsheetFile.name}`, JSON.stringify(sanitizedData));
       } catch (error) {
         console.error('Failed to save spreadsheet edits to storage:', error);
       }
@@ -367,7 +367,7 @@ export default function SpreadsheetPage() {
   useEffect(() => {
     if (selectedTool) {
       try {
-        localStorage.setItem('documate-spreadsheet-tool', selectedTool);
+        localStorage.setItem('docimate-spreadsheet-tool', selectedTool);
       } catch (error) {
         console.error('Failed to save selected tool to storage:', error);
       }
@@ -474,7 +474,7 @@ export default function SpreadsheetPage() {
     
     // Clear cached edits from previous file if different
     if (spreadsheetFile && spreadsheetFile.name !== file.name) {
-      localStorage.removeItem(`documate-spreadsheet-edits-${spreadsheetFile.name}`);
+      localStorage.removeItem(`docimate-spreadsheet-edits-${spreadsheetFile.name}`);
     }
     
     setSpreadsheetFile(file);
@@ -488,7 +488,7 @@ export default function SpreadsheetPage() {
     isInitialized.current = false;
     
     // Check if we have cached edits for this file
-    const cachedSpreadsheetData = localStorage.getItem(`documate-spreadsheet-edits-${file.name}`);
+    const cachedSpreadsheetData = localStorage.getItem(`docimate-spreadsheet-edits-${file.name}`);
     if (cachedSpreadsheetData) {
       try {
         const parsedData = JSON.parse(cachedSpreadsheetData);
@@ -563,13 +563,13 @@ export default function SpreadsheetPage() {
     setFullDocQuickFormatResult(null);
     
     // Clear localStorage
-    localStorage.removeItem('documate-spreadsheet-data');
-    localStorage.removeItem('documate-spreadsheet-name');
-    localStorage.removeItem('documate-spreadsheet-tool');
+    localStorage.removeItem('docimate-spreadsheet-data');
+    localStorage.removeItem('docimate-spreadsheet-name');
+    localStorage.removeItem('docimate-spreadsheet-tool');
     
     // Clear cached edits for the current file
     if (spreadsheetFile) {
-      localStorage.removeItem(`documate-spreadsheet-edits-${spreadsheetFile.name}`);
+      localStorage.removeItem(`docimate-spreadsheet-edits-${spreadsheetFile.name}`);
     }
     
     // Reset to cell select mode when clearing
@@ -1302,7 +1302,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
   return (
     <>
       <Head>
-        <title>Spreadsheet Analyzer | DocuMate</title>
+        <title>Spreadsheet Analyzer | DociMate</title>
         <meta name="description" content="Analyze and process CSV and Excel spreadsheets with AI" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

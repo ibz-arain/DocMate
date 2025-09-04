@@ -3,18 +3,18 @@
 export default function IntroductionPage() {
   return (
     <div className="p-6 prose prose-gray dark:prose-invert max-w-none">
-      <h1 className="text-3xl font-bold mb-6">Welcome to DocuMate</h1>
+      <h1 className="text-3xl font-bold mb-6">Welcome to DociMate</h1>
 
       <p className="text-lg text-muted-foreground mb-8">
-        Fed up with drowning in paperwork? DocuMate is here to change the game. We use smart AI to automatically pull the info you need from any document, turning messy paperwork into clean, structured data you can actually use. Say goodbye to manual data entry and hello to more time for what matters.
+        Fed up with drowning in paperwork? DociMate is here to change the game. We use smart AI to automatically pull the info you need from any document, turning messy paperwork into clean, structured data you can actually use. Say goodbye to manual data entry and hello to more time for what matters.
       </p>
 
-      <h2 className="text-2xl font-semibold mt-10 mb-4">What's DocuMate All About?</h2>
+      <h2 className="text-2xl font-semibold mt-10 mb-4">What's DociMate All About?</h2>
       <p className="text-muted-foreground mb-4">
-        Born from a winning idea at WinHacks 2025, DocuMate tackles a common headache: endless hours spent processing documents manually. We figured there had to be a better way.
+        Born from a winning idea at WinHacks 2025, DociMate tackles a common headache: endless hours spent processing documents manually. We figured there had to be a better way.
       </p>
       <p className="text-muted-foreground mb-8">
-        Our platform uses AI to understand your documents – whether they're invoices, receipts, tax forms, or something completely custom. You tell DocuMate what information you need using simple templates (no coding required!), and it extracts exactly that, organizing it neatly for you.
+        Our platform uses AI to understand your documents – whether they're invoices, receipts, tax forms, or something completely custom. You tell DociMate what information you need using simple templates (no coding required!), and it extracts exactly that, organizing it neatly for you.
       </p>
 
       <div className="bg-primary/5 border border-primary/10 rounded-lg p-6 my-10">
@@ -34,7 +34,7 @@ export default function IntroductionPage() {
           </li>
           <li className="flex items-start">
             <span className="w-2 h-2 rounded-full bg-primary mt-1.5 mr-3 flex-shrink-0"></span>
-            <span className="text-muted-foreground"><strong>API Integration:</strong> Seamlessly connect DocuMate with your existing workflows and applications.</span>
+            <span className="text-muted-foreground"><strong>API Integration:</strong> Seamlessly connect DociMate with your existing workflows and applications.</span>
           </li>
           <li className="flex items-start">
             <span className="w-2 h-2 rounded-full bg-primary mt-1.5 mr-3 flex-shrink-0"></span>
@@ -45,7 +45,7 @@ export default function IntroductionPage() {
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">Why Bother?</h2>
       <p className="text-muted-foreground mb-4">
-        Let's be real, document processing is tedious and error-prone. DocuMate helps you:
+        Let's be real, document processing is tedious and error-prone. DociMate helps you:
       </p>
       <ul className="space-y-3 text-muted-foreground list-disc pl-5 mb-8">
         <li><strong>Save Serious Time:</strong> Automate data entry and free up your team.</li>
@@ -56,7 +56,7 @@ export default function IntroductionPage() {
       </ul>
 
       <p className="text-muted-foreground">
-        Ready to dive deeper? Check out the <a href="/docs/quick-start" className="text-primary hover:underline">Quick Start</a> guide to get DocuMate up and running, or explore the <a href="/docs/core-concepts" className="text-primary hover:underline">Core Concepts</a> to understand the fundamentals.
+        Ready to dive deeper? Check out the <a href="/docs/quick-start" className="text-primary hover:underline">Quick Start</a> guide to get DociMate up and running, or explore the <a href="/docs/core-concepts" className="text-primary hover:underline">Core Concepts</a> to understand the fundamentals.
       </p>
     </div>
   );

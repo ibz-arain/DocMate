@@ -25,7 +25,7 @@ export default function ApiReferencePage() {
       <h1 className="text-3xl font-bold mb-6">API Reference</h1>
 
       <p className="text-lg text-muted-foreground mb-8">
-        Integrate DocuMate's intelligent document processing directly into your applications and workflows using our straightforward REST API. Automate data extraction programmatically based on your pre-configured endpoints and templates.
+        Integrate DociMate's intelligent document processing directly into your applications and workflows using our straightforward REST API. Automate data extraction programmatically based on your pre-configured endpoints and templates.
       </p>
 
       <h2 className="text-2xl font-semibold mt-10 mb-4">Getting Started: API Endpoints & Keys</h2>
@@ -33,10 +33,10 @@ export default function ApiReferencePage() {
         API access is managed through specific **Endpoints** that you create and configure. Each endpoint has its own unique URL, a linked Template, and an associated API Key for authentication.
       </p>
       <p className="text-muted-foreground mb-4">
-        You can create, manage, and configure your API endpoints and keys entirely within the DocuMate application:
+        You can create, manage, and configure your API endpoints and keys entirely within the DociMate application:
       </p>
       <ol className="list-decimal pl-6 space-y-2 text-muted-foreground mb-6">
-        <li>Log in to your DocuMate account.</li>
+        <li>Log in to your DociMate account.</li>
         <li>Navigate to the <Link href="/playground/api" className="text-primary hover:underline">Playground</Link> and select the 'API' section.</li>
         <li>Click **"Add New API"**.</li>
         <li>Give your API endpoint a descriptive name (e.g., "Invoice Processing API").</li>
@@ -94,7 +94,7 @@ export default function ApiReferencePage() {
 # JSON_PAYLOAD=$(printf '{"fileData": "data:%s;base64,%s"}' "$MIME_TYPE" "$BASE64_DATA")
 
 # 2. Make the API call
-curl -X POST https://documate-beta.vercel.app/api/analyze/YOUR_ENDPOINT_ID \\\
+curl -X POST https://docimate-beta.vercel.app/api/analyze/YOUR_ENDPOINT_ID \\\
      -H "Authorization: Bearer YOUR_ENDPOINT_API_KEY" \\\
      -H "Content-Type: application/json" \\\
      -d '$JSON_PAYLOAD' # Use the JSON payload created above`}
@@ -113,7 +113,7 @@ import mimetypes # For guessing mime type
 import os
 
 api_key = "YOUR_ENDPOINT_API_KEY" # Replace with your API key for this endpoint
-api_endpoint = "https://documate-beta.vercel.app/api/analyze/YOUR_ENDPOINT_ID" # Replace with your full endpoint URL
+api_endpoint = "https://docimate-beta.vercel.app/api/analyze/YOUR_ENDPOINT_ID" # Replace with your full endpoint URL
 file_path = "/path/to/your/invoice.pdf" # Replace with the path to your document
 
 headers = {

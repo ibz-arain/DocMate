@@ -90,7 +90,7 @@ function AccountContent() {
                 className="justify-center items-center"
               >
                 <Link href="/">
-                  <Image src="/logo-text.png" alt="Documate" width={195} height={36} className="mx-auto mb-6" />
+                  <Image src="/logo-text.png" alt="Docimate" width={195} height={36} className="mx-auto mb-6" />
                 </Link>
               </motion.div>
 

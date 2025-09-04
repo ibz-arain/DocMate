@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { motion, useScroll, useSpring, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
@@ -58,8 +58,8 @@ export default function Header() {
               {/* Header content */}
               <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-background/60 backdrop-blur-sm">
                 <Link href="/" className="flex items-center">
-                  <Image src="/logo-bird.png" alt="DocuMate" width={32} height={32} />
-                  <Image src="/logo-text.png" alt="DocuMate" width={100} height={20} />
+                  <Image src="/logo-bird.png" alt="DociMate" width={32} height={32} />
+                  <Image src="/logo-text.png" alt="DociMate" width={100} height={20} />
                 </Link>
                 
                 {/* Navigation */}
@@ -87,11 +87,12 @@ export default function Header() {
                 <div className="flex items-center space-x-3">
                   <Button 
                     size="sm" 
-                    variant="ghost" 
-                    className="text-sm gap-1 hover:bg-white/5 text-muted-foreground hover:text-white min-w-[60px] justify-center"
+                    variant="outline"
+                    className="text-sm font-medium border-primary/50 hover:bg-primary/30 transition-all duration-300 min-w-[100px] justify-center gap-1 group"
                     onClick={handleAuthAction}
                   >
-                    Sign In 
+                    Continue
+                    <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
                   </Button>
                   
                   {/* Mobile Menu Button with Animated Burger to X */}
@@ -160,7 +161,7 @@ export default function Header() {
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
             >
-              <div className="bg-background/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl overflow-hidden min-w-[200px]">
+              <div className="bg-background/80 mt-4 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl overflow-hidden min-w-[200px]">
                 <div className="p-4 space-y-3">
                   {[
                     { label: 'Pricing', href: '/pricing' },
@@ -179,18 +180,7 @@ export default function Header() {
                     </Link>
                   ))}
                   
-                  {/* Sign In Button in Mobile Menu */}
-                  <div className="pt-2 border-t border-white/10">
-                    <button
-                      onClick={() => {
-                        closeMobileMenu();
-                        handleAuthAction();
-                      }}
-                      className="w-full px-3 py-2 text-sm text-center bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-all duration-200"
-                    >
-                      Sign In
-                    </button>
-                  </div>
+                  
                 </div>
               </div>
             </motion.div>

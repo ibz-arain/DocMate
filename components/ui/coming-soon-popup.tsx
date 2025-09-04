@@ -12,7 +12,7 @@ interface ComingSoonPopupProps {
 
 export function ComingSoonPopup({ isOpen, onClose }: ComingSoonPopupProps) {
   const handleEmailClick = () => {
-    window.open('mailto:ibrahimarain04@gmail.com?subject=DocuMate Plan Upgrade Request', '_blank');
+    window.open('mailto:ibrahimarain04@gmail.com?subject=DociMate Plan Upgrade Request', '_blank');
   };
 
   return (

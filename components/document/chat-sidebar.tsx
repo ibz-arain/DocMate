@@ -218,7 +218,7 @@ export function ChatSidebar({
   // Chat history management functions
   const saveChatHistory = (conversations: ChatConversation[]) => {
     try {
-      localStorage.setItem('documate-chat-history', JSON.stringify(conversations));
+      localStorage.setItem('docimate-chat-history', JSON.stringify(conversations));
     } catch (error) {
       console.error('Failed to save chat history:', error);
     }
@@ -226,7 +226,7 @@ export function ChatSidebar({
 
   const loadChatHistory = (): ChatConversation[] => {
     try {
-      const stored = localStorage.getItem('documate-chat-history');
+      const stored = localStorage.getItem('docimate-chat-history');
       if (stored) {
         const parsed = JSON.parse(stored);
         // Convert timestamp strings back to Date objects
@@ -326,7 +326,7 @@ export function ChatSidebar({
 
     // Persist active id
     try {
-      localStorage.setItem('documate-active-chat-id', newConversationId);
+      localStorage.setItem('docimate-active-chat-id', newConversationId);
     } catch {/* ignore */}
 
     setCurrentConversationId(newConversationId);
@@ -341,7 +341,7 @@ export function ChatSidebar({
   useEffect(() => {
     if (currentConversationId) {
       try {
-        localStorage.setItem('documate-active-chat-id', currentConversationId);
+        localStorage.setItem('docimate-active-chat-id', currentConversationId);
       } catch {
         /* ignore */
       }
@@ -356,7 +356,7 @@ export function ChatSidebar({
     // Try to restore previously active conversation first
     let restored = false;
     try {
-      const activeId = localStorage.getItem('documate-active-chat-id');
+      const activeId = localStorage.getItem('docimate-active-chat-id');
       if (activeId) {
         const conv = history.find(c => c.id === activeId);
         if (conv) {
@@ -875,7 +875,7 @@ export function ChatSidebar({
     setCopiedMessageId(null);
     loadedFromHistoryRef.current = false;
     try {
-      localStorage.removeItem('documate-active-chat-id');
+      localStorage.removeItem('docimate-active-chat-id');
     } catch {/* ignore */}
     // Create fresh welcome message directly
     const welcomeMsg = buildWelcomeMessage();

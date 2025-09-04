@@ -326,13 +326,13 @@ export default function DemoPage() {
               >
                 <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
                   <Sparkles className="h-4 w-4 mr-2" />
-                  <span>Why DocuMate?</span>
+                  <span>Why DociMate?</span>
                 </div>
                 <h1 className="text-4xl md:text-6xl font-bold mb-5">
-                  Learn More About <GradientText>DocuMate</GradientText>
+                  Learn More About <GradientText>DociMate</GradientText>
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                  From filling out forms to sitting back, Documate will do it all for you.
+                  From filling out forms to sitting back, Docimate will do it all for you.
                 </p>
               </motion.div>
 
@@ -630,7 +630,7 @@ export default function DemoPage() {
               <div className="mb-24 relative z-10">
                 <div className="text-center mb-12">
                   <h2 className="text-3xl font-bold mb-4">
-                    Try <GradientText>DocuMate</GradientText> Now
+                    Try <GradientText>DociMate</GradientText> Now
                   </h2>
                   <p className="text-lg text-muted-foreground">
                     Experience the power of intelligent document processing
