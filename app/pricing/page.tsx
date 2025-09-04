@@ -389,13 +389,12 @@ export default function PricingPage() {
                 </motion.div>
 
                 <motion.h1
-                  className="text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6"
+                  className="text-4xl md:text-6xl font-bold mb-5"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
                 >
-                  <span className="text-white">Pricing</span>
-                  <br />
+                  <span className="text-white">Pricing </span>
                   <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-blue-500">
                     Made Simple
                   </span>

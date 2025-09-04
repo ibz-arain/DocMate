@@ -12,7 +12,7 @@ interface ComingSoonPopupProps {
 
 export function ComingSoonPopup({ isOpen, onClose }: ComingSoonPopupProps) {
   const handleEmailClick = () => {
-    window.open('mailto:ibrahimarain04@gmail.com?subject=DociMate Plan Upgrade Request', '_blank');
+    window.open('mailto:hello@docimate.com?subject=Plan Upgrade Request', '_blank');
   };
 
   return (
@@ -63,14 +63,14 @@ export function ComingSoonPopup({ isOpen, onClose }: ComingSoonPopupProps) {
             <div className="p-4 rounded-lg bg-muted/50 border">
               <p className="text-sm text-foreground leading-relaxed">
                 Our developers are working hard to get self-serve payments set up. 
-                For now, please send an email to get upgraded to a paid plan.
+                For now, please send an email to <a onClick={handleEmailClick} className="text-primary hover:text-primary/80 hover:cursor-pointer">hello@docimate.com</a> to get upgraded to a paid plan.
               </p>
             </div>
 
             <div className="flex flex-col gap-3">
               <Button
                 onClick={handleEmailClick}
-                className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90"
+                className="w-full flex items-center gap-2 border border-primary/30 bg-primary/20 hover:bg-primary/30"
               >
                 <Mail className="h-4 w-4" />
                 Send Email to Upgrade
