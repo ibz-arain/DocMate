@@ -69,8 +69,7 @@ export default function Header() {
                     { label: 'Use Cases', href: '/use-cases' },
                     // { label: 'Read Docs', href: '/docs' },
                     { label: 'Changelog', href: '/changelog' },
-                    { label: 'About Us', href: '/about' },
-                    { label: 'Learn More', href: '/demo' },
+                    { label: 'About Us', href: '/about' }
                   ].map((item) => (
                     <a 
                       key={item.label}
@@ -168,7 +167,6 @@ export default function Header() {
                     { label: 'Use Cases', href: '/use-cases' },
                     { label: 'Changelog', href: '/changelog' },
                     { label: 'About Us', href: '/about' },
-                    { label: 'Learn More', href: '/demo' },
                   ].map((item) => (
                     <Link
                       key={item.label}

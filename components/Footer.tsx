@@ -87,7 +87,6 @@ export default function Footer() {
                   { label: 'Pricing', href: '/pricing' },
                   { label: 'Use Cases', href: '/use-cases' },
                   { label: 'Changelog', href: '/changelog' },
-                  { label: 'Learn More', href: '/demo' }
                 ].map((item) => (
                   <li key={item.label}>
                     <Link
@@ -202,7 +201,6 @@ export default function Footer() {
                       { label: 'Pricing', href: '/pricing' },
                       { label: 'Use Cases', href: '/use-cases' },
                       { label: 'Changelog', href: '/changelog' },
-                      { label: 'Learn More', href: '/demo' }
                     ].map((item) => (
                       <li key={item.label}>
                         <Link
@@ -225,9 +223,8 @@ export default function Footer() {
                   <ul className="space-y-4">
                     {[
                       { label: 'Documentation', href: '/docs' },
-                      { label: 'Support', href: '#' },
                       { label: 'About Us', href: '/about' },
-                      { label: 'Careers', href: '#' }
+                      { label: 'Careers', href: '/careers' }
                     ].map((item) => (
                       <li key={item.label}>
                         <Link
