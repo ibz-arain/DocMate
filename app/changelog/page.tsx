@@ -382,7 +382,7 @@ export default function ChangelogPage() {
                 transition={{ duration: 0.8 }}
                 className="text-center max-w-3xl mx-auto mb-12"
               >
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+                <div className="inline-flex items-center px-3 py-1 rounded-full border border-primary/20 bg-primary/10 text-primary text-sm font-medium mb-6">
                   <Sparkles className="h-4 w-4 mr-2" />
                   <span>Development & History</span>
                 </div>

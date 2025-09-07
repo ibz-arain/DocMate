@@ -1021,10 +1021,38 @@ export default function HomePage() {
                   </motion.div>
                 </div>
 
-
               </div>
             </div>
           </section>
+
+          {/* Changelog CTA */}
+          <section className="pb-16 relative">
+            <div className="container mx-auto max-w-7xl relative z-10">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="text-center"
+              >
+                <p className="text-lg sm:text-xl text-muted-foreground mb-6">
+                  We're constantly improving our platform and adding new features.
+                </p>
+                <Link href="/changelog">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5"
+                  >
+                    <History className="h-4 w-4" />
+                    Follow Our Journey
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </Link>
+              </motion.div>
+            </div>
+          </section>
+
           <Footer />
         </div>
       </ScrollArea>
