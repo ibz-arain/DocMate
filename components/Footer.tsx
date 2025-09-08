@@ -109,7 +109,7 @@ export default function Footer() {
                 {[
                   { label: 'Documentation', href: '/docs' },
                   { label: 'About Us', href: '/about' },
-                  { label: 'Careers', href: '#' }
+                  { label: 'Careers', href: '/careers' }
                 ].map((item) => (
                   <li key={item.label}>
                     <Link
@@ -253,9 +253,9 @@ export default function Footer() {
             
             <div className="flex flex-wrap items-center gap-6">
               {[
-                { label: 'Privacy Policy', href: '#' },
-                { label: 'Terms of Service', href: '#' },
-                { label: 'Cookie Policy', href: '#' }
+                { label: 'Privacy Policy', href: '/privacy' },
+                { label: 'Terms of Service', href: '/terms' },
+                { label: 'Cookie Policy', href: '/cookies' }
               ].map((item, index) => (
                 <div key={item.label} className="flex items-center">
                   <a 
