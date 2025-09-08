@@ -87,10 +87,10 @@ export default function Header() {
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="text-sm font-medium border-primary/50 hover:bg-primary/30 transition-all duration-300 min-w-[100px] justify-center gap-1 group"
+                    className="text-sm font-medium border-muted hover:bg-muted/30 transition-all duration-300 min-w-[100px] justify-center gap-1 group"
                     onClick={handleAuthAction}
                   >
-                    Continue
+                    Platform
                     <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
                   </Button>
                   

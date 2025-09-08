@@ -1,422 +1,156 @@
 <div align="center">
 
-![DociMate Logo](public/logo-text.png)
+![DociMate Logo](https://docimate.com/logo-text.png)
 
 # 🚀 DociMate
 
 **AI-Powered Document Processing & Analysis Platform**
 
-[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js%2015-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/)
-
 *Winner of WinHacks 2025 🏆 - First Place out of 30 competing teams*
 
-[🌐 Experience DociMate](https://docimate-beta.vercel.app) • [📖 Documentation](https://docimate-beta.vercel.app/docs) • [🎮 Try the Playground](https://docimate-beta.vercel.app/playground) • [🛠️ API Reference](https://docimate-beta.vercel.app/docs/api)
+[🌐 Try DociMate Now](https://docimate.com) • [📖 Documentation](https://docimate.com/docs) • [🎮 Playground](https://docimate.com/playground)
 
 </div>
 
 ---
 
-## 📋 Table of Contents
+## 🎯 What is DociMate?
 
-- [🎯 Overview](#-overview)
-- [✨ Key Features](#-key-features)
-- [🏗️ Technology Excellence](#️-technology-excellence)
-- [🎮 Platform Experience](#-platform-experience)
-- [🔌 API Integration](#-api-integration)
-- [🎨 User Interface](#-user-interface)
-- [🔐 Security & Performance](#-security--performance)
-- [📱 Cross-Platform Excellence](#-cross-platform-excellence)
-- [🏆 Awards & Recognition](#-awards--recognition)
-- [👥 Development Team](#-development-team)
-- [📄 Legal & Licensing](#-legal--licensing)
-- [🙏 Acknowledgments](#-acknowledgments)
+**DociMate** is your intelligent document processing companion that transforms the way you handle paperwork. Whether you're dealing with PDFs, spreadsheets, or any document format, DociMate uses advanced AI to extract insights, format content, and automate repetitive tasks that would normally take hours.
+
+### ✨ Why Choose DociMate?
+
+- **🤖 AI-Powered Intelligence**: Advanced document understanding and analysis
+- **📄 Universal Format Support**: Process PDFs, Excel files, CSVs, and more
+- **⚡ Lightning Fast**: Get results in seconds, not hours
+- **🎨 Beautiful Interface**: Intuitive design that anyone can use
+- **🔄 Smart Templates**: Create custom workflows for consistent processing
+- **📊 Data Visualization**: Generate charts and insights from your data
 
 ---
 
-## 🎯 Overview
+## 🚀 Quick Start
 
-**DociMate** is a revolutionary AI-powered document processing platform that transforms the way businesses handle paperwork. Born from a championship-winning hackathon project at WinHacks 2025, DociMate has evolved into a sophisticated solution that eliminates manual document processing through intelligent automation.
+### 1. **Upload Your Document**
+Simply drag and drop any PDF, Excel, or CSV file into DociMate's interface. No complex setup required!
 
-### 🎪 The Problem We Solve
+### 2. **Choose Your Action**
+- **📖 Document Analysis**: Get summaries, ask questions, or extract specific information
+- **📊 Spreadsheet Magic**: Edit data, create charts, and get AI insights
+- **🎯 Apply Templates**: Use pre-built templates or create your own for automated processing
 
-- **📋 Manual Data Entry**: Businesses lose countless hours manually extracting data from documents
-- **❌ Human Error**: Manual processing leads to costly mistakes and inconsistencies  
-- **📈 Scalability Bottlenecks**: Traditional methods don't scale with business growth
-- **🔄 Format Inconsistency**: Different document types require different processing approaches
-- **🔗 Integration Gaps**: Difficulty connecting document data with existing business systems
+### 3. **Get Instant Results**
+Watch as DociMate's AI processes your document and delivers exactly what you need in seconds.
 
-### 🎭 Our Revolutionary Solution
-
-DociMate leverages cutting-edge Google Gemini AI technology to intelligently understand document structure and content. Our platform extracts precisely what you need through customizable templates and delivers results in multiple professional formats, seamlessly integrating with your existing workflows.
-
-**[🚀 Start Using DociMate Now](https://docimate-beta.vercel.app)**
+**[🎮 Try it now in our Playground](https://docimate.com/playground)**
 
 ---
 
-## ✨ Key Features
+### 📄 **Document Processing**
+- **Smart Summarization**: Get concise summaries of any document or selected content
+- **Chat with Documents**: Ask questions and get intelligent answers about your content
+- **Template Application**: Apply custom templates to extract specific information
+- **Multi-format Support**: Handle PDFs, images, and scanned documents with ease
 
-### 🧠 **Next-Generation AI Processing**
-- **🤖 Google Gemini Integration**: State-of-the-art AI for unparalleled document understanding
-- **👁️ Advanced OCR Technology**: Extract text from any document format with precision
-- **📑 Universal Format Support**: Process PDFs, images, scanned documents, and more
-- **🔍 Intelligent Analysis**: Automated summaries, insights, and sentiment analysis
+### 📊 **Advanced Spreadsheet Tools**
+- **Excel-like Editing**: Full formula support, cell references, and data manipulation
+- **AI-Powered Insights**: Right-click any data to get AI analysis and trends
+- **Dynamic Chart Generation**: Create beautiful charts automatically
+- **Import/Export**: Seamlessly work with Excel and CSV files
 
-### 🎨 **Intuitive Template System**
-- **🖱️ Visual Template Builder**: Create extraction templates through an intuitive interface
-- **📦 Pre-Built Solutions**: Ready-to-use templates for common business documents
-- **✅ Smart Validation**: Ensure data quality with intelligent type checking
-- **🔄 Dynamic Adaptation**: Templates that adapt to varying document structures
-
-### 🔄 **Flexible Output Formats**
-- **📊 JSON**: Structured data perfect for system integration
-- **📈 CSV**: Spreadsheet-ready format for data analysis
-- **📝 Markdown**: Clean, readable documentation format
-- **🎨 Beautiful Web Views**: Elegant interface for human review
-
-### 🌐 **Enterprise-Grade API**
-- **🔗 Custom Endpoints**: Create personalized API endpoints for your templates
-- **🔐 Secure Authentication**: Enterprise-level security with JWT tokens
-- **⚡ Rate Limiting**: Built-in protection and performance optimization
-- **🔔 Real-Time Webhooks**: Instant notifications for processed documents
-
-### 📊 **Comprehensive Analytics**
-- **📈 Processing Insights**: Detailed analytics on document processing activities
-- **⚡ Performance Monitoring**: Real-time API endpoint performance metrics
-- **🎯 Confidence Scoring**: Understand AI extraction reliability and accuracy
-- **📤 Export Capabilities**: Download processed data in your preferred format
-
-### 🎮 **Interactive Experience**
-- **⚡ Live Processing**: Test and refine templates in real-time
-- **📖 Integrated PDF Viewer**: Built-in viewer with advanced selection capabilities
-- **🕒 Complete History**: Access and review all previous document analyses
-- **🧪 Template Validation**: Test templates before deploying to production
+### 🎨 **Smart Templates**
+- **Visual Template Builder**: Create processing templates without coding
+- **Pre-built Solutions**: Ready-to-use templates for common document types
+- **Custom Workflows**: Build templates for your specific business needs
+- **Batch Processing**: Apply templates to multiple documents at once
 
 ---
 
-## 🏗️ Technology Excellence
+## 🎮 Try It Out
 
-DociMate represents the pinnacle of modern web application development, utilizing cutting-edge technologies and industry best practices.
+### **Sample Documents to Test**
 
-### 🛠️ **Cutting-Edge Tech Stack**
+We've prepared sample documents for you to explore DociMate's capabilities:
 
-#### **Frontend Innovation**
-- **⚡ Next.js 15**: Latest React framework with App Router architecture
-- **🔷 TypeScript**: Full type safety for robust development
-- **🎨 Tailwind CSS**: Modern utility-first styling approach
-- **🌊 Framer Motion**: Seamless animations and user interactions
-- **📄 React PDF**: Advanced PDF processing and visualization
-- **♿ Radix UI**: Accessible, composable component system
+1. **📋 Business Invoice** - Test data extraction and template processing
+2. **📊 Sales Report** - Try spreadsheet analysis and chart generation  
+3. **📄 Contract Document** - Experience document summarization and Q&A
+4. **📈 Financial Data** - Explore advanced spreadsheet features
 
-#### **Backend Excellence**
-- **🚀 Next.js API Routes**: Serverless architecture for optimal performance
-- **💚 Node.js**: High-performance JavaScript runtime
-- **🔒 JWT Authentication**: Industry-standard secure authentication
-- **✅ Zod Validation**: Runtime type validation and data integrity
-- **🔐 bcrypt**: Military-grade password security
-
-#### **AI & Processing Power**
-- **🧠 Google Gemini AI**: Most advanced document analysis technology
-- **⚡ AI SDK**: Streamlined artificial intelligence integration
-- **📑 PDF-lib**: Professional PDF manipulation capabilities
-- **🖼️ Sharp**: High-performance image processing
-
-#### **Infrastructure**
-- **🗄️ Turso Database**: Distributed, high-performance data storage
-- **🏗️ Modern Architecture**: Scalable, maintainable codebase
-- **🔄 Real-time Processing**: Instant document analysis and results
-
-### 🏛️ **System Architecture**
-
-```mermaid
-graph TB
-    A[User Interface] --> B[Next.js Frontend]
-    B --> C[API Gateway]
-    C --> D[Authentication Layer]
-    D --> E[Document Processing Engine]
-    E --> F[Google Gemini AI]
-    E --> G[Template Engine]
-    C --> H[Database Layer]
-    H --> I[Turso Database]
-    C --> J[File Processing]
-    E --> K[PDF Engine]
-    E --> L[Image Processing]
-```
+**[🎯 Start with Sample Documents](https://docimate.com/playground)**
 
 ---
 
-## 🎮 Platform Experience
+## 💡 Use Cases
 
-### 🌟 **Getting Started**
+### **For Businesses**
+- **Invoice Processing**: Automatically extract vendor details, amounts, and dates
+- **Contract Analysis**: Quickly identify key terms, obligations, and deadlines
+- **Report Generation**: Transform raw data into professional reports and charts
+- **Data Migration**: Convert documents between formats while preserving structure
 
-Experience the power of DociMate by visiting [**docimate-beta.vercel.app**](https://docimate-beta.vercel.app). Our platform offers:
+### **For Individuals**
+- **Document Summarization**: Quickly understand long documents and reports
+- **Data Organization**: Clean and structure messy spreadsheets
+- **Research Assistance**: Ask questions about documents and get instant answers
+- **Format Conversion**: Transform documents to your preferred format
 
-1. **🚀 Instant Access**: Create an account and start processing documents immediately
-2. **🎯 Interactive Demo**: Try our technology with sample documents at [demo page](https://docimate-beta.vercel.app/demo)
-3. **📚 Comprehensive Guides**: Step-by-step documentation at [docs](https://docimate-beta.vercel.app/docs)
-4. **🎮 Live Playground**: Real-time testing environment at [playground](https://docimate-beta.vercel.app/playground)
-
-### 🎨 **Template Creation Made Simple**
-
-Our visual template builder empowers users to create sophisticated extraction rules through an intuitive interface. No coding knowledge required!
-
-### 📄 **Streamlined Processing Workflow**
-
-1. **📤 Secure Upload**: Upload your documents through our secure interface
-2. **🎯 Template Selection**: Choose from pre-built templates or create custom ones
-3. **🔍 AI Analysis**: Google Gemini performs intelligent content extraction
-4. **✨ Quality Results**: Get structured data in your preferred format
-5. **📊 Integration**: Use our API to integrate with your existing systems
+### **For Developers**
+- **API Integration**: Connect DociMate to your existing applications
+- **Custom Templates**: Build specialized processing workflows
+- **Data Extraction**: Programmatically extract structured data from documents
+- **Automation**: Set up automated document processing pipelines
 
 ---
 
-## 🔌 API Integration
+## 🌟 Key Benefits
 
-### 🔐 **Professional API Access**
+### **⚡ Save Time**
+- Process documents in seconds instead of hours
+- Automate repetitive tasks with smart templates
+- Get instant insights without manual analysis
 
-DociMate provides robust API access for seamless integration with your existing systems. 
+### **🎯 Improve Accuracy**
+- AI-powered extraction reduces human error
+- Consistent results across all document types
+- Smart validation ensures data quality
 
-**[📚 View Complete API Documentation](https://docimate-beta.vercel.app/docs/api)**
+### **📈 Scale Your Workflow**
+- Handle hundreds of documents simultaneously
+- Create reusable templates for common tasks
+- Integrate with your existing tools and systems
 
-### 📊 **Core API Capabilities**
-
-- **📄 Document Processing**: Automated extraction using custom templates
-- **🎨 Template Management**: Programmatic template creation and modification  
-- **📈 Analytics Access**: Comprehensive usage and performance data
-- **🔔 Webhook Integration**: Real-time notifications for your applications
-- **🔗 Custom Endpoints**: Create API endpoints tailored to your business needs
-
-### 🛠️ **API Features**
-
-- **🔐 Secure Authentication**: Enterprise-grade security protocols
-- **📊 Rate Limiting**: Intelligent request management
-- **📈 Real-time Analytics**: Monitor usage and performance
-- **🔔 Webhook Support**: Instant notifications for processed documents
-
-**[🚀 Start Using Our API](https://docimate-beta.vercel.app/playground/api)**
+### **💡 Gain Insights**
+- Discover patterns and trends in your data
+- Get AI-powered analysis and recommendations
+- Visualize data with beautiful charts and graphs
 
 ---
 
-## 🎨 User Interface
+## 🏆 Recognition
 
-DociMate features a world-class user interface designed for both power users and beginners:
-
-### 🌟 **Design Excellence**
-
-- **⚡ Lightning-fast Performance**: Optimized for speed across all interactions
-- **🎨 Beautiful Visual Design**: Attention to every detail and user experience
-- **♿ Universal Accessibility**: WCAG compliant for users of all abilities
-- **📱 Perfect Responsiveness**: Seamless experience on any device or screen size
-
-### 📱 **Key Interface Components**
-
-- **🎮 Interactive Playground**: Real-time document processing and testing
-- **📊 Analytics Dashboard**: Comprehensive usage insights and metrics
-- **🎨 Template Designer**: Visual template creation without coding
-- **📖 Document Viewer**: Advanced PDF viewing with intelligent selection
-- **⚙️ Settings Management**: Comprehensive customization options
-
-**[🎯 Try the Interface](https://docimate-beta.vercel.app/playground)**
+**DociMate** won **First Place** at WinHacks 2025, beating out 30 competing teams with our innovative approach to document processing and AI integration.
 
 ---
 
-## 🔐 Security & Performance
+## 🚀 Get Started Today
 
-### 🛡️ **Enterprise-Grade Security**
+Ready to transform your document workflow? DociMate is free to try and easy to use.
 
-DociMate implements industry-leading security measures to protect your data:
-
-- **🔒 Advanced Authentication**: Multi-layer security protocols
-- **🔐 Data Encryption**: End-to-end encryption for all document processing
-- **🛡️ Access Control**: Granular permissions and user management
-- **⏰ Session Management**: Secure session handling and timeouts
-- **🔒 CSRF Protection**: Built-in protection against security threats
-
-### ⚡ **Performance Optimization**
-
-- **🚀 Lightning Fast**: Optimized for maximum processing speed
-- **📈 Scalable Architecture**: Handles high-volume document processing
-- **🔄 Real-time Processing**: Instant results and feedback
-- **📊 Performance Monitoring**: Continuous optimization and monitoring
-
----
-
-## 📱 Cross-Platform Excellence
-
-DociMate delivers a consistent, premium experience across all platforms and devices:
-
-### 📊 **Universal Device Support**
-- **📱 Mobile Optimized**: Perfect experience on smartphones
-- **📋 Tablet Ready**: Enhanced functionality for tablet users
-- **💻 Desktop Power**: Full-featured desktop experience
-- **🖥️ Large Display**: Optimized for high-resolution screens
-
-### 🎨 **Platform Features**
-- **👆 Touch Optimization**: Intuitive gesture-based interactions
-- **📂 Responsive Design**: Adapts beautifully to any screen size
-- **🔄 Cross-browser Compatibility**: Works perfectly in all modern browsers
-- **📱 Progressive Web App**: Native-like mobile experience
-
----
-
-## 🏆 Awards & Recognition
-
-### 🥇 **WinHacks 2025 Championship Victory**
-
-DociMate achieved unprecedented success at WinHacks 2025:
-
-- **🏆 First Place Winner** - Defeated 30 competing teams
-- **💡 Innovation Excellence Award** - Groundbreaking AI implementation
-- **👥 People's Choice Award** - Most practical and impactful solution
-- **🚀 Technical Achievement Award** - Outstanding engineering excellence
-
-### 🌟 **Industry Impact**
-
-DociMate has been recognized as a revolutionary solution in the document processing industry, representing the future of AI-powered business automation and setting new standards for intelligent document processing.
-
----
-
-## 👥 Development Team
-
-### 🌟 **Award-Winning Engineering Team**
-
-Meet the exceptional developers behind DociMate's championship success:
-
-**[Ibrahim Arain](https://github.com/ibrahim-arain)** - *Lead Developer & Project Architect*
-- 🎯 Visionary project leadership and technical architecture
-- ⚡ Full-stack development expertise and innovation
-- 🏆 Lead strategist for WinHacks 2025 victory
-
-**[Ahmad Arain](https://github.com/ahmad-arain)** - *Senior Full-Stack Developer & UI/UX Designer*
-- 🎨 User experience design and frontend architecture excellence
-- 💻 Advanced React, TypeScript, and modern web development
-- 🎯 Interface design and user interaction optimization
-
-**[Mohammad Affan Shahid](https://github.com/affan-shahid)** - *Backend Architect & Database Engineer*
-- 🗄️ Database design, optimization, and scalability
-- 🔧 API architecture and enterprise security implementation
-- ⚡ Performance optimization and system architecture
-
-**[Sahaj Kataria](https://github.com/sahaj-kataria)** - *Frontend Specialist & AI Integration Engineer*
-- 🤖 AI model integration and optimization specialist
-- ⚡ Performance optimization and advanced user interface development
-- 🔬 Machine learning integration and data processing
-
----
-
-## 📄 Legal & Licensing
-
-### ⚖️ **Proprietary Software License**
-
-**© 2024 DociMate. All Rights Reserved.**
-
-DociMate is proprietary software exclusively owned and developed by Ibrahim Arain and the DociMate development team. This software and all associated intellectual property are protected by copyright law and international treaties.
-
-**⚠️ IMPORTANT LEGAL NOTICE:**
-
-- **🚫 No Unauthorized Use**: Unauthorized reproduction, distribution, copying, or use of this software, in whole or in part, is strictly prohibited
-- **⚖️ Legal Enforcement**: Violations will be prosecuted to the fullest extent of the law
-- **🔒 Proprietary Technology**: All algorithms, code, and methodologies are trade secrets
-- **📜 Rights Reserved**: All rights, title, and interest in the software remain with the owners
-
-**For business licensing, partnership opportunities, or authorized usage inquiries:**
-**[📧 Contact Us via DociMate Platform](https://docimate-beta.vercel.app)**
-
----
-
-## 🙏 Acknowledgments
-
-### 🛠️ **Technology Partners & Frameworks**
-
-We acknowledge and appreciate the exceptional technologies that power DociMate:
-
-- **[Next.js](https://nextjs.org/)** - Revolutionary React framework enabling our frontend
-- **[Google AI](https://ai.google.dev/)** - Advanced Gemini AI models powering our intelligence
-- **[Turso](https://turso.tech/)** - High-performance database infrastructure
-- **[Vercel](https://vercel.com/)** - World-class deployment and hosting platform
-- **[Tailwind CSS](https://tailwindcss.com/)** - Modern utility-first styling framework
-- **[Radix UI](https://www.radix-ui.com/)** - Accessible component primitives
-- **[Framer Motion](https://www.framer.com/motion/)** - Premium animation library
-
-### 🎉 **Special Recognition**
-
-- **WinHacks 2025 Organizers** - For creating an incredible platform for innovation
-- **Competition Judges** - For recognizing the potential and impact of DociMate
-- **Industry Mentors** - For invaluable guidance throughout development
-- **Open Source Community** - For the amazing tools that made this achievement possible
+**[🌟 Start Using DociMate](https://docimate.com)** • **[📚 Read the Docs](https://docimate.com/docs)** • **[🎮 Try the Playground](https://docimate.com/playground)**
 
 ---
 
 <div align="center">
 
-### 🚀 Ready to Transform Your Document Processing?
-
-**Experience the award-winning AI-powered solution that's revolutionizing business automation**
-
-**[🌟 Start Using DociMate](https://docimate-beta.vercel.app)** • **[🎮 Try the Demo](https://docimate-beta.vercel.app/demo)** • **[📚 Explore Documentation](https://docimate-beta.vercel.app/docs)**
-
----
-
-**Built with ❤️ and Championship Excellence by the DociMate Team**
+**Built with ❤️ by the DociMate Team**
 
 *Where paperwork meets intelligence - transforming chaos into structured brilliance* ✨
 
-![DociMate Footer](public/logo-bird.png)
+![DociMate Footer](https://docimate.com/logo-bird.png)
 
 ---
 
 **🏆 WinHacks 2025 Champions | 🥇 #1 out of 30 Teams | 🚀 The Future of Document Processing**
 
 </div>
-
-## DociMate - AI-Powered Document Processing Platform
-
-DociMate is a sophisticated platform that combines document processing capabilities with advanced spreadsheet functionality and AI-powered analysis.
-
-## Features
-
-### 📊 Excel-like Spreadsheet Functionality
-
-Our enhanced spreadsheet component provides comprehensive Excel-like features:
-
-#### Formula Support
-- **Formula Entry**: Type `=` to enter formula mode with real-time validation
-- **Cell References**: Click cells during formula entry to insert references (A1, B2, etc.)
-- **Range References**: Support for ranges like A1:B10
-- **Absolute References**: Support for $A$1, $A1, A$1 reference types
-- **Function Library**: SUM, AVERAGE, COUNT, MAX, MIN, ROUND, ABS, SQRT, POWER, CONCATENATE, LEFT, RIGHT, LEN, UPPER, LOWER, IF, AND, OR, NOT, COUNTA
-
-#### Visual Formula Building
-- **Reference Highlighting**: Referenced cells are highlighted during formula editing
-- **Real-time Validation**: Formula errors shown immediately with specific error types
-- **Autocomplete**: Function suggestions with descriptions and examples
-- **Error Display**: Comprehensive error codes (#ERROR!, #NAME?, #DIV/0!, #REF!, #CIRCULAR!, #NUM!, #VALUE!)
-
-#### Excel-like Interactions
-- **Cell Selection**: Click and drag to select ranges
-- **Formula Mode**: Click cells to insert references during formula building
-- **Drag Fill**: Auto-fill cells with series or copy values
-- **Series Detection**: Automatic detection of number sequences, dates, months, days
-- **Multi-cell Editing**: Apply values to multiple selected cells
-- **Keyboard Navigation**: Arrow keys, Enter, Tab for navigation
-
-#### Advanced Features
-- **Circular Reference Detection**: Prevents infinite calculation loops
-- **Dependency Tracking**: Automatic recalculation when referenced cells change
-- **Undo/Redo**: Full history support with Ctrl+Z/Ctrl+Y
-- **Column/Row Resizing**: Drag headers to resize
-- **Context Menus**: Right-click for additional options
-
-#### Formula Examples
-```
-=SUM(A1:A10)          // Sum range
-=AVERAGE(B1:B5)       // Average of range
-=A1+B1*C1            // Arithmetic operations
-=IF(A1>10,"High","Low") // Conditional logic
-=CONCATENATE(A1," ",B1) // Text joining
-=ROUND(A1/B1,2)       // Rounding with precision
-```
-
-### 🤖 AI-Powered Document Analysis
