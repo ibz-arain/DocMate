@@ -67,7 +67,7 @@ export default function Header() {
                   {[
                     { label: 'Pricing', href: '/pricing' },
                     { label: 'Use Cases', href: '/use-cases' },
-                    // { label: 'Read Docs', href: '/docs' },
+                    { label: 'Read Docs', href: '/docs' },
                     { label: 'Changelog', href: '/changelog' },
                     { label: 'About Us', href: '/about' }
                   ].map((item) => (
@@ -165,6 +165,7 @@ export default function Header() {
                   {[
                     { label: 'Pricing', href: '/pricing' },
                     { label: 'Use Cases', href: '/use-cases' },
+                    { label: 'Read Docs', href: '/docs' },
                     { label: 'Changelog', href: '/changelog' },
                     { label: 'About Us', href: '/about' },
                   ].map((item) => (
