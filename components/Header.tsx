@@ -58,8 +58,8 @@ export default function Header() {
               {/* Header content */}
               <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-background/60 backdrop-blur-sm">
                 <Link href="/" className="flex items-center">
-                  <Image src="/logo-bird.png" alt="DociMate" width={32} height={32} />
-                  <Image src="/logo-text.png" alt="DociMate" width={100} height={20} />
+                  <Image src="/logo-bird.png" alt="Docimate" width={32} height={32} />
+                  <Image src="/logo-text.png" alt="Docimate" width={100} height={20} />
                 </Link>
                 
                 {/* Navigation */}

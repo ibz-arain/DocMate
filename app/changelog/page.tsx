@@ -36,7 +36,7 @@ const BackgroundNoise = () => {
 // Mac window style component
 const MacWindow = ({ 
   children, 
-  title = "DociMate", 
+  title = "Docimate", 
   variant = "default",
   className = ""
 }: { 

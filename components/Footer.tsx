@@ -16,8 +16,8 @@ export default function Footer() {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <div className="flex items-center overflow-hidden">
-                <Image src="/logo-bird.png" alt="DociMate" width={40} height={40} />
-                <Image src="/logo-text.png" alt="DociMate" width={150} height={40} />
+                <Image src="/logo-bird.png" alt="Docimate" width={40} height={40} />
+                <Image src="/logo-text.png" alt="Docimate" width={150} height={40} />
               </div>
             </div>
             
@@ -131,8 +131,8 @@ export default function Footer() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-20 mb-8">
             <div className="lg:col-span-2 space-y-6">
               <div className="flex items-center overflow-hidden">
-                <Image src="/logo-bird.png" alt="DociMate" width={50} height={50} />
-                <Image src="/logo-text.png" alt="DociMate" width={200} height={50} />
+                <Image src="/logo-bird.png" alt="Docimate" width={50} height={50} />
+                <Image src="/logo-text.png" alt="Docimate" width={200} height={50} />
               </div>
               
               <p className="text-muted-foreground">
@@ -246,7 +246,7 @@ export default function Footer() {
         <div className="pt-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center space-x-3 text-sm text-muted-foreground">
-              <span>© {new Date().getFullYear()} DociMate</span>
+              <span>© {new Date().getFullYear()} Docimate</span>
               <span className="inline-block w-1 h-1 rounded-full bg-muted-foreground/60"></span>
               <span>All rights reserved</span>
             </div>

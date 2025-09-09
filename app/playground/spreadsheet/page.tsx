@@ -1302,7 +1302,7 @@ Focus on making the spreadsheet data easily accessible and well-organized.`;
   return (
     <>
       <Head>
-        <title>Spreadsheet Analyzer | DociMate</title>
+        <title>Spreadsheet Analyzer | Docimate</title>
         <meta name="description" content="Analyze and process CSV and Excel spreadsheets with AI" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

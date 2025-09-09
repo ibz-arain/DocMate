@@ -228,7 +228,7 @@ export default function PricingModal({
     if (hasNoPlan) {
       return {
         title: "Welcome! Choose Your Plan",
-        description: "Get started with DociMate and unlock powerful document processing.",
+        description: "Get started with Docimate and unlock powerful document processing.",
         showDecisionHelp: true,
         freePlanCTA: "Continue with Free",
         canClose: false
@@ -239,7 +239,7 @@ export default function PricingModal({
       case "signup":
         return {
           title: "Welcome! Choose Your Plan",
-          description: "Get started with DociMate and unlock powerful document processing.",
+          description: "Get started with Docimate and unlock powerful document processing.",
           showDecisionHelp: true,
           freePlanCTA: "Continue with Free",
           canClose: false

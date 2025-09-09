@@ -11,7 +11,7 @@ export default function HistoryPage() {
   return (
     <>
       <Head>
-        <title>Document History | DociMate</title>
+        <title>Document History | Docimate</title>
         <meta name="description" content="View and manage your document history" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

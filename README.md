@@ -1,156 +1,163 @@
-<div align="center">
+# Docimate
 
-![DociMate Logo](https://docimate.com/logo-text.png)
+> **AI-Powered Document Processing Platform**  
+> Transform your document workflow with intelligent automation
 
-# 🚀 DociMate
-
-**AI-Powered Document Processing & Analysis Platform**
-
-*Winner of WinHacks 2025 🏆 - First Place out of 30 competing teams*
-
-[🌐 Try DociMate Now](https://docimate.com) • [📖 Documentation](https://docimate.com/docs) • [🎮 Playground](https://docimate.com/playground)
-
-</div>
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Playground-blue?style=for-the-badge&logo=play)](https://docimate.com/playground)
+[![Pricing](https://img.shields.io/badge/Pricing-Transparent-green?style=for-the-badge&logo=dollar-sign)](https://docimate.com/pricing)
+[![About Us](https://img.shields.io/badge/About%20Us-Our%20Story-purple?style=for-the-badge&logo=users)](https://docimate.com/about)
 
 ---
 
-## 🎯 What is DociMate?
+## 🚀 What is Docimate?
 
-**DociMate** is your intelligent document processing companion that transforms the way you handle paperwork. Whether you're dealing with PDFs, spreadsheets, or any document format, DociMate uses advanced AI to extract insights, format content, and automate repetitive tasks that would normally take hours.
+Docimate is an AI-powered platform that revolutionizes how you work with documents and spreadsheets. Instead of manually reading through pages of text or switching between multiple tools, Docimate lets you **chat with your documents** and get instant answers.
 
-### ✨ Why Choose DociMate?
+**Winner of WinHacks 2025** - We took home the overall winner, best expense tracker, and best user experience awards!
 
-- **🤖 AI-Powered Intelligence**: Advanced document understanding and analysis
-- **📄 Universal Format Support**: Process PDFs, Excel files, CSVs, and more
-- **⚡ Lightning Fast**: Get results in seconds, not hours
-- **🎨 Beautiful Interface**: Intuitive design that anyone can use
-- **🔄 Smart Templates**: Create custom workflows for consistent processing
-- **📊 Data Visualization**: Generate charts and insights from your data
+---
+
+## ✨ Key Features
+
+### 🤖 **AI-Powered Processing**
+- Upload any document (PDF, Word, Excel, CSV) and let AI extract key information
+- 99%+ accuracy with intelligent error detection and correction
+- Process thousands of documents in minutes, not hours
+
+### 💬 **Chat with Your Documents**
+- Ask questions directly to your documents: *"What's the total revenue for Q3?"*
+- Get instant, contextual answers instead of manually searching
+- Maintain conversation history for deeper understanding
+
+### 📊 **Advanced Spreadsheet Support**
+- Process Excel files and CSV data with formula support
+- Generate charts and graphs automatically
+- Extract data from specific cells, columns, and rows
+
+### 🎯 **Template System**
+- Create custom extraction rules for your specific needs
+- Define field types and data structures
+- Use templates to extract only the data you need
+
+### 📈 **Unified Platform**
+- No more switching between PDF readers, Excel, and chat tools
+- Everything in one place: chat, extract, process, and analyze
+- Document history and usage tracking
+
+---
+
+## 🎯 Perfect For
+
+### **Finance & Banking**
+- Chat with financial reports: *"What was our Q3 revenue growth?"*
+- Extract transaction data from bank statements
+- Process expense reports and invoices
+
+### **Healthcare**
+- Query patient records: *"Show me all patients with diabetes"*
+- Extract lab results and test data
+- Process clinical trial information
+
+### **Legal**
+- Review contracts: *"What are the key terms in this agreement?"*
+- Extract legal clauses and terms
+- Search through case files and documents
+
+### **Real Estate**
+- Analyze property data: *"What's the square footage and lot size?"*
+- Process MLS data and market reports
+- Extract information from deeds and contracts
+
+### **And Many More Industries...**
+- Manufacturing, Insurance, Education, Consulting, Non-Profit, Media & Marketing, Technology, Hospitality, Agriculture, Transportation, Energy, and Retail
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. **Upload Your Document**
-Simply drag and drop any PDF, Excel, or CSV file into DociMate's interface. No complex setup required!
-
-### 2. **Choose Your Action**
-- **📖 Document Analysis**: Get summaries, ask questions, or extract specific information
-- **📊 Spreadsheet Magic**: Edit data, create charts, and get AI insights
-- **🎯 Apply Templates**: Use pre-built templates or create your own for automated processing
-
-### 3. **Get Instant Results**
-Watch as DociMate's AI processes your document and delivers exactly what you need in seconds.
-
-**[🎮 Try it now in our Playground](https://docimate.com/playground)**
+1. **Visit the Playground**: [Try Docimate Now](https://docimate.com/playground)
+2. **Upload a Document**: PDF, Word, Excel, or CSV files
+3. **Start Chatting**: Ask questions about your document
+4. **Get Instant Answers**: AI extracts and analyzes data for you
 
 ---
 
-### 📄 **Document Processing**
-- **Smart Summarization**: Get concise summaries of any document or selected content
-- **Chat with Documents**: Ask questions and get intelligent answers about your content
-- **Template Application**: Apply custom templates to extract specific information
-- **Multi-format Support**: Handle PDFs, images, and scanned documents with ease
+## 💰 Pricing
 
-### 📊 **Advanced Spreadsheet Tools**
-- **Excel-like Editing**: Full formula support, cell references, and data manipulation
-- **AI-Powered Insights**: Right-click any data to get AI analysis and trends
-- **Dynamic Chart Generation**: Create beautiful charts automatically
-- **Import/Export**: Seamlessly work with Excel and CSV files
+### **Free Forever** - $0/month
+- 50 API calls per month
+- Unlimited document access
+- Document history
+- Email support
 
-### 🎨 **Smart Templates**
-- **Visual Template Builder**: Create processing templates without coding
-- **Pre-built Solutions**: Ready-to-use templates for common document types
-- **Custom Workflows**: Build templates for your specific business needs
-- **Batch Processing**: Apply templates to multiple documents at once
+### **Hobby** - $19/month
+- 500 API calls per month
+- Everything in Free Forever
+- Email support
 
----
+### **Pro** - $29/month
+- 1,000 API calls per month
+- Usage tracking and analytics
+- Everything in Hobby
 
-## 🎮 Try It Out
+### **Business** - $99/month
+- 5,000 API calls per month
+- 24/7 phone support
+- Everything in Pro
 
-### **Sample Documents to Test**
+### **Enterprise** - $179/month
+- 10,000 API calls per month
+- API access for developers
+- 24/7 phone support
 
-We've prepared sample documents for you to explore DociMate's capabilities:
+### **Contact Us** - Custom
+- Unlimited API calls
+- Pay as you go pricing
+- Custom integrations
 
-1. **📋 Business Invoice** - Test data extraction and template processing
-2. **📊 Sales Report** - Try spreadsheet analysis and chart generation  
-3. **📄 Contract Document** - Experience document summarization and Q&A
-4. **📈 Financial Data** - Explore advanced spreadsheet features
-
-**[🎯 Start with Sample Documents](https://docimate.com/playground)**
-
----
-
-## 💡 Use Cases
-
-### **For Businesses**
-- **Invoice Processing**: Automatically extract vendor details, amounts, and dates
-- **Contract Analysis**: Quickly identify key terms, obligations, and deadlines
-- **Report Generation**: Transform raw data into professional reports and charts
-- **Data Migration**: Convert documents between formats while preserving structure
-
-### **For Individuals**
-- **Document Summarization**: Quickly understand long documents and reports
-- **Data Organization**: Clean and structure messy spreadsheets
-- **Research Assistance**: Ask questions about documents and get instant answers
-- **Format Conversion**: Transform documents to your preferred format
-
-### **For Developers**
-- **API Integration**: Connect DociMate to your existing applications
-- **Custom Templates**: Build specialized processing workflows
-- **Data Extraction**: Programmatically extract structured data from documents
-- **Automation**: Set up automated document processing pipelines
+[View Full Pricing →](https://docimate.com/pricing)
 
 ---
 
-## 🌟 Key Benefits
+## 🏆 Our Story
 
-### **⚡ Save Time**
-- Process documents in seconds instead of hours
-- Automate repetitive tasks with smart templates
-- Get instant insights without manual analysis
+Docimate started as a hackathon project at **WinHacks 2025**, where our team of four developers built the initial concept in just 48 hours. We won first place, beating 29 other teams, and took home multiple awards.
 
-### **🎯 Improve Accuracy**
-- AI-powered extraction reduces human error
-- Consistent results across all document types
-- Smart validation ensures data quality
+Since then, we've evolved Docimate into a comprehensive platform that's helping professionals across industries automate their document workflows and save countless hours of manual work.
 
-### **📈 Scale Your Workflow**
-- Handle hundreds of documents simultaneously
-- Create reusable templates for common tasks
-- Integrate with your existing tools and systems
-
-### **💡 Gain Insights**
-- Discover patterns and trends in your data
-- Get AI-powered analysis and recommendations
-- Visualize data with beautiful charts and graphs
+[Learn More About Us →](https://docimate.com/about)
 
 ---
 
-## 🏆 Recognition
+## 🌟 What Users Are Saying
 
-**DociMate** won **First Place** at WinHacks 2025, beating out 30 competing teams with our innovative approach to document processing and AI integration.
+> *"What took our accounting lady 3 days to do the $30,000 monthly phone bill is now processed and ready to be paid in 30 seconds"*  
+> **- Accountant**
+
+> *"Instead of spending 2 hours reading through 50-page contracts, I just ask Docimate what I need and it tells me in 10 seconds"*  
+> **- Lawyer Assistant**
+
+> *"I hated having to go through multiple government ID's to find buyers information. Now I just upload 20 docs and ask Docimate to give me the information I need in like 10 seconds"*  
+> **- Real Estate Agent**
+
+---
+
+## 🔗 Links
+
+- **[Live Demo](https://docimate.com/playground)** - Try Docimate right now
+- **[Pricing](https://docimate.com/pricing)** - Transparent pricing plans
+- **[Use Cases](https://docimate.com/use-cases)** - See how different industries use Docimate
+- **[About Us](https://docimate.com/about)** - Meet the team behind Docimate
+- **[Changelog](https://docimate.com/changelog)** - Follow our development journey
 
 ---
 
 ## 🚀 Get Started Today
 
-Ready to transform your document workflow? DociMate is free to try and easy to use.
+Ready to transform your document workflow? 
 
-**[🌟 Start Using DociMate](https://docimate.com)** • **[📚 Read the Docs](https://docimate.com/docs)** • **[🎮 Try the Playground](https://docimate.com/playground)**
-
----
-
-<div align="center">
-
-**Built with ❤️ by the DociMate Team**
-
-*Where paperwork meets intelligence - transforming chaos into structured brilliance* ✨
-
-![DociMate Footer](https://docimate.com/logo-bird.png)
+**[Try Docimate for Free →](https://docimate.com/playground)**
 
 ---
 
-**🏆 WinHacks 2025 Champions | 🥇 #1 out of 30 Teams | 🚀 The Future of Document Processing**
-
-</div>
+*Built with ❤️ by the Docimate team*

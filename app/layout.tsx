@@ -6,7 +6,7 @@ import { SidebarProvider } from "@/components/sidebar-provider";
 
 
 export const metadata: Metadata = {
-  title: "DociMate",
+  title: "Docimate",
   description: "AI-powered document processing and analysis",
 };
 
@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="apple-mobile-web-app-title" content="DociMate" />
+        <meta name="apple-mobile-web-app-title" content="Docimate" />
       </head>
       <body suppressHydrationWarning>
           <Providers>

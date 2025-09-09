@@ -310,7 +310,7 @@ export default function DocumentPage() {
       // Handle free plan selection
       if (plan.id === "free") {
         toast({
-          title: "Welcome to DociMate!",
+          title: "Welcome to Docimate!",
           description: "You're all set with our free plan. Start uploading documents to get started!",
         });
       }
@@ -334,7 +334,7 @@ export default function DocumentPage() {
     // User must select a plan to proceed
     toast({
       title: "Plan selection required",
-      description: "Please select a plan to continue using DociMate.",
+      description: "Please select a plan to continue using Docimate.",
       variant: "destructive"
     });
   };
@@ -1968,7 +1968,7 @@ Focus on making the information easily accessible and well-organized.`;
   return (
     <>
       <Head>
-        <title>Document Editor | DociMate</title>
+        <title>Document Editor | Docimate</title>
         <meta name="description" content="Edit and manage your PDF documents" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">
