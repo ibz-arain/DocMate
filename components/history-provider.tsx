@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, createContext, useContext, Rea
 
 export interface HistoryEntry {
   id: string;
-  type: 'summary' | 'quick-format' | 'template-format';
+  type: 'summary' | 'quick-format' | 'template-format' | 'chat' | 'chart-generator';
   title: string;
   content: any;
   selectedText: string;
@@ -15,7 +15,7 @@ export interface HistoryEntry {
   pageNumber?: number;
 }
 
-const HISTORY_STORAGE_KEY = 'docmate-history';
+const HISTORY_STORAGE_KEY = 'docimate-history';
 const MAX_HISTORY_ENTRIES = 50;
 
 interface HistoryContextType {

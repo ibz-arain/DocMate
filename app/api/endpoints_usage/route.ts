@@ -10,6 +10,36 @@ interface DecodedToken {
   exp: number;
 }
 
+// Helper function to get user's timezone from request headers
+const getUserTimezone = (req: NextRequest): string => {
+  // Try to get timezone from various headers
+  const timezone = req.headers.get('x-timezone') || 
+                   req.headers.get('timezone') || 
+                   req.headers.get('x-user-timezone') ||
+                   'UTC';
+  return timezone;
+};
+
+// Helper function to convert UTC timestamp to user's timezone
+const convertToUserTimezone = (utcTimestamp: string, timezone: string): string => {
+  try {
+    const date = new Date(utcTimestamp);
+    return date.toLocaleString('en-CA', { 
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(',', '');
+  } catch (error) {
+    // Fallback to UTC if timezone is invalid
+    return utcTimestamp;
+  }
+};
+
 async function getUserFromToken(token: string): Promise<DecodedToken | null> {
   try {
     const decoded = verify(token, process.env.JWT_SECRET!) as DecodedToken;
@@ -21,7 +51,7 @@ async function getUserFromToken(token: string): Promise<DecodedToken | null> {
 }
 
 // GET - Fetch usage data for endpoints
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
@@ -35,6 +65,9 @@ export async function GET(req: Request) {
     if (!user?.userId) {
       return new NextResponse("Unauthorized - Invalid token", { status: 401 });
     }
+
+    // Get user's timezone
+    const userTimezone = getUserTimezone(req);
 
     // Get query parameters
     const { searchParams } = new URL(req.url);
@@ -94,6 +127,14 @@ export async function GET(req: Request) {
       `,
       args: [...args, limitNum, offset],
     });
+
+    // Convert timestamps to user's timezone
+    if (usageResult.rows && usageResult.rows.length > 0) {
+      usageResult.rows = usageResult.rows.map((row: any) => ({
+        ...row,
+        timestamp: convertToUserTimezone(row.timestamp, userTimezone)
+      }));
+    }
     
     // If we're requesting a specific endpoint, get summary stats
     let summary = null;
@@ -126,6 +167,14 @@ export async function GET(req: Request) {
         `,
         args: [...args],
       });
+
+      // Convert daily usage timestamps to user's timezone
+      if (dailyUsageResult.rows && dailyUsageResult.rows.length > 0) {
+        dailyUsageResult.rows = dailyUsageResult.rows.map((row: any) => ({
+          ...row,
+          date: convertToUserTimezone(row.date, userTimezone)
+        }));
+      }
       
       if (summaryResult.rows.length > 0) {
         summary = {
@@ -143,7 +192,8 @@ export async function GET(req: Request) {
         limit: limitNum,
         pages: Math.ceil(parseInt(countResult.rows[0]?.total as string || '0', 10) / limitNum)
       },
-      summary
+      summary,
+      timezone: userTimezone
     });
   } catch (error) {
     console.error('[USAGE_GET]', error);

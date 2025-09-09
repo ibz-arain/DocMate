@@ -5,34 +5,49 @@ import { FileText } from "lucide-react";
 import Image from "next/image";
 export default function Footer() {
   return (
-    <footer className="relative pt-24 pb-16 px-6 overflow-hidden bg-black">
+    <footer className="relative pt-16 pb-16 px-6 overflow-hidden bg-black">
       {/* Background elements */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
       
       <div className="container mx-auto max-w-7xl relative z-10">
-        {/* Logo and newsletter section */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-16 mb-16">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center overflow-hidden" style={{ width: '190px', marginLeft: '-16px' }}>
-              <Image src="/logo-text.png" alt="DocMate" width={200} height={200} />
+        {/* Mobile version - hidden on desktop */}
+        <div className="block lg:hidden">
+          {/* Mobile logo and description */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="flex items-center overflow-hidden">
+                <Image src="/logo-bird.png" alt="Docimate" width={40} height={40} />
+                <Image src="/logo-text.png" alt="Docimate" width={150} height={40} />
+              </div>
             </div>
             
-            <p className="text-muted-foreground">
-              Automate your workflows with the power of AI. Cut down on manual tasks, increase efficiency, and focus on what matters most.
+            <p className="text-muted-foreground text-sm mb-6">
+            Automate your workflows with the power of AI. Cut down on manual tasks, increase efficiency, and focus on what matters most.
             </p>
             
-            <div className="flex space-x-3">
-              {['twitter', 'github', 'linkedin'].map((social) => (
+            {/* Mobile email */}
+            <div className="mb-6">
+              <a 
+                href="mailto:hello@docimate.com?subject=General Inquiry" 
+                className="text-primary hover:text-white transition-colors duration-300 text-sm font-medium"
+              >
+                hello@docimate.com
+              </a>
+            </div>
+            
+            {/* Mobile social links */}
+            <div className="flex justify-center space-x-4">
+              {['github', 'linkedin'].map((social) => (
                 <a 
                   key={social} 
                   href="#" 
-                  className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/30 transition-all duration-300 group"
+                  className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/30 transition-all duration-300 group"
                 >
                   <span className="sr-only">{social}</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -41,11 +56,6 @@ export default function Footer() {
                     strokeLinejoin="round"
                     className="text-muted-foreground group-hover:text-primary transition-colors duration-300"
                   >
-                    {social === 'twitter' && (
-                      <>
-                        <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                      </>
-                    )}
                     {social === 'github' && (
                       <>
                         <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
@@ -64,91 +74,202 @@ export default function Footer() {
               ))}
             </div>
           </div>
-          
-          <div className="lg:col-span-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div>
-                <h4 className="font-semibold text-lg mb-4 flex items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
-                  Product
-                </h4>
-                <ul className="space-y-3">
-                  {['Learn More', 'Demo', 'API', 'Pricing'].map((item) => (
-                    <li key={item}>
-                      <Link
-                        href={item === 'Learn More' ? '/learn-more' : item === 'Demo' ? '/demo' : item === 'API' ? '/#api' : '/#pricing'} 
-                        className="text-muted-foreground hover:text-white transition-colors duration-300 flex items-center group"
-                      >
-                        <span className="w-0 group-hover:w-2 h-px bg-primary mr-0 group-hover:mr-2 transition-all duration-300"></span>
-                        {item}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+
+          {/* Mobile navigation - 2 columns */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div>
+              <h4 className="font-semibold text-sm mb-4 flex items-center">
+                <span className="w-1 h-1 rounded-full bg-primary mr-2"></span>
+                Product
+              </h4>
+              <ul className="space-y-3">
+                {[
+                  { label: 'Pricing', href: '/pricing' },
+                  { label: 'Use Cases', href: '/use-cases' },
+                  { label: 'Changelog', href: '/changelog' },
+                ].map((item) => (
+                  <li key={item.label}>
+                    <Link
+                      href={item.href}
+                      className="text-muted-foreground hover:text-white transition-colors duration-300 text-sm"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-sm mb-4 flex items-center">
+                <span className="w-1 h-1 rounded-full bg-primary mr-2"></span>
+                Resources
+              </h4>
+              <ul className="space-y-3">
+                {[
+                  { label: 'Documentation', href: '/docs' },
+                  { label: 'About Us', href: '/about' },
+                  { label: 'Careers', href: '/careers' }
+                ].map((item) => (
+                  <li key={item.label}>
+                    <Link
+                      href={item.href}
+                      className="text-muted-foreground hover:text-white transition-colors duration-300 text-sm"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop version - hidden on mobile */}
+        <div className="hidden lg:block">
+          {/* Logo and newsletter section */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-20 mb-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center overflow-hidden">
+                <Image src="/logo-bird.png" alt="Docimate" width={50} height={50} />
+                <Image src="/logo-text.png" alt="Docimate" width={200} height={50} />
               </div>
               
+              <p className="text-muted-foreground">
+                Automate your workflows with the power of AI. Cut down on manual tasks, increase efficiency, and focus on what matters most.
+              </p>
+              
+              {/* Desktop email */}
               <div>
-                <h4 className="font-semibold text-lg mb-4 flex items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
-                  Resources
-                </h4>
-                <ul className="space-y-3">
-                  {['Documentation', 'Guides', 'Blog', 'Support'].map((item) => (
-                    <li key={item}>
-                      <a 
-                        href="#" 
-                        className="text-muted-foreground hover:text-white transition-colors duration-300 flex items-center group"
-                      >
-                        <span className="w-0 group-hover:w-2 h-px bg-primary mr-0 group-hover:mr-2 transition-all duration-300"></span>
-                        {item}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                Contact us: <a 
+                  href="mailto:hello@docimate.com?subject=General Inquiry" 
+                  className="text-primary hover:text-white transition-colors duration-300 font-medium"
+                >
+                  hello@docimate.com
+                </a>
               </div>
               
-              <div>
-                <h4 className="font-semibold text-lg mb-4 flex items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
-                  Company
-                </h4>
-                <ul className="space-y-3">
-                  {['About', 'Careers', 'Privacy', 'Terms'].map((item) => (
-                    <li key={item}>
-                      <a 
-                        href="#" 
-                        className="text-muted-foreground hover:text-white transition-colors duration-300 flex items-center group"
-                      >
-                        <span className="w-0 group-hover:w-2 h-px bg-primary mr-0 group-hover:mr-2 transition-all duration-300"></span>
-                        {item}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+              <div className="flex space-x-3">
+                {['github', 'linkedin'].map((social) => (
+                  <a 
+                    key={social} 
+                    href="#" 
+                    className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/30 transition-all duration-300 group"
+                  >
+                    <span className="sr-only">{social}</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-muted-foreground group-hover:text-primary transition-colors duration-300"
+                    >
+                      {social === 'github' && (
+                        <>
+                          <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+                          <path d="M9 18c-4.51 2-5-2-7-2" />
+                        </>
+                      )}
+                      {social === 'linkedin' && (
+                        <>
+                          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+                          <rect width="4" height="12" x="2" y="9" />
+                          <circle cx="4" cy="4" r="2" />
+                        </>
+                      )}
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+            
+            <div className="lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold text-lg mb-6 flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
+                    Product
+                  </h4>
+                  <ul className="space-y-4">
+                    {[
+                      { label: 'Pricing', href: '/pricing' },
+                      { label: 'Use Cases', href: '/use-cases' },
+                      { label: 'Changelog', href: '/changelog' },
+                    ].map((item) => (
+                      <li key={item.label}>
+                        <Link
+                          href={item.href}
+                          className="text-muted-foreground hover:text-white transition-colors duration-300 flex items-center group"
+                        >
+                          <span className="w-0 group-hover:w-2 h-px bg-primary mr-0 group-hover:mr-2 transition-all duration-300"></span>
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div>
+                  <h4 className="font-semibold text-lg mb-6 flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
+                    Resources
+                  </h4>
+                  <ul className="space-y-4">
+                    {[
+                      { label: 'Documentation', href: '/docs' },
+                      { label: 'About Us', href: '/about' },
+                      { label: 'Careers', href: '/careers' }
+                    ].map((item) => (
+                      <li key={item.label}>
+                        <Link
+                          href={item.href}
+                          className="text-muted-foreground hover:text-white transition-colors duration-300 flex items-center group"
+                        >
+                          <span className="w-0 group-hover:w-2 h-px bg-primary mr-0 group-hover:mr-2 transition-all duration-300"></span>
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
         </div>
         
         {/* Bottom section with copyright and links */}
-        <div className="pt-8 border-t border-white/5">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <span>© {new Date().getFullYear()} DocMate</span>
-              <span className="inline-block w-1 h-1 rounded-full bg-muted-foreground"></span>
+        <div className="pt-8 border-t border-white/10">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+              <span>© {new Date().getFullYear()} Docimate</span>
+              <span className="inline-block w-1 h-1 rounded-full bg-muted-foreground/60"></span>
               <span>All rights reserved</span>
             </div>
             
-            <div className="mt-4 md:mt-0 flex space-x-4">
-              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-300">
-                Privacy Policy
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-300">
-                Terms of Service
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-300">
-                Cookies
-              </a>
+            <div className="flex flex-wrap items-center gap-6">
+              {[
+                { label: 'Privacy Policy', href: '/privacy' },
+                { label: 'Terms of Service', href: '/terms' },
+                { label: 'Cookie Policy', href: '/cookies' }
+              ].map((item, index) => (
+                <div key={item.label} className="flex items-center">
+                  <a 
+                    href={item.href} 
+                    className="text-sm text-muted-foreground hover:text-white transition-colors duration-300 relative group"
+                  >
+                    {item.label}
+                    <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary group-hover:w-full transition-all duration-300"></span>
+                  </a>
+                  {index < 2 && (
+                    <span className="ml-6 text-muted-foreground/40">•</span>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>

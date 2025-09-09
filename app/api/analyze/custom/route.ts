@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { z } from 'zod';
+import { withRateLimit } from '@/lib/rate-limit-middleware';
+import { getCustomInputDescription } from '@/lib/input-description-utils';
 
 if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
   throw new Error('GOOGLE_GENERATIVE_AI_API_KEY environment variable is not set');
@@ -36,7 +38,7 @@ const RequestSchema = z.object({
   }).optional()
 });
 
-export async function POST(req: NextRequest) {
+async function customHandler(req: NextRequest) {
   try {
     const body = await req.json();
     const { imageData, mimeType = 'image/jpeg', customPrompt, outputFormat } = RequestSchema.parse(body);
@@ -140,7 +142,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await generateText({
-      model: google('gemini-2.0-flash'),
+      model: google('gemini-2.5-flash'),
       messages: [{
         role: 'user',
         content: messageContent
@@ -297,3 +299,114 @@ export async function POST(req: NextRequest) {
     );
   }
 } 
+
+// Create a custom rate limit wrapper for custom analysis that provides specific input description
+const withCustomRateLimit = (handler: (req: NextRequest) => Promise<NextResponse>) => {
+  return async function(req: NextRequest): Promise<NextResponse> {
+    const startTime = Date.now();
+    let response: NextResponse;
+    let requestBody: any = null;
+    
+    try {
+      // Import the necessary functions
+      const { getUserFromRequest, checkRateLimit, recordApiUsage, getRequestSize, getResponseSize, getClientIP, getUserAgent } = await import('@/lib/usage-utils');
+      
+      // Get user from request
+      const user = await getUserFromRequest(req);
+      
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+      
+      // Check rate limit
+      const rateLimitCheck = await checkRateLimit(user.userId);
+      
+      if (!rateLimitCheck.allowed) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Rate limit exceeded',
+            usage: rateLimitCheck.usage
+          },
+          { status: 429 }
+        );
+      }
+      
+      // Execute the handler
+      response = await handler(req);
+      
+      // Record usage after successful execution
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
+      
+      // Generate specific input description for custom analysis
+      let inputDescription = '';
+      try {
+        const clonedReq = req.clone();
+        requestBody = await clonedReq.json();
+        inputDescription = getCustomInputDescription(req, requestBody);
+      } catch (error) {
+        inputDescription = 'Custom analysis request';
+      }
+      
+      const usageRecord = {
+        user_id: user.userId,
+        endpoint_name: 'analyze',
+        request_size_bytes: await getRequestSize(req),
+        response_size_bytes: await getResponseSize(response),
+        status_code: response.status,
+        response_time_ms: responseTime,
+        ip_address: getClientIP(req),
+        user_agent: getUserAgent(req),
+        input_description: inputDescription
+      };
+      
+      // Record usage asynchronously
+      recordApiUsage(usageRecord).catch(error => {
+        console.error('Failed to record API usage:', error);
+      });
+      
+      return response;
+      
+    } catch (error) {
+      // Record usage even for failed requests
+      const { getUserFromRequest, recordApiUsage, getRequestSize, getClientIP, getUserAgent } = await import('@/lib/usage-utils');
+      const user = await getUserFromRequest(req);
+      if (user) {
+        const endTime = Date.now();
+        const responseTime = endTime - startTime;
+        
+        let inputDescription = '';
+        try {
+          if (requestBody) {
+            inputDescription = getCustomInputDescription(req, requestBody);
+          }
+        } catch (parseError) {
+          inputDescription = 'Custom analysis request';
+        }
+        
+        const usageRecord = {
+          user_id: user.userId,
+          endpoint_name: 'analyze',
+          request_size_bytes: await getRequestSize(req),
+          status_code: 500,
+          response_time_ms: responseTime,
+          ip_address: getClientIP(req),
+          user_agent: getUserAgent(req),
+          input_description: inputDescription
+        };
+        
+        recordApiUsage(usageRecord).catch(error => {
+          console.error('Failed to record API usage:', error);
+        });
+      }
+      
+      throw error;
+    }
+  };
+};
+
+export const POST = withCustomRateLimit(customHandler); 

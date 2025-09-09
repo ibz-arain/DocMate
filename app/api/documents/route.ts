@@ -11,6 +11,36 @@ interface DecodedToken {
   exp: number;
 }
 
+// Helper function to get user's timezone from request headers
+const getUserTimezone = (req: NextRequest): string => {
+  // Try to get timezone from various headers
+  const timezone = req.headers.get('x-timezone') || 
+                   req.headers.get('timezone') || 
+                   req.headers.get('x-user-timezone') ||
+                   'UTC';
+  return timezone;
+};
+
+// Helper function to convert UTC timestamp to user's timezone
+const convertToUserTimezone = (utcTimestamp: string, timezone: string): string => {
+  try {
+    const date = new Date(utcTimestamp);
+    return date.toLocaleString('en-CA', { 
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(',', '');
+  } catch (error) {
+    // Fallback to UTC if timezone is invalid
+    return utcTimestamp;
+  }
+};
+
 async function getUserFromToken(token: string): Promise<DecodedToken | null> {
   try {
     console.log('Verifying token with secret:', process.env.JWT_SECRET?.slice(0, 5) + '...');
@@ -23,7 +53,7 @@ async function getUserFromToken(token: string): Promise<DecodedToken | null> {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
@@ -41,6 +71,9 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized - Invalid token", { status: 401 });
     }
 
+    // Get user's timezone
+    const userTimezone = getUserTimezone(req);
+
     console.log('Fetching documents for user:', user.userId);
 
     const documents = await db.execute({
@@ -52,6 +85,15 @@ export async function GET(req: Request) {
       args: [user.userId],
     });
 
+    // Convert timestamps to user's timezone
+    if (documents.rows && documents.rows.length > 0) {
+      documents.rows = documents.rows.map((row: any) => ({
+        ...row,
+        created_at: row.created_at ? convertToUserTimezone(String(row.created_at), userTimezone) : row.created_at,
+        updated_at: row.updated_at ? convertToUserTimezone(String(row.updated_at), userTimezone) : row.updated_at
+      }));
+    }
+
     return NextResponse.json(documents.rows);
   } catch (error) {
     console.error('[DOCUMENTS_GET]', error);
@@ -59,7 +101,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
@@ -72,6 +114,9 @@ export async function POST(req: Request) {
     if (!user?.userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    // Get user's timezone
+    const userTimezone = getUserTimezone(req);
 
     const body = await req.json();
     const { title, type, date, confidence, contentJson } = body;
@@ -111,6 +156,15 @@ export async function POST(req: Request) {
         JSON.stringify(contentJson),
       ],
     });
+
+    // Convert timestamps to user's timezone
+    if (document.rows && document.rows.length > 0) {
+      document.rows[0] = {
+        ...document.rows[0],
+        created_at: document.rows[0].created_at ? convertToUserTimezone(String(document.rows[0].created_at), userTimezone) : document.rows[0].created_at,
+        updated_at: document.rows[0].updated_at ? convertToUserTimezone(String(document.rows[0].updated_at), userTimezone) : document.rows[0].updated_at
+      };
+    }
 
     return NextResponse.json(document.rows[0]);
   } catch (error) {

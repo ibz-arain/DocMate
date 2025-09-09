@@ -26,7 +26,7 @@ export default function TemplatesPage() {
   return (
     <>
       <Head>
-        <title>Template Editor | DocMate</title>
+        <title>Template Editor | Docimate</title>
         <meta name="description" content="Create and manage document processing templates" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

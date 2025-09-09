@@ -84,6 +84,7 @@ export default function ProcessPage() {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         body: JSON.stringify(documentData),
       });
@@ -119,7 +120,7 @@ export default function ProcessPage() {
     return (
       <>
         <Head>
-          <title>Process Document | DocMate</title>
+          <title>Process Document | Docimate</title>
           <meta name="description" content="Upload and process your documents" />
         </Head>
         <div className="flex h-full overflow-hidden bg-background">
@@ -150,7 +151,7 @@ export default function ProcessPage() {
   return (
     <>
       <Head>
-        <title>Document Results | DocMate</title>
+        <title>Document Results | Docimate</title>
         <meta name="description" content="View your processed document results" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">

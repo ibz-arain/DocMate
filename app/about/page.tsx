@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trophy, Users, Building2, ArrowRight, Github, Linkedin, FileText, Brain, Zap, ChevronRight } from "lucide-react";
+import { Trophy, Users, Building2, ArrowRight, Github, Linkedin, FileText, Brain, Zap, ChevronRight, MessageCircle, FileSpreadsheet, Save, History } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -45,7 +45,7 @@ export default function AboutPage() {
                 transition={{ duration: 0.5 }}
                 className="text-center mb-12"
               >
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
                   <Building2 className="h-4 w-4 mr-2" />
                   <span>Our Story</span>
                 </div>
@@ -58,7 +58,7 @@ export default function AboutPage() {
               </motion.div>
 
               {/* Mac Terminal Style Mockup for Mission */}
-              <div className="mb-0 max-w-3xl mx-auto">
+              <div className="mb-0 max-w-7xl mx-auto">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -87,7 +87,7 @@ export default function AboutPage() {
                       <div className="w-3 h-3 rounded-full bg-green-500" />
                     </div>
                     <div className="text-xs font-medium text-white/90 flex-1 flex items-center">
-                      <span className="text-primary font-bold">docmate</span>
+                      <span className="text-primary font-bold">docimate</span>
                       <span className="mx-1 text-white/60">:</span>
                       <span className="text-blue-400">~/mission</span>
                       <span className="ml-1 text-white/60">$</span>
@@ -105,14 +105,17 @@ export default function AboutPage() {
                     
                     {/* Mission content */}
                     <div className="bg-black/30 rounded-md border border-white/10 p-4 backdrop-blur-sm">
-                      <h3 className="text-xl font-bold text-primary mb-3">Our Mission</h3>
-                      <p className="text-white/80 mb-2">
-                        DocMate emerged from a simple observation: businesses spend countless hours manually processing documents. 
+                      <p className="text-white/80 mb-4">
+                        Docimate emerged from a simple observation: businesses spend countless hours manually processing documents, spreadsheets, and data. 
                         We believed there had to be a better way to do this.
                       </p>
+                      <p className="text-white/80 mb-4">
+                        We designed a comprehensive platform that uses AI to automate document processing, spreadsheet analysis, and data extraction. 
+                        From PDFs to Excel files, from simple text extraction to complex template-based data processing, we're revolutionizing how businesses handle their documents.
+                      </p>
                       <p className="text-white/80">
-                        We designed a platform that uses AI to automate document processing, saving businesses time and reducing errors.
-                        We're on a mission to make this the new standard.
+                        Today, Docimate supports AI-powered chat, advanced PDF viewing, spreadsheet processing, template systems, and much more. 
+                        We're on a mission to make automated workflows the new standard.
                       </p>
                     </div>
                   </div>
@@ -144,7 +147,7 @@ export default function AboutPage() {
                 transition={{ duration: 0.5 }}
                 className="text-center mb-10"
               >
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
                   <Trophy className="h-4 w-4 mr-2" />
                   <span>WinHacks 2025</span>
                 </div>
@@ -197,13 +200,12 @@ export default function AboutPage() {
                     {/* Description */}
                     <div className="bg-black/30 rounded-md border border-white/10 p-4 backdrop-blur-sm">
                       <p className="text-white/80 text-md leading-relaxed mb-4">
-                        At WinHacks 2025, our team — Ibrahim Arain, Ahmad Arain, Mohammad Affan Shahid, and Sahaj Kataria — outperformed 29 competing teams to secure first place with DocMate! 
-                        Our innovative project revolutionizes document processing by using natural language processing to transform documents and finances into structured, actionable data for 
-                        efficient, automated workflows.
+                        At WinHacks 2025, our team — Ibrahim Arain, Ahmad Arain, Mohammad Affan Shahid, and Sahaj Kataria — outperformed 29 competing teams to secure first place with Docimate! 
+                        What started as a hackathon project has evolved into a comprehensive platform that revolutionizes document processing through AI-powered solutions.
                       </p>
                       <p className="text-white/80 mb-4">
-                        Through hard work and collaboration, we developed a solution that simplifies documents into structured tables and other usable formats, making data extraction seamless and improving usability. 
-                        Our platform's practical application and exceptional user experience earned us multiple awards and recognition from judges and participants alike.
+                        From our initial concept to our current release, Docimate has grown to support AI chat, advanced PDF processing, spreadsheet analysis, template systems, and intelligent data extraction. 
+                        Our platform's practical application and exceptional user experience earned us multiple awards and recognition from judges and participants alike, and we continue to push the boundaries of what's possible with document automation.
                       </p>
 
                       {/* Award Tags */}
@@ -233,7 +235,7 @@ export default function AboutPage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <Image
                           src="/about/group-photo.jpg"
-                          alt="DocMate team at WinHacks 2025"
+                          alt="Docimate team at WinHacks 2025"
                           fill
                           className="object-cover transition-transform duration-700 group-hover:scale-105"
                         />
@@ -263,6 +265,8 @@ export default function AboutPage() {
               </motion.div>
             </div>
           </section>
+
+          
 
           {/* Team Section - Enhanced */}
           <section className="py-16 px-6 relative overflow-hidden">
@@ -295,7 +299,7 @@ export default function AboutPage() {
                 transition={{ duration: 0.5 }}
                 className="text-center mb-14"
               >
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
                   <Users className="h-4 w-4 mr-2" />
                   <span>Our Founders</span>
                 </div>
@@ -303,7 +307,7 @@ export default function AboutPage() {
                   Meet the <GradientText>Team</GradientText>
                 </h2>
                 <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                  The great minds behind DocMate.
+                  The great minds behind Docimate.
                 </p>
               </motion.div>
 
@@ -312,31 +316,32 @@ export default function AboutPage() {
                 {[
                   {
                     name: "Ibrahim Arain",
-                    role: "Founder & Lead Software Developer",
+                    role: "Founder & Lead Developer",
                     image: "/about/ibrahim.jpg",
                     github: "https://github.com/ibz-arain",
                     linkedin: "https://linkedin.com/in/ibz-arain",
                     accent: "from-blue-500 to-purple-500"
                   },
                   {
-                    name: "Ahmad Arain",
-                    role: "Co-founder & Software Developer",
-                    image: "/about/ahmad.jpeg",
-                    github: "https://github.com/AhmadArain5",
-                    linkedin: "https://linkedin.com/in/ahmad-arain-9b3165286",
-                    accent: "from-purple-500 to-pink-500"
-                  },
-                  {
                     name: "Affan Shahid",
-                    role: "Software Developer",
+                    role: "AI & Backend Developer",
                     image: "/about/affan.jpeg",
                     github: "https://github.com/affan0404",
                     linkedin: "https://linkedin.com/in/mohammad-affan-shahid-26372a2b2",
+                    accent: "from-purple-500 to-pink-500"
+                  },
+                  {
+                    name: "Ahmad Arain",
+                    role: "Co-founder & Full-Stack Developer",
+                    image: "/about/ahmad.jpeg",
+                    github: "https://github.com/AhmadArain5",
+                    linkedin: "https://linkedin.com/in/ahmad-arain-9b3165286",
                     accent: "from-pink-500 to-orange-500"
+
                   },
                   {
                     name: "Sahaj Kataria",
-                    role: "Software Developer",
+                    role: "Frontend & UI Developer",
                     image: "/about/sahaj.jpeg",
                     github: "https://github.com/sahajKat",
                     linkedin: "https://linkedin.com/in/sahaj-kataria",
@@ -371,7 +376,7 @@ export default function AboutPage() {
                         
                         <div className="space-y-2 text-center mb-6">
                           <h3 className="text-xl font-bold">{member.name}</h3>
-                          <p className={`font-medium bg-gradient-to-r ${member.accent} bg-clip-text text-transparent`}>{member.role}</p>
+                          {/* <p className={`font-medium bg-gradient-to-r ${member.accent} bg-clip-text text-transparent`}>{member.role}</p> */}
                         </div>
                         
                         {/* Social links with hover effects */}
@@ -392,6 +397,54 @@ export default function AboutPage() {
                   </motion.div>
                 ))}
               </div>
+            </div>
+          </section>
+
+          {/* Gradient Divider - Enhanced */}
+          <div className="relative h-px w-full max-w-7xl mx-auto my-4">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <div className="absolute -top-3 -bottom-3 left-0 right-0 bg-gradient-to-b from-background via-transparent to-background" />
+            
+            {/* Decorative dots */}
+            <div className="absolute -ml-1 -mt-1 left-1/2 top-1/2 w-2 h-2 rounded-full bg-primary/50" />
+            <div className="absolute -ml-4 -mt-1 left-1/2 top-1/2 w-1.5 h-1.5 rounded-full bg-primary/30" />
+            <div className="absolute ml-2 -mt-1 left-1/2 top-1/2 w-1.5 h-1.5 rounded-full bg-primary/30" />
+          </div>
+
+          {/* Journey Section */}
+          <section className="py-12 px-6 relative overflow-hidden">
+            {/* Background accent */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent opacity-70" />
+            
+            <div className="container mx-auto max-w-7xl relative z-10">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-center"
+              >
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
+                  <History className="h-4 w-4 mr-2" />
+                  <span>Our Journey</span>
+                </div>
+                <h2 className="text-3xl font-bold mb-4">
+                  Follow Our <GradientText>Development Journey</GradientText>
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+                  From hackathon victory to comprehensive platform - see how we've evolved
+                </p>
+                
+                <Link href="/changelog">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="gap-2 group backdrop-blur-sm border-white/10 hover:bg-white/5"
+                  >
+                    Changelog
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </Link>
+              </motion.div>
             </div>
           </section>
 

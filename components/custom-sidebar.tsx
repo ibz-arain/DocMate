@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit } from "lucide-react";
+import { Layout, ChevronRight, ChevronLeft, LogOut, User, Settings, Sun, Moon, History, Code, FileText, Edit, FileSpreadsheet, Activity } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,21 @@ export function CustomSidebar({
   const [showSettings, setShowSettings] = React.useState(false);
   const { theme, setTheme } = useTheme();
   const { isCollapsed, setIsCollapsed } = useSidebar();
+  const [mounted, setMounted] = React.useState(false);
+
+  // Check if we're in playground
+  const isPlayground = pathname?.startsWith('/playground');
+
+  // Prevent hydration mismatch
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleThemeToggle = () => {
+    if (mounted && isPlayground) {
+      setTheme(theme === "light" ? "dark" : "light");
+    }
+  };
 
   const handleAccountClick = () => {
     router.push('/account');
@@ -77,21 +92,27 @@ export function CustomSidebar({
   const mainNavItems = [
     {
       id: 'Document Editor',
-      name: 'Editor',
-      icon: <Edit className="h-5 w-5" />,
+      name: 'Document',
+      icon: <FileText className="h-5 w-5" />,
       href: '/playground/document'
     },
     {
-      id: 'document',
-      name: 'Process Document',
-      icon: <FileText className="h-5 w-5" />,
-      href: '/playground/process'
+      id: 'Spreadsheet Editor',
+      name: 'Spreadsheet',
+      icon: <FileSpreadsheet className="h-5 w-5" />,
+      href: '/playground/spreadsheet'
     },
     {
       id: 'template',
-      name: 'Template Editor',
+      name: 'Template',
       icon: <Layout className="h-5 w-5" />,
       href: '/playground/templates'
+    },
+    {
+      id: 'usage',
+      name: 'Usage',
+      icon: <Activity className="h-5 w-5" />,
+      href: '/playground/usage'
     },
     // {
     //   id: 'api',
@@ -317,14 +338,32 @@ export function CustomSidebar({
                     </motion.div>
                   )}
                 </AnimatePresence>
-                {/* Theme Toggle */}
-                {isCollapsed ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                {/* Theme Toggle - Only show in playground */}
+                {isPlayground && (
+                  <>
+                    {isCollapsed ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
+                            onClick={handleThemeToggle}
+                          >
+                            <div className="absolute left-3">
+                              <div className="relative h-5 w-5">
+                                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                                <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                              </div>
+                            </div>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">Toggle theme</TooltipContent>
+                      </Tooltip>
+                    ) :
                       <Button
                         variant="ghost"
-                        className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
-                        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                        className="w-full h-10 transition-all rounded-lg relative justify-start"
+                        onClick={handleThemeToggle}
                       >
                         <div className="absolute left-3">
                           <div className="relative h-5 w-5">
@@ -332,35 +371,21 @@ export function CustomSidebar({
                             <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                           </div>
                         </div>
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="font-medium pl-9"
+                          >
+                            Toggle theme
+                          </motion.span>
+                        </AnimatePresence>
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Toggle theme</TooltipContent>
-                  </Tooltip>
-                ) :
-                  <Button
-                    variant="ghost"
-                    className="w-full h-10 transition-all rounded-lg relative justify-start"
-                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                  >
-                    <div className="absolute left-3">
-                      <div className="relative h-5 w-5">
-                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                        <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                      </div>
-                    </div>
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.15 }}
-                        className="font-medium pl-9"
-                      >
-                        Toggle theme
-                      </motion.span>
-                    </AnimatePresence>
-                  </Button>
-                }
+                    }
+                  </>
+                )}
                 {/* Settings Button */}
                 {isCollapsed ? (
                   <Tooltip>
@@ -440,14 +465,32 @@ export function CustomSidebar({
               </>
             ) :
               <>
-                {/* Theme Toggle (Not Signed In) */}
-                {isCollapsed ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                {/* Theme Toggle (Not Signed In) - Only show in playground */}
+                {isPlayground && (
+                  <>
+                    {isCollapsed ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
+                            onClick={handleThemeToggle}
+                          >
+                            <div className="absolute left-3">
+                              <div className="relative h-5 w-5">
+                                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                                <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                              </div>
+                            </div>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">Toggle theme</TooltipContent>
+                      </Tooltip>
+                    ) :
                       <Button
                         variant="ghost"
-                        className="w-full h-10 transition-all rounded-lg relative justify-center px-2"
-                        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                        className="w-full h-10 transition-all rounded-lg relative justify-start"
+                        onClick={handleThemeToggle}
                       >
                         <div className="absolute left-3">
                           <div className="relative h-5 w-5">
@@ -455,35 +498,21 @@ export function CustomSidebar({
                             <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                           </div>
                         </div>
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="font-medium pl-9"
+                          >
+                            Toggle theme
+                          </motion.span>
+                        </AnimatePresence>
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Toggle theme</TooltipContent>
-                  </Tooltip>
-                ) :
-                  <Button
-                    variant="ghost"
-                    className="w-full h-10 transition-all rounded-lg relative justify-start"
-                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                  >
-                    <div className="absolute left-3">
-                      <div className="relative h-5 w-5">
-                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                        <Moon className="absolute left-0 top-0 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                      </div>
-                    </div>
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.15 }}
-                        className="font-medium pl-9"
-                      >
-                        Toggle theme
-                      </motion.span>
-                    </AnimatePresence>
-                  </Button>
-                }
+                    }
+                  </>
+                )}
                 {isCollapsed ? (
                   <Tooltip>
                     <TooltipTrigger asChild>

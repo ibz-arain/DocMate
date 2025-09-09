@@ -24,6 +24,8 @@ import {
   Sparkles,
   Loader2,
   History,
+  MessageCircle,
+  Edit as EditIcon,
 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf/pdf-viewer";
 import { PdfContextMenu } from "@/components/pdf/pdf-context-menu";
@@ -35,6 +37,8 @@ import { FullDocumentSummarizePopup } from "@/components/document/full-document-
 import { FullDocumentQuickFormatPopup } from "@/components/document/full-document-quick-format-popup";
 import { FullDocumentTemplateFormatPopup } from "@/components/document/full-document-template-format-popup";
 import { HistoryMiniPopup } from "@/components/document/history-mini-popup";
+import { ChatSidebar } from "@/components/document/chat-sidebar";
+import { SideToolbar, Tool } from "@/components/document/side-toolbar";
 import { useHistory } from "@/hooks/use-history";
 import { convertFileToBase64 } from "@/components/document/document-utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,8 +52,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useDropzone } from "react-dropzone";
 import { toast } from "@/components/ui/use-toast";
+import { EditToolbar } from "@/components/document/edit-toolbar";
+import type { Drawing } from "@/components/pdf/pdf-viewer";
+import PricingModal from "@/components/pricing-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function DocumentPage() {
+  const { user, isAuthenticated, refreshAuth } = useAuth();
   const { history, clearHistory } = useHistory(); // Add clearHistory to clear history when PDF is cleared
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -85,6 +94,8 @@ export default function DocumentPage() {
   const [menuPos, setMenuPos] = useState<{top:number;left:number;isPageRelative?:boolean} | null>(null);
   const lastCursorRef = useRef<{x:number;y:number}|null>(null);
   const scrollStartPositionRef = useRef<{x: number; y: number} | null>(null);
+  const lastSelectionWasOutsidePdf = useRef<boolean>(false);
+  const lastBoxSelectionWasOutsidePdf = useRef<boolean>(false);
   
   // Summarize popup state
   const [showSummarizePopup, setShowSummarizePopup] = useState(false);
@@ -110,7 +121,133 @@ export default function DocumentPage() {
   // History popup state
   const [showHistoryPopup, setShowHistoryPopup] = useState(false);
   const [historyPopupPosition, setHistoryPopupPosition] = useState({ top: 0, left: 0 });
-  const historyButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Chat sidebar state
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
+  const [chatSelectedText, setChatSelectedText] = useState("");
+  const [chatSelectionData, setChatSelectionData] = useState<any>(null);
+  // Text that should be pre-filled into the chat input (but not sent)
+  const [chatPrefillText, setChatPrefillText] = useState<string>("");
+  const [chatSidebarWidth, setChatSidebarWidth] = useState(0);
+
+  // Add new state for edit mode
+  const [selectedEditTool, setSelectedEditTool] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState("#000000");
+
+  // Add state for undo/redo
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+
+  // Signup pricing modal state
+  const [showSignupPricingModal, setShowSignupPricingModal] = useState(false);
+
+  // Add handlers for undo/redo state
+  const handleUndoStateChange = (canUndo: boolean, canRedo: boolean) => {
+    setCanUndo(canUndo);
+    setCanRedo(canRedo);
+  };
+
+  // Add handler for drawings change
+  const handleDrawingsChange = (newDrawings: any[]) => {
+    setDrawings(newDrawings);
+    // Save drawings to localStorage whenever they change
+    if (pdfFile) {
+      try {
+        localStorage.setItem(`docimate-drawings-${pdfFile.name}`, JSON.stringify(newDrawings));
+      } catch (error) {
+        console.error('Failed to save drawings to localStorage:', error);
+      }
+    }
+  };
+
+  // Add handler for saving drawings
+  const handleSaveDrawings = () => {
+    // Here you would implement the logic to save the drawings
+    // For now, we'll just show a toast
+    toast({
+      title: "Drawings saved",
+      description: "Your annotations have been saved successfully.",
+    });
+  };
+
+  // Add handler for exporting PDF with drawings
+  const handleExportPdf = async () => {
+    if (!pdfFile || !pdfUrl) {
+      toast({
+        title: "No document loaded",
+        description: "Please load a PDF document first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Show loading toast
+      toast({
+        title: "Exporting PDF",
+        description: "Generating PDF with your annotations...",
+      });
+
+      // Call the PDF viewer's export function
+      if ((window as any).pdfViewerExport) {
+        await (window as any).pdfViewerExport();
+        toast({
+          title: "Export successful",
+          description: "Your annotated PDF has been downloaded.",
+        });
+      } else {
+        throw new Error("Export function not available");
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export failed",
+        description: "Failed to export PDF. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Function to load drawings from localStorage
+  const loadDrawingsFromStorage = (fileName: string) => {
+    try {
+      const storedDrawings = localStorage.getItem(`docimate-drawings-${fileName}`);
+      if (storedDrawings) {
+        const parsedDrawings = JSON.parse(storedDrawings) as Drawing[];
+        setDrawings(parsedDrawings);
+        return parsedDrawings;
+      }
+    } catch (error) {
+      console.error('Failed to load drawings from localStorage:', error);
+    }
+    return [];
+  };
+
+  // Function to clear drawings from localStorage
+  const clearDrawingsFromStorage = (fileName: string) => {
+    try {
+      localStorage.removeItem(`docimate-drawings-${fileName}`);
+    } catch (error) {
+      console.error('Failed to clear drawings from localStorage:', error);
+    }
+  };
+
+  // Add undo handler
+  const handleUndo = () => {
+    // Call the PdfViewer's undo handler
+    if ((window as any).pdfViewerUndo) {
+      (window as any).pdfViewerUndo();
+    }
+  };
+
+  // Add redo handler
+  const handleRedo = () => {
+    // Call the PdfViewer's redo handler
+    if ((window as any).pdfViewerRedo) {
+      (window as any).pdfViewerRedo();
+    }
+  };
 
   const dropTexts = [
     "Drag & drop your PDF here",
@@ -120,12 +257,94 @@ export default function DocumentPage() {
     "Ready when you are"
   ];
 
+  // Check if user needs to select a plan (plan_type is NULL/empty)
+  useEffect(() => {
+    const checkForPlanSelection = async () => {
+      if (isAuthenticated && user) {
+        // Show modal if user has no plan_type set (NULL or undefined)
+        // This means they haven't properly selected a plan yet
+        const needsPlanSelection = !user.plan_type || user.plan_type === null || user.plan_type === undefined;
+        
+        if (needsPlanSelection) {
+          setShowSignupPricingModal(true);
+        }
+      }
+    };
+
+    checkForPlanSelection();
+  }, [isAuthenticated, user]);
+
+  // Handle pricing modal plan selection
+  const handleSignupPlanSelect = async (plan: any) => {
+    console.log("Selected plan during signup:", plan);
+    
+    // Only allow free plan during signup - all paid plans show coming soon popup
+    if (plan.id !== "free") {
+      // The pricing modal will handle showing the coming soon popup
+      return;
+    }
+    
+    try {
+      // Only handle free plan signup
+      const response = await fetch('/api/users/update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          plan_type: "free",
+          plan_limits: 50
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update plan');
+      }
+
+      // Update local user state by refreshing auth
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for DB update
+      refreshAuth(); // Refresh auth to get updated user data
+
+      // Handle free plan selection
+      if (plan.id === "free") {
+        toast({
+          title: "Welcome to Docimate!",
+          description: "You're all set with our free plan. Start uploading documents to get started!",
+        });
+      }
+
+      setShowSignupPricingModal(false);
+
+    } catch (error: any) {
+      console.error('Error updating plan:', error);
+      toast({
+        title: "Error updating plan",
+        description: error.message || "Please try again or contact support.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle closing signup pricing modal
+  const handleSignupPricingClose = () => {
+    // Don't allow closing without selecting a plan
+            // Modal will stay open until user has plan_type set
+    // User must select a plan to proceed
+    toast({
+      title: "Plan selection required",
+      description: "Please select a plan to continue using Docimate.",
+      variant: "destructive"
+    });
+  };
+
   // Load PDF from localStorage on component mount
   useEffect(() => {
     const loadStoredPdf = async () => {
       try {
-        const storedPdfData = localStorage.getItem('docmate-pdf-data');
-        const storedPdfName = localStorage.getItem('docmate-pdf-name');
+        const storedPdfData = localStorage.getItem('docimate-pdf-data');
+        const storedPdfName = localStorage.getItem('docimate-pdf-name');
         
         if (storedPdfData && storedPdfName) {
           // Convert base64 back to File
@@ -139,22 +358,25 @@ export default function DocumentPage() {
           setIsLoading(true);
           
           // Restore other state if available
-          const storedPageNumber = localStorage.getItem('docmate-pdf-page');
-          const storedScale = localStorage.getItem('docmate-pdf-scale');
-          const storedRotation = localStorage.getItem('docmate-pdf-rotation');
+          const storedPageNumber = localStorage.getItem('docimate-pdf-page');
+          const storedScale = localStorage.getItem('docimate-pdf-scale');
+          const storedRotation = localStorage.getItem('docimate-pdf-rotation');
           
           if (storedPageNumber) setPageNumber(parseInt(storedPageNumber));
           if (storedScale) setScale(parseFloat(storedScale));
           if (storedRotation) setRotation(parseInt(storedRotation));
+
+          // Load drawings for this PDF
+          loadDrawingsFromStorage(storedPdfName);
         }
       } catch (error) {
         console.error('Failed to load stored PDF:', error);
         // Clear corrupted data
-        localStorage.removeItem('docmate-pdf-data');
-        localStorage.removeItem('docmate-pdf-name');
-        localStorage.removeItem('docmate-pdf-page');
-        localStorage.removeItem('docmate-pdf-scale');
-        localStorage.removeItem('docmate-pdf-rotation');
+        localStorage.removeItem('docimate-pdf-data');
+        localStorage.removeItem('docimate-pdf-name');
+        localStorage.removeItem('docimate-pdf-page');
+        localStorage.removeItem('docimate-pdf-scale');
+        localStorage.removeItem('docimate-pdf-rotation');
       }
     };
 
@@ -169,8 +391,8 @@ export default function DocumentPage() {
           const reader = new FileReader();
           reader.onload = () => {
             const base64Data = reader.result as string;
-            localStorage.setItem('docmate-pdf-data', base64Data);
-            localStorage.setItem('docmate-pdf-name', pdfFile.name);
+            localStorage.setItem('docimate-pdf-data', base64Data);
+            localStorage.setItem('docimate-pdf-name', pdfFile.name);
           };
           reader.readAsDataURL(pdfFile);
         } catch (error) {
@@ -185,13 +407,13 @@ export default function DocumentPage() {
   // Save state changes to localStorage
   useEffect(() => {
     if (pdfFile) {
-      localStorage.setItem('docmate-pdf-page', pageNumber.toString());
+      localStorage.setItem('docimate-pdf-page', pageNumber.toString());
     }
   }, [pageNumber, pdfFile]);
 
   useEffect(() => {
     if (pdfFile) {
-      localStorage.setItem('docmate-pdf-scale', scale.toString());
+      localStorage.setItem('docimate-pdf-scale', scale.toString());
     }
     // Keep pendingScaleRef in sync when scale changes externally
     pendingScaleRef.current = scale;
@@ -199,7 +421,7 @@ export default function DocumentPage() {
 
   useEffect(() => {
     if (pdfFile) {
-      localStorage.setItem('docmate-pdf-rotation', rotation.toString());
+      localStorage.setItem('docimate-pdf-rotation', rotation.toString());
     }
   }, [rotation, pdfFile]);
 
@@ -207,6 +429,11 @@ export default function DocumentPage() {
   const clearPdf = () => {
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
+    }
+    
+    // Clear drawings from localStorage for the current PDF
+    if (pdfFile) {
+      clearDrawingsFromStorage(pdfFile.name);
     }
     
     setPdfFile(null);
@@ -221,6 +448,11 @@ export default function DocumentPage() {
     setMenuPos(null);
     setIsLoading(false);
     
+    // Clear drawings state
+    setDrawings([]);
+    setCanUndo(false);
+    setCanRedo(false);
+    
     // Clear all popup states
     setShowSummarizePopup(false);
     setShowQuickFormatPopup(false);
@@ -229,6 +461,7 @@ export default function DocumentPage() {
     setShowFullDocQuickFormatPopup(false);
     setShowFullDocTemplateFormatPopup(false);
     setShowHistoryPopup(false);
+    setShowChatSidebar(false);
     
     // Clear cached results
     setCachedSummaryResult(null);
@@ -238,18 +471,18 @@ export default function DocumentPage() {
     setFullDocQuickFormatResult(null);
     
     // Clear localStorage
-    localStorage.removeItem('docmate-pdf-data');
-    localStorage.removeItem('docmate-pdf-name');
-    localStorage.removeItem('docmate-pdf-page');
-    localStorage.removeItem('docmate-pdf-scale');
-    localStorage.removeItem('docmate-pdf-rotation');
+    localStorage.removeItem('docimate-pdf-data');
+    localStorage.removeItem('docimate-pdf-name');
+    localStorage.removeItem('docimate-pdf-page');
+    localStorage.removeItem('docimate-pdf-scale');
+    localStorage.removeItem('docimate-pdf-rotation');
     
     // Clear history when document is cleared
     clearHistory();
     
     toast({
       title: "Document cleared",
-      description: "PDF, cache, and history have been cleared from the editor.",
+      description: "PDF and history have been cleared from the editor.",
     });
   };
 
@@ -530,6 +763,9 @@ export default function DocumentPage() {
     setScale(1.0); // Reset zoom when loading new document
     setRotation(0); // Reset rotation
     setIsLoading(true);
+
+    // Load drawings for the new PDF file
+    loadDrawingsFromStorage(file.name);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -546,6 +782,11 @@ export default function DocumentPage() {
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
+    
+    // Reset edit mode when switching tools
+    if (tool !== 'edit') {
+      setSelectedEditTool(null);
+    }
     
     // Show tooltip briefly when tool is selected
     setShowToolTooltip(true);
@@ -606,9 +847,10 @@ export default function DocumentPage() {
     showZoomFeedbackBriefly();
   };
 
-  const tools = [
+  const tools: Tool[] = [
     { id: 'text', label: 'Text Select', icon: <MousePointerIcon className="h-5 w-5" /> },
-    { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> }
+    { id: 'box', label: 'Box Select', icon: <BoxSelectIcon className="h-5 w-5" /> },
+    { id: 'edit', label: 'Edit', icon: <EditIcon className="h-5 w-5" /> }
   ];
 
 
@@ -628,6 +870,41 @@ export default function DocumentPage() {
   };
 
   const handleSelection = (text: string, rects: any, hide: () => void) => {
+    // Only handle selections that come from the PDF viewer component
+    // This function should only be called by the PdfViewer component for legitimate PDF selections
+    
+    // Check if there's any external selection currently active
+    const selection = window.getSelection();
+    const pdfContainer = pdfContainerRef.current;
+    
+    if (selection && selection.toString().trim() && pdfContainer) {
+      let hasExternalSelection = false;
+      for (let i = 0; i < selection.rangeCount; i++) {
+        const range = selection.getRangeAt(i);
+        const container = range.commonAncestorContainer;
+        const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+        if (element && !pdfContainer.contains(element)) {
+          hasExternalSelection = true;
+          break;
+        }
+      }
+      
+      // Don't show context menu if there's external text selected
+      if (hasExternalSelection) {
+        return;
+      }
+    }
+    
+    // Don't show context menu if the last text selection was outside PDF
+    if (lastSelectionWasOutsidePdf.current) {
+      return;
+    }
+    
+    // Don't show context menu if the last box selection attempt was outside PDF
+    if (text === '[Box Selection]' && lastBoxSelectionWasOutsidePdf.current) {
+      return;
+    }
+    
     setSelectedText(text);
     setSelectionData(rects);
     
@@ -856,6 +1133,54 @@ export default function DocumentPage() {
     clearSelection(); // Close context menu
     setShowTemplateFormatPopup(true);
   };
+
+  // Chat handlers
+  const handleChatPopup = () => {
+    const isRightClickMenu = selectedText === '[Right-click menu]';
+    const isBoxSelection = selectedText === '[Box Selection]';
+    
+    if (isRightClickMenu) {
+      // No toast needed - user can see no text is selected
+      return;
+    }
+    
+    if (isBoxSelection && !selectionData?.base64Image) {
+      toast({
+        title: "Box Selection Error",
+        description: "Unable to extract image from selection area.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setChatSelectedText(selectedText); // Preserve the selected text
+    setChatSelectionData(selectionData); // Preserve the selection data
+    setChatPrefillText(selectedText); // Pre-fill the chat input with the selection
+    clearSelection(); // Close context menu
+    setShowChatSidebar(true);
+  };
+
+  const handleFullDocumentChat = () => {
+    if (!pdfFile) {
+      toast({
+        title: "No document loaded",
+        description: "Please load a PDF document first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (showChatSidebar) {
+      // Simply close the sidebar but keep the current chat context intact
+      setShowChatSidebar(false);
+    } else {
+      // Always set the context to full document when opening via this control
+      setChatSelectedText('[Full Document]');
+      setChatSelectionData(null);
+      setChatPrefillText(''); // No specific selection to pre-fill
+      setShowChatSidebar(true);
+    }
+  };
   
   // Summarize popup handlers
   const handleSummarizePopup = () => {
@@ -1072,6 +1397,11 @@ export default function DocumentPage() {
       setTemplateFormatSelectedText(entry.selectedText);
       setTemplateFormatSelectionData(entry.selectionData);
       setShowTemplateFormatPopup(true);
+    } else if (entry.type === 'chat') {
+      // For chat entries, open a new chat with the same context
+      setChatSelectedText(entry.selectedText);
+      setChatSelectionData(entry.selectionData);
+      setShowChatSidebar(true);
     }
   };
 
@@ -1328,12 +1658,84 @@ Focus on making the information easily accessible and well-organized.`;
     const handleUp = (e: MouseEvent)=>{
       // Store global coordinates for context menu positioning
       lastCursorRef.current = {x:e.clientX,y:e.clientY};
+      
+      // Reset the external selection flags when clicking in PDF area
+      const pdfContainer = pdfContainerRef.current;
+      if (pdfContainer && pdfContainer.contains(e.target as Element)) {
+        const selection = window.getSelection();
+        if (!selection || selection.toString().trim() === '') {
+          lastSelectionWasOutsidePdf.current = false;
+        }
+        // Reset box selection flag when clicking inside PDF
+        lastBoxSelectionWasOutsidePdf.current = false;
+      }
     };
     
     const handleMove = (e: MouseEvent)=>{
       // Update cursor position during selection
       if(e.buttons > 0) { // Only during drag
         lastCursorRef.current = {x:e.clientX,y:e.clientY};
+      }
+    };
+    
+    const handleGlobalMouseDown = (e: MouseEvent) => {
+      // Check if box selection mode is active and user clicks outside PDF
+      if (selectedTool === 'box' && pdfUrl) {
+        const pdfContainer = pdfContainerRef.current;
+        if (!pdfContainer) return;
+        
+        const target = e.target as Element;
+        if (!pdfContainer.contains(target)) {
+          // User tried to start box selection outside PDF area
+          lastBoxSelectionWasOutsidePdf.current = true;
+        }
+      }
+    };
+    
+    const handleSelectionChange = () => {
+      // Close context menu if text is selected outside the PDF container
+      const pdfContainer = pdfContainerRef.current;
+      if (!pdfContainer) return;
+      
+      const selection = window.getSelection();
+      const selectedTextContent = selection?.toString().trim();
+      
+      // If there's any selection, check if it's outside our PDF container
+      if (selectedTextContent && selectedTextContent.length > 0 && selection) {
+        let hasSelectionOutsidePdf = false;
+        let hasSelectionInsidePdf = false;
+        
+        for (let i = 0; i < selection.rangeCount; i++) {
+          const range = selection.getRangeAt(i);
+          const container = range.commonAncestorContainer;
+          const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+          
+          if (element) {
+            if (pdfContainer.contains(element)) {
+              hasSelectionInsidePdf = true;
+            } else {
+              hasSelectionOutsidePdf = true;
+            }
+          }
+        }
+        
+                 // If there's any selection outside PDF, close the context menu
+         // Also prevent new context menus from appearing for outside selections
+         if (hasSelectionOutsidePdf) {
+           // Immediately close any open context menu
+           if (selectedText && menuPos) {
+             clearSelection();
+           }
+           // Set a flag to prevent context menu on next interaction
+           lastSelectionWasOutsidePdf.current = true;
+           
+           
+         } else if (hasSelectionInsidePdf) {
+           lastSelectionWasOutsidePdf.current = false;
+         }
+      } else {
+        // No selection, reset the flag
+        lastSelectionWasOutsidePdf.current = false;
       }
     };
     
@@ -1345,6 +1747,11 @@ Focus on making the information easily accessible and well-organized.`;
       const target = e.target as Element;
       if (!pdfContainer.contains(target)) return;
       
+      // Don't show context menu if the last selection was outside PDF
+      if (lastSelectionWasOutsidePdf.current) {
+        return;
+      }
+      
       // Prevent default context menu
       e.preventDefault();
       e.stopPropagation();
@@ -1352,15 +1759,29 @@ Focus on making the information easily accessible and well-organized.`;
       // Store cursor position
       lastCursorRef.current = {x: e.clientX, y: e.clientY};
       
-      // Check if there's currently selected text
+      // Check if there's currently selected text, but only within the PDF container
       const selection = window.getSelection();
       const selectedTextContent = selection?.toString().trim();
       
-      if (selectedTextContent && selectedTextContent.length > 0) {
-        // Use existing selected text
+      // Verify that the selection is within the PDF container
+      let isSelectionInPdfContainer = false;
+      if (selectedTextContent && selectedTextContent.length > 0 && selection) {
+        for (let i = 0; i < selection.rangeCount; i++) {
+          const range = selection.getRangeAt(i);
+          const container = range.commonAncestorContainer;
+          const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+          if (element && pdfContainer.contains(element)) {
+            isSelectionInPdfContainer = true;
+            break;
+          }
+        }
+      }
+      
+      if (isSelectionInPdfContainer && selectedTextContent) {
+        // Use existing selected text from within PDF container
         setSelectedText(selectedTextContent);
       } else {
-        // No text selected, use placeholder for general context menu
+        // No valid text selected within PDF container, use placeholder for general context menu
         setSelectedText("[Right-click menu]");
       }
       
@@ -1392,13 +1813,17 @@ Focus on making the information easily accessible and well-organized.`;
     
     window.addEventListener('mouseup',handleUp);
     window.addEventListener('mousemove',handleMove);
+    window.addEventListener('mousedown', handleGlobalMouseDown);
     window.addEventListener('contextmenu', handleRightClick);
+    document.addEventListener('selectionchange', handleSelectionChange);
     return ()=>{
       window.removeEventListener('mouseup',handleUp);
       window.removeEventListener('mousemove',handleMove);
+      window.removeEventListener('mousedown', handleGlobalMouseDown);
       window.removeEventListener('contextmenu', handleRightClick);
+      document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  },[pdfUrl]);
+  },[pdfUrl, selectedText, menuPos, selectedTool]);
 
   // Click outside to dismiss context menu
   useEffect(() => {
@@ -1424,11 +1849,10 @@ Focus on making the information easily accessible and well-organized.`;
     const handleHistoryClickOutside = (e: MouseEvent) => {
       if (showHistoryPopup) {
         const target = e.target as Element;
-        // Check if click is outside history popup and history button
+        // Check if click is outside history popup
         const historyPopup = target.closest('.z-50');
-        const historyButton = historyButtonRef.current;
         
-        if (!historyPopup && !historyButton?.contains(target)) {
+        if (!historyPopup) {
           setShowHistoryPopup(false);
         }
       }
@@ -1531,17 +1955,32 @@ Focus on making the information easily accessible and well-organized.`;
     return () => container.removeEventListener('scroll', handleScroll);
   }, [updateCurrentPageFromScroll, selectedText, menuPos]);
 
+  // Add handleEditToolSelect function
+  const handleEditToolSelect = (tool: string) => {
+    setSelectedEditTool(tool);
+  };
+
+  // Add handleColorSelect function
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color);
+  };
+
   return (
     <>
       <Head>
-        <title>Document Editor | DocMate</title>
+        <title>Document Editor | Docimate</title>
         <meta name="description" content="Edit and manage your PDF documents" />
       </Head>
       <div className="flex h-full overflow-hidden bg-background">
         <CustomSidebar selectedType="document" />
         
         <main className="flex-1 flex flex-col overflow-hidden p-6">
-          <div className="grid gap-6 h-full lg:grid-cols-[1fr_auto] grid-cols-1">
+          <div className={cn(
+            "grid gap-6 h-full transition-all duration-300",
+            showChatSidebar 
+              ? "lg:grid-cols-[1fr_400px_auto] grid-cols-1" 
+              : "lg:grid-cols-[1fr_auto] grid-cols-1"
+          )}>
             {/* PDF Viewer Card with Floating Controls */}
             <Card className="shadow-sm overflow-hidden relative" ref={pdfContainerRef}>
               <CardContent className="p-0 h-full overflow-auto">
@@ -1610,15 +2049,24 @@ Focus on making the information easily accessible and well-organized.`;
                   </div>
                 ) : (
                   <div className="w-full h-full relative">
-                    {/* Floating Document Info */}
-                    {pdfFile && (
-                      <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md">
-                        <p className="text-sm font-medium truncate max-w-[180px]">{pdfFile.name}</p>
+                    {/* Floating Edit Toolbar (INSIDE PDF VIEWER) */}
+                    {selectedTool === 'edit' && pdfUrl && (
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
+                        <EditToolbar
+                          selectedEditTool={selectedEditTool}
+                          onEditToolSelect={handleEditToolSelect}
+                          selectedColor={selectedColor}
+                          onColorSelect={handleColorSelect}
+                          canUndo={canUndo}
+                          canRedo={canRedo}
+                          onUndo={handleUndo}
+                          onRedo={handleRedo}
+                          onSave={handleSaveDrawings}
+                        />
                       </div>
                     )}
-                    
                     {/* Floating Page Navigation Controls */}
-                    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex items-center bg-background/80 backdrop-blur-sm rounded-lg shadow-md">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center bg-background/90 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
                       <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1626,8 +2074,8 @@ Focus on making the information easily accessible and well-organized.`;
                               <ChevronLeftIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <p>Previous page (← or Page Up)</p>
+                          <TooltipContent side="top" className="bg-background/80">
+                            <p>Previous page</p>
                           </TooltipContent>
                         </Tooltip>
                         
@@ -1641,23 +2089,23 @@ Focus on making the information easily accessible and well-organized.`;
                               <ChevronRightIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <p>Next page (→ or Page Down)</p>
+                          <TooltipContent side="top" className="bg-background/80">
+                            <p>Next page</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
                     
                     {/* Floating Zoom Controls */}
-                    <div className="absolute top-2 right-2 z-10 flex items-center bg-background/80 backdrop-blur-sm rounded-lg shadow-md">
-                      <TooltipProvider delayDuration={0}>
+                    <div className="absolute bottom-4 right-4 z-20 flex items-center bg-background/95 border border-primary/30 shadow-2xl backdrop-blur-sm rounded-lg p-1 ring-2 ring-primary/10">
+                    <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={zoomOut} disabled={scale <= 0.5} className="h-8 w-8">
                               <MinusIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Zoom out (Ctrl + Scroll)</p>
                           </TooltipContent>
                         </Tooltip>
@@ -1678,7 +2126,7 @@ Focus on making the information easily accessible and well-organized.`;
                               </span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Reset zoom to 100%</p>
                           </TooltipContent>
                         </Tooltip>
@@ -1689,7 +2137,7 @@ Focus on making the information easily accessible and well-organized.`;
                               <PlusIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Zoom in (Ctrl + Scroll)</p>
                           </TooltipContent>
                         </Tooltip>
@@ -1702,7 +2150,7 @@ Focus on making the information easily accessible and well-organized.`;
                               <RotateCw className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
+                          <TooltipContent side="top" className="bg-background/80">
                             <p>Rotate page</p>
                           </TooltipContent>
                         </Tooltip>
@@ -1742,8 +2190,9 @@ Focus on making the information easily accessible and well-organized.`;
 
                     <div className="absolute inset-0">
                       <AnimatePresence>
-                        {!selectedText && pdfWorkerReady && showToolTooltip && (
-                          <div className="absolute top-12 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                        {/* Only show intro message for text or box select, not for edit mode */}
+                        {(!selectedText && pdfWorkerReady && showToolTooltip && (selectedTool === 'text' || selectedTool === 'box')) && (
+                          <div className="absolute top-4 left-0 right-0 flex justify-center z-20 pointer-events-none">
                             <motion.div
                               initial={{ opacity: 0, y: -10, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1751,9 +2200,8 @@ Focus on making the information easily accessible and well-organized.`;
                               transition={{ duration: 0.2, ease: "easeOut" }}
                               className="bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-md text-sm whitespace-nowrap"
                             >
-                              {selectedTool === 'box' ? 'Drag a box to capture content' : 
-                               selectedTool === 'text' ? 'Select text to capture content' :
-                               'Select a tool from the sidebar to capture content'}
+                              {selectedTool === 'box' ? 'Drag a box within the PDF to capture content' :
+                               'Select text within the PDF to capture content'}
                             </motion.div>
                           </div>
                         )}
@@ -1761,14 +2209,14 @@ Focus on making the information easily accessible and well-organized.`;
 
                       {!pdfWorkerReady ? (
                         <div className="flex items-center justify-center h-full">
-                          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mr-2"></div>
-                          <p>Initializing PDF viewer...</p>
+
                         </div>
                       ) :  (
 
                         // Use regular PDF viewer for better zoom and page tracking
                         <PdfViewer
                           file={pdfUrl}
+                          pdfFile={pdfFile}
                           pageNumber={pageNumber}
                           scale={scale}
                           rotation={rotation}
@@ -1777,13 +2225,10 @@ Focus on making the information easily accessible and well-organized.`;
                           onLoadError={(error: any) => {
                             console.error("Error loading PDF:", error);
                             setIsLoading(false);
-                            toast({
-                              title: "PDF Loading Error",
-                              description: "Failed to load PDF. Please try a different file or refresh the page.",
-                              variant: "destructive"
-                            });
                           }}
-                          selectionMode={selectedTool as 'text' | 'box' | null}
+                          selectionMode={selectedTool as 'text' | 'box' | 'edit' | null}
+                          selectedEditTool={selectedEditTool}
+                          selectedColor={selectedColor}
                           onSelection={handleSelection}
                           onScroll={(scrollDistance: number) => {
                             // Close context menu when PDF viewer scrolls more than 20 pixels
@@ -1791,6 +2236,10 @@ Focus on making the information easily accessible and well-organized.`;
                               clearSelection();
                             }
                           }}
+                          onDrawingChange={handleDrawingsChange}
+                          onUndoStateChange={handleUndoStateChange}
+                          onSaveDrawings={handleSaveDrawings}
+                          initialDrawings={drawings}
                         />
                       )}
 
@@ -1805,6 +2254,7 @@ Focus on making the information easily accessible and well-organized.`;
                             onSummarizePopup={handleSummarizePopup}
                             onQuickFormat={handleQuickFormat}
                             onTemplateFormat={handleTemplateFormat}
+                            onChatPopup={handleChatPopup}
                             onCopy={handleCopy}
                             onClose={clearSelection}
                           />
@@ -1818,170 +2268,59 @@ Focus on making the information easily accessible and well-organized.`;
               </CardContent>
             </Card>
 
-            {/* Tools Sidebar Card */}
-            <Card className="shadow-sm flex flex-col h-full w-[60px] pt-2">
-              <CardContent className=" flex flex-col h-full items-center gap-2 pb-2">
-                <TooltipProvider delayDuration={0}>
-                  {tools.map(tool => (
-                    <Tooltip key={tool.id}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={selectedTool === tool.id ? "secondary" : "ghost"}
-                          size="icon"
-                          className="h-10 w-10"
-                          onClick={() => handleToolSelect(tool.id)}
-                        >
-                          {tool.icon}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" align="center">
-                        <p>{tool.label}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
+            {/* Chat Sidebar - Only show when chat is active */}
+            {showChatSidebar && (
+              <div className="flex flex-col h-full overflow-hidden flex-shrink-0">
+                <ChatSidebar
+                  isOpen={showChatSidebar}
+                  onClose={() => {
+                    setShowChatSidebar(false);
+                    // Removed state clearing to preserve current chat context when sidebar is reopened
+                  }}
+                  selectedText={chatSelectedText}
+                  selectionData={chatSelectionData}
+                  documentName={pdfFile?.name}
+                  currentPageNumber={pageNumber}
+                  pdfFile={pdfFile}
+                  onWidthChange={setChatSidebarWidth}
+                  prefillInput={chatPrefillText}
+                  onOpenPricing={() => setShowSignupPricingModal(true)}
+                />
+              </div>
+            )}
 
-                  {/* Document Analysis Tools */}
-                  {pdfFile && (
-                    <>
-                      <div className="w-full h-px bg-border my-2" />
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={handleDocumentSummarize}
-                            disabled={isAnalyzing || isLoading}
-                          >
-                            {processingAction === 'summarize' ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-5 w-5" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>Summarize Document</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={handleDocumentQuickFormat}
-                            disabled={isAnalyzing || isLoading}
-                          >
-                            {processingAction === 'quickformat' ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                              <Table className="h-5 w-5" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>Auto Format</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={handleFullDocTemplateFormatStart}
-                            disabled={isAnalyzing || isLoading}
-                          >
-                            <FileText className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p>Apply Template</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </>
-                  )}
-
-                  <div className="flex-1" />
-
-                  {/* History Button - Only show when PDF is loaded */}
-                  {pdfFile && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10 relative"
-                          ref={historyButtonRef}
-                          onClick={() => {
-                            if (!showHistoryPopup && historyButtonRef.current) {
-                              const rect = historyButtonRef.current.getBoundingClientRect();
-                              setHistoryPopupPosition({
-                                top: rect.top, // Keep the button's top position
-                                left: rect.left // Keep the button's left position
-                              });
-                            }
-                            setShowHistoryPopup(!showHistoryPopup);
-                          }}
-                        >
-                          <History className="h-5 w-5" />
-                          {history.length > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                              {history.length > 9 ? '9+' : history.length}
-                            </span>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" align="center">
-                        <p>View Recent ({history.length})</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {pdfFile && (
-                    <div className="mt-auto pt-2 border-t border-border w-full flex flex-col items-center gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                          >
-                            <FileTextIcon className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center">
-                          <p className="font-medium">{pdfFile.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                            onClick={clearPdf}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="center" className=" text-red-600 dark:text-red-200 bg-red-50 dark:bg-red-950">
-                          <p>Clear Document</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  )}
-                </TooltipProvider>
-              </CardContent>
-            </Card>
+            {/* Side Toolbar */}
+            <SideToolbar
+              selectedTool={selectedTool}
+              onToolSelect={handleToolSelect}
+              tools={tools}
+              pdfFile={pdfFile}
+              isAnalyzing={isAnalyzing}
+              isLoading={isLoading}
+              processingAction={processingAction}
+              showChatSidebar={showChatSidebar}
+              history={history}
+              showHistoryPopup={showHistoryPopup}
+              historyPopupPosition={historyPopupPosition}
+              documentType="pdf"
+              onDocumentSummarize={handleDocumentSummarize}
+              onDocumentQuickFormat={handleDocumentQuickFormat}
+              onFullDocTemplateFormatStart={handleFullDocTemplateFormatStart}
+              onFullDocumentChat={handleFullDocumentChat}
+              onHistoryToggle={() => {}}
+              onClearPdf={clearPdf}
+              onHistoryPopupToggle={(buttonRef) => {
+                if (!showHistoryPopup && buttonRef) {
+                  const rect = buttonRef.getBoundingClientRect();
+                  setHistoryPopupPosition({
+                    top: rect.top,
+                    left: rect.left
+                  });
+                }
+                setShowHistoryPopup(!showHistoryPopup);
+              }}
+              onExportPdf={handleExportPdf}
+            />
           </div>
         </main>
       </div>
@@ -2071,6 +2410,16 @@ Focus on making the information easily accessible and well-organized.`;
         onClose={() => setShowHistoryPopup(false)}
         position={historyPopupPosition}
         onOpenEntry={handleOpenHistoryEntry}
+      />
+
+      {/* Signup Pricing Modal */}
+      <PricingModal
+        isOpen={showSignupPricingModal}
+        onClose={handleSignupPricingClose}
+        onSelectPlan={handleSignupPlanSelect}
+        currentPlan={user?.plan_type || undefined}
+        currentPlanLimits={user?.plan_limits}
+        variant="signup"
       />
 
       {/* CSS for animated gradient background */}

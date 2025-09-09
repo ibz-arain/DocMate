@@ -158,7 +158,11 @@ export function APIPlayground() {
           break;
       }
 
-      const response = await fetch(`/api/endpoints_usage?endpointId=${endpointId}&startDate=${startDate.toISOString()}`);
+      const response = await fetch(`/api/endpoints_usage?endpointId=${endpointId}&startDate=${startDate.toISOString()}`, {
+        headers: {
+          'x-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      });
       if (!response.ok) throw new Error('Failed to fetch usage stats');
       const data = await response.json();
       setUsageStats(data.summary);
@@ -190,18 +194,20 @@ export function APIPlayground() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
+    // Convert UTC timestamp to user's local timezone
+    const date = new Date(dateString + 'Z'); // Ensure UTC interpretation
+    return date.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-      });
+    });
   };
 
   const fullFormatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
+    // Convert UTC timestamp to user's local timezone
+    const date = new Date(dateString + 'Z'); // Ensure UTC interpretation
+    return date.toLocaleString(undefined, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -636,14 +642,14 @@ export function APIPlayground() {
           </div>
                               <div className="flex items-center gap-2 p-2 mt-1 bg-muted rounded-md">
                                 <code className="text-sm flex-1 text-muted-foreground font-mono">
-                                  https://docmate-beta.vercel.app{getSelectedEndpoint()?.path}
+                                  https://docimate-beta.vercel.app{getSelectedEndpoint()?.path}
                                 </code>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   className="h-8 w-8"
                                   onClick={() => {
-                                    const url = `https://docmate-beta.vercel.app${getSelectedEndpoint()?.path}`;
+                                    const url = `https://docimate-beta.vercel.app${getSelectedEndpoint()?.path}`;
                                     handleCopy(url, "API URL copied to clipboard");
                                   }}
                                 >

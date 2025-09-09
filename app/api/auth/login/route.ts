@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
     // Find user by email
     const result = await db.execute({
       sql: `SELECT user_id, first_name, last_name, email, password_hash, phone_number, 
-                   email_verified, phone_verified, is_active, created_at, updated_at 
+                   is_active, plan_type, plan_limits,
+                   created_at, updated_at 
             FROM users WHERE email = ?`,
       args: [email.toLowerCase()]
     });
