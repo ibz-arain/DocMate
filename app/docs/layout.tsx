@@ -166,14 +166,14 @@ const SubLink = ({
 // Table of contents data for each page
 const pageTableOfContents = {
   "introduction": [
-    { id: "what-is-docmate", label: "What is DocMate?" },
+    { id: "what-is-docimate", label: "What is Docimate?" },
     { id: "key-features", label: "Key Features" },
     { id: "how-it-works", label: "How It Works" },
   ],
   "get-started": [
     { id: "create-account", label: "Create Your Account" },
     { id: "upload-document", label: "Upload Your First Document" },
-    { id: "explore-tools", label: "Explore DocMate Tools" },
+    { id: "explore-tools", label: "Explore Docimate Tools" },
     { id: "process-document", label: "Process Your Document" },
   ],
   "document": [

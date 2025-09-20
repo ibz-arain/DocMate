@@ -658,8 +658,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
           <DialogContent className="sm:max-w-[500px] bg-black/95 backdrop-blur-lg border-gray-200/20">
             <DialogHeader>
-              <DialogTitle className="font-mono text-2xl text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                Reset Password
+              <DialogTitle>
               </DialogTitle>
             </DialogHeader>
             

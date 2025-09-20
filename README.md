@@ -82,43 +82,6 @@ Docimate is an AI-powered platform that revolutionizes how you work with documen
 
 ---
 
-## 💰 Pricing
-
-### **Free Forever** - $0/month
-- 50 API calls per month
-- Unlimited document access
-- Document history
-- Email support
-
-### **Hobby** - $19/month
-- 500 API calls per month
-- Everything in Free Forever
-- Email support
-
-### **Pro** - $29/month
-- 1,000 API calls per month
-- Usage tracking and analytics
-- Everything in Hobby
-
-### **Business** - $99/month
-- 5,000 API calls per month
-- 24/7 phone support
-- Everything in Pro
-
-### **Enterprise** - $179/month
-- 10,000 API calls per month
-- API access for developers
-- 24/7 phone support
-
-### **Contact Us** - Custom
-- Unlimited API calls
-- Pay as you go pricing
-- Custom integrations
-
-[View Full Pricing →](https://docimate.com/pricing)
-
----
-
 ## 🏆 Our Story
 
 Docimate started as a hackathon project at **WinHacks 2025**, where our team of four developers built the initial concept in just 48 hours. We won first place, beating 29 other teams, and took home multiple awards.

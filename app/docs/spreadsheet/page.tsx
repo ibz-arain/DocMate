@@ -40,7 +40,7 @@ export default function SpreadsheetPage() {
       <section id="overview" className="mb-12">
         <h2 className="text-3xl font-bold mb-4">What Makes It Special</h2>
         <p className="text-lg text-muted-foreground leading-relaxed mb-6">
-          Think of DocMate's Spreadsheet Tools as Excel on steroids, but with AI superpowers. You can edit data like you're used to, but then right-click to get AI insights, generate charts automatically, and ask questions about your data.
+          Think of Docimate's Spreadsheet Tools as Excel on steroids, but with AI superpowers. You can edit data like you're used to, but then right-click to get AI insights, generate charts automatically, and ask questions about your data.
         </p>
         
         <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-6 mb-8">
@@ -144,7 +144,7 @@ export default function SpreadsheetPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground mb-4">DocMate works with the most common spreadsheet formats you'll encounter.</p>
+              <p className="text-muted-foreground mb-4">Docimate works with the most common spreadsheet formats you'll encounter.</p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-primary" />
@@ -174,7 +174,7 @@ export default function SpreadsheetPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground mb-4">Three easy ways to get your data into DocMate.</p>
+              <p className="text-muted-foreground mb-4">Three easy ways to get your data into Docimate.</p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-primary" />
@@ -268,7 +268,7 @@ export default function SpreadsheetPage() {
       <section id="ai-features" className="mb-12">
         <h2 className="text-3xl font-bold mb-6">AI-Powered Features</h2>
         <p className="text-lg text-muted-foreground leading-relaxed mb-6">
-          This is where DocMate really shines. Select any data and right-click to see AI options that can analyze, summarize, and visualize your data in ways that would take hours to do manually.
+          This is where Docimate really shines. Select any data and right-click to see AI options that can analyze, summarize, and visualize your data in ways that would take hours to do manually.
         </p>
 
         <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-6 mb-8">
