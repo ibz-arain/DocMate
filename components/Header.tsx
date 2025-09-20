@@ -24,8 +24,8 @@ export default function Header() {
   const { theme } = useTheme();
 
   const handleAuthAction = () => {
-    // Open playground in a new tab
-    window.open('/playground', '_blank');
+    // Navigate to playground in current tab
+    router.push('/playground');
   };
 
   const toggleMobileMenu = () => {
@@ -90,7 +90,7 @@ export default function Header() {
                     className="text-sm font-medium border-muted hover:bg-muted/30 transition-all duration-300 min-w-[100px] justify-center gap-1 group"
                     onClick={handleAuthAction}
                   >
-                    Platform
+                    Get to Work
                     <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
                   </Button>
                   

@@ -317,7 +317,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.5 }}
                   >
-                    <Link href="/playground" target="_blank">
+                    <Link href="/playground">
                       <Button size="lg" className="gap-2 relative overflow-hidden group shadow-lg shadow-primary/20 bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30">
                           Get Started <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                       </Button>
