@@ -268,7 +268,7 @@ export default function TemplatesPage() {
       <section id="using-templates">
         <h2 className="text-3xl font-bold mb-4">Using Templates</h2>
         <p className="text-lg text-muted-foreground leading-relaxed mb-6">
-          Once you've created a template, using it is the easy part. Upload your documents, select the template, and let DocMate do the work. You can process one document or hundreds at once.
+          Once you've created a template, using it is the easy part. Upload your documents, select the template, and let Docimate do the work. You can process one document or hundreds at once.
         </p>
 
         <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-6 mb-8">

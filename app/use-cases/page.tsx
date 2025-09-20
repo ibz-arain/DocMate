@@ -211,7 +211,7 @@ export default function UseCasesPage() {
                   </div>
                 </motion.div>
 
-                {/* DocMate Platform */}
+                {/* Docimate Platform */}
                 <motion.div
                   initial={{ opacity: 0, x: 40 }}
                   whileInView={{ opacity: 1, x: 0 }}
