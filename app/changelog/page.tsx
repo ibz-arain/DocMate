@@ -309,7 +309,7 @@ export default function ChangelogPage() {
     },
     {
       version: "1.2",
-      date: "March 8, 2024",
+      date: "March 8, 2025",
       title: "Usage and History",
       icon: History,
       imageUrl: "/versions/v1.2.png",
@@ -321,7 +321,7 @@ export default function ChangelogPage() {
     },
     {
       version: "1.1",
-      date: "February 22, 2024",
+      date: "February 22, 2025",
       title: "User Accounts & Security",
       icon: Users,
       imageUrl: "/versions/v1.1.png",
@@ -332,7 +332,7 @@ export default function ChangelogPage() {
     },
     {
       version: "1.0",
-      date: "February 16, 2024",
+      date: "February 16, 2025",
       title: "Initial Release",
       icon: FileText,
       imageUrl: "/versions/v1.0.png",
