@@ -307,6 +307,76 @@ Rules:
   } catch (error) {
     console.error('API Error:', error);
     
+    // Handle specific AI SDK errors
+    if (error && typeof error === 'object' && 'cause' in error) {
+      const cause = (error as any).cause;
+      if (cause && typeof cause === 'object' && 'issues' in cause) {
+        console.error('AI SDK validation error:', cause.issues);
+        
+        // Record failed API usage
+        if (endpointId) {
+          await db.execute({
+            sql: `
+              INSERT INTO api_usage (
+                endpoint_id,
+                timestamp,
+                status_code,
+                response_time_ms,
+                ip_address,
+                user_agent
+              ) VALUES (?, datetime('now'), ?, ?, ?, ?)
+            `,
+            args: [
+              endpointId,
+              500,
+              Date.now() - startTime,
+              req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
+              req.headers.get('user-agent') || 'unknown'
+            ],
+          });
+        }
+        
+        return NextResponse.json(
+          { 
+            error: 'AI response validation failed. Please try again with different content.',
+            details: cause.issues
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Handle MAX_TOKENS or incomplete responses
+    if (error instanceof Error && error.message.includes('MAX_TOKENS')) {
+      // Record failed API usage
+      if (endpointId) {
+        await db.execute({
+          sql: `
+            INSERT INTO api_usage (
+              endpoint_id,
+              timestamp,
+              status_code,
+              response_time_ms,
+              ip_address,
+              user_agent
+            ) VALUES (?, datetime('now'), ?, ?, ?, ?)
+          `,
+          args: [
+            endpointId,
+            500,
+            Date.now() - startTime,
+            req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
+            req.headers.get('user-agent') || 'unknown'
+          ],
+        });
+      }
+      
+      return NextResponse.json(
+        { error: 'Response was too long. Please try with smaller content or simpler documents.' },
+        { status: 500 }
+      );
+    }
+    
     // Record failed API usage
     if (endpointId) {
       await db.execute({

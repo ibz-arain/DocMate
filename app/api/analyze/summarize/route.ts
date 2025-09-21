@@ -70,6 +70,33 @@ Instructions:
       );
     }
 
+    // Handle specific AI SDK errors
+    if (error && typeof error === 'object' && 'cause' in error) {
+      const cause = (error as any).cause;
+      if (cause && typeof cause === 'object' && 'issues' in cause) {
+        console.error('AI SDK validation error:', cause.issues);
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'AI response validation failed. Please try again with different content.',
+            details: cause.issues
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Handle MAX_TOKENS or incomplete responses
+    if (error instanceof Error && error.message.includes('MAX_TOKENS')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Response was too long. Please try with shorter content or break your request into smaller parts.'
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { 
         success: false, 

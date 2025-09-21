@@ -254,7 +254,6 @@ Guidelines:
     const result = await generateText({
       model: google('gemini-2.5-flash'),
       messages: conversationMessages,
-      maxTokens: 1000, // Reasonable limit for chat responses
       temperature: 0.7, // Slightly creative for conversational tone
     });
 
@@ -276,6 +275,34 @@ Guidelines:
           details: error.errors
         },
         { status: 400 }
+      );
+    }
+
+    // Handle specific AI SDK errors
+    if (error && typeof error === 'object' && 'cause' in error) {
+      const cause = (error as any).cause;
+      if (cause && typeof cause === 'object' && 'issues' in cause) {
+        // This is likely a validation error from the AI SDK
+        console.error('AI SDK validation error:', cause.issues);
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'AI response validation failed. Please try again with a shorter message or different content.',
+            details: cause.issues
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Handle MAX_TOKENS or incomplete responses
+    if (error instanceof Error && error.message.includes('MAX_TOKENS')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Response was too long. Please try with a shorter message or break your request into smaller parts.'
+        },
+        { status: 500 }
       );
     }
 
