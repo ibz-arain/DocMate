@@ -18,7 +18,7 @@ export async function sendVerificationEmail(email: string, code: string, firstNa
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
       <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
         <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://docimate.com/logo-text.png" alt="Docimate" style="height: 40px; margin-bottom: 10px;">
+          <img src="https://docimate.ibrahimarain.com/logo-text.png" alt="Docimate" style="height: 40px; margin-bottom: 10px;">
           <p style="color: #666; margin: 10px 0 0 0; font-size: 14px;">Document Processing Made Simple</p>
         </div>
         
@@ -126,7 +126,7 @@ export async function sendPasswordResetEmail(email: string, code: string, firstN
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
       <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
         <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://docimate.com/logo-text.png" alt="Docimate" style="height: 40px; margin-bottom: 10px;">
+          <img src="https://docimate.ibrahimarain.com/logo-text.png" alt="Docimate" style="height: 40px; margin-bottom: 10px;">
           <p style="color: #666; margin: 10px 0 0 0; font-size: 14px;">Document Processing Made Simple</p>
         </div>
         

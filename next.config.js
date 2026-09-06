@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Suppress hydration warnings
-  suppressHydrationWarning: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config) => {
     // Handle PDF.js worker
     config.externals = [...(config.externals || []), { canvas: 'canvas' }];

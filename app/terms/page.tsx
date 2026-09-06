@@ -62,11 +62,11 @@ export default function TermsPage() {
                   <CardContent className="p-8 space-y-8">
                     <div>
                       <p className="text-muted-foreground leading-relaxed mb-6">
-                        These Terms of Service ("Terms") govern your use of our website located at docimate.com (the "Service") operated by Docimate Inc. ("us", "we", or "our"). Our Privacy Policy also governs your use of our Service and explains how we collect, safeguard and disclose information that results from your use of our web pages.
+                        These Terms of Service ("Terms") govern your use of our website located at docimate.ibrahimarain.com (the "Service") operated by Docimate Inc. ("us", "we", or "our"). Our Privacy Policy also governs your use of our Service and explains how we collect, safeguard and disclose information that results from your use of our web pages.
                       </p>
 
                       <p className="text-muted-foreground leading-relaxed mb-6">
-                        Your agreement with us includes these Terms and our Privacy Policy ("Agreements"). You acknowledge that you have read and understood Agreements, and agree to be bound of them. If you do not agree with (or cannot comply with) Agreements, then you may not use the Service, but please let us know by emailing us at hello@docimate.com so we can try to find a solution. These Terms apply to all visitors, users and others who wish to access or use the Service.
+                        Your agreement with us includes these Terms and our Privacy Policy ("Agreements"). You acknowledge that you have read and understood Agreements, and agree to be bound of them. If you do not agree with (or cannot comply with) Agreements, then you may not use the Service, but please let us know by emailing us at docimate@ibrahimarain.com so we can try to find a solution. These Terms apply to all visitors, users and others who wish to access or use the Service.
                       </p>
                     </div>
 
@@ -260,7 +260,7 @@ export default function TermsPage() {
 
                       <div className="bg-black/20 rounded-lg p-4 border border-white/10">
                         <p className="text-muted-foreground">
-                          <strong>Email:</strong> hello@docimate.com<br />
+                          <strong>Email:</strong> docimate@ibrahimarain.com<br />
                         </p>
                       </div>
                     </div>

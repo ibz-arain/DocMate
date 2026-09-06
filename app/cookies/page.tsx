@@ -62,7 +62,7 @@ export default function CookiesPage() {
                   <CardContent className="p-8 space-y-8">
                     <div>
                       <p className="text-muted-foreground leading-relaxed mb-6">
-                        This Cookie Policy explains what cookies are and how we use them on our website docimate.com (the "Service"). You should read this policy so you can understand what type of cookies we use, the information we collect using cookies and how that information is used.
+                        This Cookie Policy explains what cookies are and how we use them on our website docimate.ibrahimarain.com (the "Service"). You should read this policy so you can understand what type of cookies we use, the information we collect using cookies and how that information is used.
                       </p>
 
                       <p className="text-muted-foreground leading-relaxed mb-6">
@@ -248,7 +248,7 @@ export default function CookiesPage() {
 
                       <div className="bg-black/20 rounded-lg p-4 border border-white/10">
                         <p className="text-muted-foreground">
-                          <strong>Email:</strong> hello@docimate.com<br />
+                          <strong>Email:</strong> docimate@ibrahimarain.com<br />
                         </p>
                       </div>
                     </div>

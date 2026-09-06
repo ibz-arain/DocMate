@@ -642,14 +642,14 @@ export function APIPlayground() {
           </div>
                               <div className="flex items-center gap-2 p-2 mt-1 bg-muted rounded-md">
                                 <code className="text-sm flex-1 text-muted-foreground font-mono">
-                                  https://docimate-beta.vercel.app{getSelectedEndpoint()?.path}
+                                  https://docimate.ibrahimarain.com{getSelectedEndpoint()?.path}
                                 </code>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   className="h-8 w-8"
                                   onClick={() => {
-                                    const url = `https://docimate-beta.vercel.app${getSelectedEndpoint()?.path}`;
+                                    const url = `https://docimate.ibrahimarain.com${getSelectedEndpoint()?.path}`;
                                     handleCopy(url, "API URL copied to clipboard");
                                   }}
                                 >
