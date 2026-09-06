@@ -189,7 +189,7 @@ export default function CareersPage() {
                         interests, and how you might contribute to our team.
                       </p>
                       
-                      <a href="mailto:careers@docimate.com?subject=Career Inquiry&body=Hi! I'm interested in joining the Docimate team. Here's a bit about myself...">
+                      <a href="mailto:docimate@ibrahimarain.com?subject=Career Inquiry&body=Hi! I'm interested in joining the Docimate team. Here's a bit about myself...">
                         <Button 
                           size="lg" 
                           className="gap-2 group bg-primary/20 hover:bg-primary/30 text-primary-foreground border border-primary/30 shadow-lg shadow-primary/20"
@@ -201,7 +201,7 @@ export default function CareersPage() {
                       </a>
                       
                       <p className=" text-primary/80 mt-4">
-                        hello@docimate.com
+                        docimate@ibrahimarain.com
                       </p>
                     </div>
                   </CardContent>

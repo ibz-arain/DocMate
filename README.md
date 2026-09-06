@@ -1,11 +1,12 @@
 # Docimate
 
 > **AI-Powered Document Processing Platform**  
-> Transform your document workflow with intelligent automation
+> Transform your document workflow with intelligent automation  
+> Live at [docimate.ibrahimarain.com](https://docimate.ibrahimarain.com)
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Playground-blue?style=for-the-badge&logo=play)](https://docimate.com/playground)
-[![Pricing](https://img.shields.io/badge/Pricing-Transparent-green?style=for-the-badge&logo=dollar-sign)](https://docimate.com/pricing)
-[![About Us](https://img.shields.io/badge/About%20Us-Our%20Story-purple?style=for-the-badge&logo=users)](https://docimate.com/about)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Playground-blue?style=for-the-badge&logo=play)](https://docimate.ibrahimarain.com/playground)
+[![Pricing](https://img.shields.io/badge/Pricing-Transparent-green?style=for-the-badge&logo=dollar-sign)](https://docimate.ibrahimarain.com/pricing)
+[![About Us](https://img.shields.io/badge/About%20Us-Our%20Story-purple?style=for-the-badge&logo=users)](https://docimate.ibrahimarain.com/about)
 
 ---
 
@@ -14,6 +15,8 @@
 Docimate is an AI-powered platform that revolutionizes how you work with documents and spreadsheets. Instead of manually reading through pages of text or switching between multiple tools, Docimate lets you **chat with your documents** and get instant answers.
 
 **Winner of WinHacks 2025** - We took home the overall winner, best expense tracker, and best user experience awards!
+
+![Docimate team at WinHacks 2025](https://res.cloudinary.com/dumbpanrc/image/upload/v1764374910/IMG_9094_Original.jpg)
 
 ---
 
@@ -75,7 +78,7 @@ Docimate is an AI-powered platform that revolutionizes how you work with documen
 
 ## 🚀 Quick Start
 
-1. **Visit the Playground**: [Try Docimate Now](https://docimate.com/playground)
+1. **Visit the Playground**: [Try Docimate Now](https://docimate.ibrahimarain.com/playground)
 2. **Upload a Document**: PDF, Word, Excel, or CSV files
 3. **Start Chatting**: Ask questions about your document
 4. **Get Instant Answers**: AI extracts and analyzes data for you
@@ -88,7 +91,7 @@ Docimate started as a hackathon project at **WinHacks 2025**, where our team of 
 
 Since then, we've evolved Docimate into a comprehensive platform that's helping professionals across industries automate their document workflows and save countless hours of manual work.
 
-[Learn More About Us →](https://docimate.com/about)
+[Learn More About Us →](https://docimate.ibrahimarain.com/about)
 
 ---
 
@@ -107,11 +110,11 @@ Since then, we've evolved Docimate into a comprehensive platform that's helping 
 
 ## 🔗 Links
 
-- **[Live Demo](https://docimate.com/playground)** - Try Docimate right now
-- **[Pricing](https://docimate.com/pricing)** - Transparent pricing plans
-- **[Use Cases](https://docimate.com/use-cases)** - See how different industries use Docimate
-- **[About Us](https://docimate.com/about)** - Meet the team behind Docimate
-- **[Changelog](https://docimate.com/changelog)** - Follow our development journey
+- **[Live Demo](https://docimate.ibrahimarain.com/playground)** - Try Docimate right now
+- **[Pricing](https://docimate.ibrahimarain.com/pricing)** - Transparent pricing plans
+- **[Use Cases](https://docimate.ibrahimarain.com/use-cases)** - See how different industries use Docimate
+- **[About Us](https://docimate.ibrahimarain.com/about)** - Meet the team behind Docimate
+- **[Changelog](https://docimate.ibrahimarain.com/changelog)** - Follow our development journey
 
 ---
 
@@ -119,7 +122,7 @@ Since then, we've evolved Docimate into a comprehensive platform that's helping 
 
 Ready to transform your document workflow? 
 
-**[Try Docimate for Free →](https://docimate.com/playground)**
+**[Try Docimate for Free →](https://docimate.ibrahimarain.com/playground)**
 
 ---
 

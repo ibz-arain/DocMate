@@ -28,10 +28,10 @@ export default function Footer() {
             {/* Mobile email */}
             <div className="mb-6">
               <a 
-                href="mailto:hello@docimate.com?subject=General Inquiry" 
+                href="mailto:docimate@ibrahimarain.com?subject=General Inquiry" 
                 className="text-primary hover:text-white transition-colors duration-300 text-sm font-medium"
               >
-                hello@docimate.com
+                docimate@ibrahimarain.com
               </a>
             </div>
             
@@ -131,10 +131,10 @@ export default function Footer() {
               {/* Desktop email */}
               <div>
                 Contact us: <a 
-                  href="mailto:hello@docimate.com?subject=General Inquiry" 
+                  href="mailto:docimate@ibrahimarain.com?subject=General Inquiry" 
                   className="text-primary hover:text-white transition-colors duration-300 font-medium"
                 >
-                  hello@docimate.com
+                  docimate@ibrahimarain.com
                 </a>
               </div>
               

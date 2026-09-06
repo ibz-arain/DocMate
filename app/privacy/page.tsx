@@ -300,7 +300,7 @@ export default function PrivacyPage() {
 
                       <div className="bg-black/20 rounded-lg p-4 border border-white/10">
                         <p className="text-muted-foreground">
-                          <strong>Email:</strong> hello@docimate.com<br />
+                          <strong>Email:</strong> docimate@ibrahimarain.com<br />
                         </p>
                       </div>
                     </div>
