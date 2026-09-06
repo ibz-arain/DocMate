@@ -1,10 +1,7 @@
-import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 import { User, PublicUser } from '@/types/auth';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
-);
+export { createJWT, verifyJWT } from '@/lib/jwt';
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
@@ -12,24 +9,6 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
-}
-
-export async function createJWT(payload: { userId: number; email: string }): Promise<string> {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d') // 7 days
-    .sign(JWT_SECRET);
-}
-
-export async function verifyJWT(token: string): Promise<{ userId: number; email: string } | null> {
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as { userId: number; email: string };
-  } catch (error) {
-    console.error('JWT verification failed:', error);
-    return null;
-  }
 }
 
 export function sanitizeUser(user: User): PublicUser {
